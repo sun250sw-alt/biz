@@ -1119,7 +1119,7 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
           <div id="share-code-display" style="display:none;margin-bottom:10px">
             <div style="background:var(--bg2);border:1px solid var(--brd);border-radius:var(--r8);padding:12px;text-align:center">
               <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Invite code</div>
-              <div style="font-family:'DM Mono',monospace;font-size:34px;font-weight:600;letter-spacing:8px;color:var(--txt)" id="share-code-value">------</div>
+              <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;letter-spacing:2px;color:var(--txt);word-break:break-all;line-height:1.8" id="share-code-value">------</div>
               <div style="font-size:11px;color:var(--txt3);margin-top:5px">Anyone with this code can join — share it once, it stays active</div>
             </div>
             <div style="display:flex;gap:8px;margin-top:8px">
@@ -1145,8 +1145,8 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
           <label style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;font-weight:500;display:block;margin-bottom:5px" id="lbl-enter-code">Enter code</label>
           <input type="text" id="join-code-input"
             style="text-transform:uppercase;font-family:'DM Mono',monospace;font-size:18px;letter-spacing:4px;text-align:center;height:44px"
-            maxlength="6" placeholder="A1B2C3"
-            oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')"
+            maxlength="80" placeholder="Paste code here"
+            oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9\.]/g,'')"
             onkeydown="if(event.key==='Enter')joinBusiness()">
         </div>
         <button class="btn-primary" onclick="joinBusiness()" id="btn-join" style="height:44px;white-space:nowrap">Connect →</button>
@@ -2326,7 +2326,10 @@ async function generateShareCode() {
     // Store code→ssId+bizId mapping locally (owner's device) as backup
     localStorage.setItem('smt_shareCodeMap_'+code, JSON.stringify({ssId, bizId}));
 
-    document.getElementById('share-code-value').textContent = code;
+    // Full code = SHORT_CODE.ENCODED_SHEET_ID so partner can find the sheet
+    const fullCode = code + '.' + encodeSheetId(ssId);
+    localStorage.setItem('smt_shareCodeMap_'+code, JSON.stringify({ssId, bizId}));
+    document.getElementById('share-code-value').textContent = fullCode;
     document.getElementById('share-code-display').style.display = 'block';
     document.getElementById('btn-gen-code').style.display = 'none';
     msg.style.color='var(--green)'; msg.textContent='✓ Invite code ready — share it with anyone you want to invite.';
@@ -2395,12 +2398,12 @@ async function joinBusiness() {
   const code  = document.getElementById('join-code-input').value.trim().toUpperCase();
   const msg   = document.getElementById('join-msg');
   const token = await ensureToken();
-  if(code.length!==6) { msg.style.color='var(--red)'; msg.textContent='Enter a 6-character code.'; return; }
+  if(code.length<6) { msg.style.color='var(--red)'; msg.textContent='Enter the full share code.'; return; }
   if(!token) { msg.style.color='var(--red)'; msg.textContent='Sign in to Google first.'; return; }
   msg.style.color='var(--txt3)'; msg.textContent='🔍 Looking up code...';
   document.getElementById('btn-join').disabled=true;
   try {
-    const resolved = await resolveShareCode(token, code);
+    const resolved = await resolveShareCode(token, code); // code may be SHORTCODE.SHEETID
     if(!resolved) {
       msg.style.color='var(--red)';
       msg.textContent='❌ Code not found. Make sure the owner has generated a code and try again.';
@@ -2455,87 +2458,83 @@ async function joinBusiness() {
   document.getElementById('btn-join').disabled=false;
 }
 
-// Read a public Google Sheet without auth token
+// ── Read a public Google Sheet using API key ──
 async function sheetsReadPublic(ssId, range) {
-  const apiKey = ''; // No API key needed for public sheets via v4 with ?alt=json workaround
-  // Use the public export URL which works without auth for sheets shared as "anyone can view"
-  const url = `${SHEETS_API}/${ssId}/values/${encodeURIComponent(range)}${GOOGLE_API_KEY&&!GOOGLE_API_KEY.includes('YOUR_API_KEY')?'?key='+GOOGLE_API_KEY:''}`;
-  // Note: above uses a generic public API key for read-only sheets access
-  // For production, register your own API key in Google Cloud Console (free, no auth needed)
+  const key = GOOGLE_API_KEY && !GOOGLE_API_KEY.includes('YOUR_API_KEY') ? GOOGLE_API_KEY : '';
+  const url = `${SHEETS_API}/${ssId}/values/${encodeURIComponent(range)}${key?'?key='+key:''}`;
   const r = await fetch(url);
-  if(!r.ok) {
-    // Fallback: try without key (sometimes works for truly public sheets)
-    const r2 = await fetch(`${SHEETS_API}/${ssId}/values/${encodeURIComponent(range)}`);
-    if(!r2.ok) throw new Error('Cannot read sheet. Make sure owner has shared it.');
-    const d = await r2.json();
-    return d.values || [];
-  }
+  if(!r.ok) throw new Error('Cannot read public sheet ('+r.status+')');
   const d = await r.json();
   return d.values || [];
 }
 
-// ── Resolve code — checks if code is active ──
-// ── Resolve a share code ──
-// Strategy: the code is a hash of ssId+bizId. We can reverse-lookup
-// by trying the owner's sheet ID directly — BUT the partner doesn't know it.
-// Solution: owner publishes their sheet ID in a well-known public registry sheet,
-// OR we encode the sheet ID into the code itself (base62).
-// Simplest working approach: store code→ssId in the owner's sheet AND
-// make it readable by anyone with the sheet ID by sharing the sheet publicly.
-// When owner generates code, we also share the sheet as "anyone with link can view".
+// ── Resolve a share code → {ssId, bizId} ──
+// How it works:
+// The full share code the partner receives contains TWO parts joined by a dot:
+//   XXXXXX.SHEET_ID_BASE64
+// The 6-char part is the business-specific code stored in _sharecodes
+// The sheet ID part tells us exactly which sheet to look in
+// This way the partner can always find the sheet without Drive search
 async function resolveShareCode(token, code) {
-  // Step 1: search partner's own Drive (in case they already have the sheet)
-  const query = encodeURIComponent("mimeType='application/vnd.google-apps.spreadsheet' and trashed=false");
-  const resp  = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)&pageSize=50`,
-    { headers: { Authorization: 'Bearer ' + token } }
-  );
-  if(resp.ok) {
-    const files = (await resp.json()).files || [];
-    for(const file of files) {
-      try {
-        const rows = await sheetsRead(token, file.id, '_sharecodes!A2:E20');
-        for(const row of rows) {
-          if(row[0] && row[0].toUpperCase() === code && row[3] === 'YES') {
-            return { ssId: row[1] || file.id, bizId: row[2] };
-          }
-        }
-      } catch(e) {}
-    }
-  }
-
-  // Step 2: try to decode the sheet ID from the code itself
-  // The code is makeShareCode(ssId, bizId) — deterministic hash
-  // We can't reverse it directly, but we stored ssId in the code row.
-  // The owner needs to share the sheet publicly so we can read it.
-  // We store a mapping in localStorage when we generate the code.
-  const storedMapping = localStorage.getItem('smt_shareCodeMap_' + code);
-  if(storedMapping) {
+  // New format: CODE.SHEETID (dot-separated)
+  if(code.includes('.')) {
+    const [shortCode, encodedSsId] = code.split('.');
+    const ssId = atob(encodedSsId.replace(/-/g,'+').replace(/_/g,'/'));
+    // Try reading with partner's auth token (works if sheet is shared with them)
     try {
-      const { ssId, bizId } = JSON.parse(storedMapping);
-      // Try reading it directly (works if sheet is shared publicly)
+      const rows = await sheetsReadPublic(ssId, '_sharecodes!A2:E20');
+      for(const row of rows) {
+        if(row[0] && row[0].toUpperCase() === shortCode && row[3] === 'YES') {
+          return { ssId: row[1]||ssId, bizId: row[2] };
+        }
+      }
+    } catch(e) { console.log('resolveShareCode public read:', e.message); }
+    // Fallback: try with auth
+    try {
       const rows = await sheetsRead(token, ssId, '_sharecodes!A2:E20');
       for(const row of rows) {
-        if(row[0] && row[0].toUpperCase() === code && row[3] === 'YES') {
-          return { ssId: row[1] || ssId, bizId: row[2] || bizId };
+        if(row[0] && row[0].toUpperCase() === shortCode && row[3] === 'YES') {
+          return { ssId: row[1]||ssId, bizId: row[2] };
         }
       }
     } catch(e) {}
   }
 
+  // Legacy: search partner's Drive (old codes without sheet ID embedded)
+  try {
+    const query = encodeURIComponent("mimeType='application/vnd.google-apps.spreadsheet' and trashed=false");
+    const resp  = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id)&pageSize=50`,
+      { headers: { Authorization: 'Bearer '+token } });
+    if(resp.ok) {
+      const files = (await resp.json()).files||[];
+      for(const file of files) {
+        try {
+          const rows = await sheetsRead(token, file.id, '_sharecodes!A2:E20');
+          for(const row of rows) {
+            if(row[0]&&row[0].toUpperCase()===code&&row[3]==='YES') return {ssId:row[1]||file.id,bizId:row[2]};
+          }
+        } catch(e) {}
+      }
+    }
+  } catch(e) {}
+
   return null;
 }
 
-// ── When owner generates a code, make their sheet publicly readable
-// AND store the code→ssId mapping so it can be shared out-of-band ──
+// ── Make sheet publicly readable AND make the full code ──
 async function makeSheetPublic(token, ssId) {
   try {
     await fetch(`https://www.googleapis.com/drive/v3/files/${ssId}/permissions`, {
       method: 'POST',
-      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      headers: { Authorization: 'Bearer '+token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ role: 'reader', type: 'anyone' })
     });
   } catch(e) { console.log('makeSheetPublic:', e.message); }
+}
+
+// Encode sheet ID safely for URL/code embedding
+function encodeSheetId(ssId) {
+  return btoa(ssId).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
 }
 
 // Override pushToSheet / sync to use shared sheet for shared businesses
