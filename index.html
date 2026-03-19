@@ -1440,13 +1440,13 @@ function onCurChange(){ save(); renderSummary(); }
 function toggleBizDrop(){
   bizDropOpen = !bizDropOpen;
   document.getElementById('biz-dropdown').classList.toggle('open', bizDropOpen);
-  document.getElementById('biz-chev').textContent = bizDropOpen?'▴':'▾';
+  setText('biz-chev', bizDropOpen?'▴':'▾');
   if(bizDropOpen) renderBizDropdown();
 }
 function closeBizDrop(){
   bizDropOpen=false;
   document.getElementById('biz-dropdown').classList.remove('open');
-  document.getElementById('biz-chev').textContent='▾';
+  setText('biz-chev', '▾');
 }
 
 function renderBizDropdown(){
@@ -1468,12 +1468,12 @@ async function switchBiz(bizId){
   localStorage.setItem('smt_currentBiz', bizId);
   // Update UI bar
   const biz = businesses.find(b=>b.id===bizId) || {};
-  document.getElementById('biz-icon-bar').textContent = biz.icon||'🏪';
+  setText('biz-icon-bar', biz.icon||'🏪');
   document.getElementById('biz-icon-bar').style.background = biz.color||'#E6F1FB';
-  document.getElementById('biz-name-bar').textContent = biz.name||bizId;
-  document.getElementById('app-logo').textContent = biz.icon||'🏪';
+  setText('biz-name-bar', biz.name||bizId);
+  setText('app-logo', biz.icon||'🏪');
   document.getElementById('app-logo').style.background = biz.color||'#E6F1FB';
-  document.getElementById('biz-meta-bar').textContent = openDaysPerWeek()+' '+t('openDaysWeek')+' · '+document.getElementById('cur').value;
+  setText('biz-meta-bar', openDaysPerWeek()+' '+t('openDaysWeek')+' · '+document.getElementById('cur').value);
   renderAll(); renderExpenses(); renderIncome(); renderWeekSchedule();
   if(sheetUrl) loadBizFromSheet(bizId).then(()=>{ renderAll(); renderExpenses(); renderIncome(); });
 }
@@ -1488,7 +1488,7 @@ function openAddBiz(){
   // Reset fields
   document.getElementById('m-name').value = '';
   document.getElementById('m-icon').value = '🏪';
-  document.getElementById('m-msg').textContent = '';
+  setText('m-msg', '');
   document.getElementById('add-biz-modal').classList.add('open');
   // Focus name input
   setTimeout(() => document.getElementById('m-name').focus(), 100);
@@ -1636,12 +1636,12 @@ function lmRecalc() {
   const intStd  = totalInterestPaid(principal, emiStd,  Math.ceil(principal / (emiStd - (emiStd * rate/100/12) )) || term);
   const intFast = totalInterestPaid(principal, emiFast, fastMo);
 
-  document.getElementById('lm-sug-min-val').textContent  = fmt(emiMin);
-  document.getElementById('lm-sug-min-sub').textContent  = term+'mo · '+fmt(Math.max(0,intMin))+' interest';
-  document.getElementById('lm-sug-std-val').textContent  = fmt(emiStd);
-  document.getElementById('lm-sug-std-sub').textContent  = '~'+Math.round(term*0.85)+'mo · less interest';
-  document.getElementById('lm-sug-fast-val').textContent = fmt(emiFast);
-  document.getElementById('lm-sug-fast-sub').textContent = fastMo+'mo · '+fmt(Math.max(0,intFast))+' interest';
+  setText('lm-sug-min-val', fmt(emiMin));
+  setText('lm-sug-min-sub', term+'mo · '+fmt(Math.max(0,intMin))+' interest');
+  setText('lm-sug-std-val', fmt(emiStd));
+  setText('lm-sug-std-sub', '~'+Math.round(term*0.85)+'mo · less interest');
+  setText('lm-sug-fast-val', fmt(emiFast));
+  setText('lm-sug-fast-sub', fastMo+'mo · '+fmt(Math.max(0,intFast))+' interest');
 
   // Auto-pick std if nothing selected yet
   if(!lmSelectedMonthly) lmPickSuggest('std', true);
@@ -1662,8 +1662,8 @@ function lmPickSuggest(type, silent=false) {
 
   // Show selected display
   const sub = document.getElementById('lm-sug-'+type+'-sub').textContent;
-  document.getElementById('lm-selected-val').textContent = fmtF(val)+'/month';
-  document.getElementById('lm-selected-sub').textContent = sub;
+  setText('lm-selected-val', fmtF(val)+'/month');
+  setText('lm-selected-sub', sub);
   document.getElementById('lm-selected-display').style.display = 'block';
 }
 
@@ -1692,8 +1692,8 @@ function openAddLoan(loanId) {
   editingLoanId = loanId || null;
   lmSelectedMonthly = 0;
   const loan = loanId ? loans.find(l=>l.id===loanId) : null;
-  document.getElementById('loan-modal-title').textContent = loan ? 'Edit loan' : 'Add loan';
-  document.getElementById('lm-save-btn').textContent      = loan ? 'Save changes' : 'Add loan';
+  setText('loan-modal-title', loan ? 'Edit loan' : 'Add loan');
+  setText('lm-save-btn', loan ? 'Save changes' : 'Add loan');
   document.getElementById('lm-name').value       = loan ? loan.name           : '';
   document.getElementById('lm-total').value      = loan ? loan.total          : '';
   document.getElementById('lm-remaining').value  = loan ? loan.remaining      : '';
@@ -1702,7 +1702,7 @@ function openAddLoan(loanId) {
   document.getElementById('lm-startdate').value  = loan ? (loan.startDate||'') : '';
   document.getElementById('lm-enddate').value    = loan ? (loan.endDate||'')   : '';
   document.getElementById('lm-lender').value     = loan ? (loan.lender||'')   : '';
-  document.getElementById('lm-msg').textContent  = '';
+  setText('lm-msg', '');
   document.getElementById('lm-selected-display').style.display = 'none';
 
   if(loan && loan.monthly) {
@@ -1944,9 +1944,9 @@ function renderLoans() {
   const paidPct      = totalAll>0 ? Math.round(totalPaid/totalAll*100) : 0;
   const dailyImpact  = totalDailyLoans();
 
-  document.getElementById('loan-total-debt').textContent    = fmtF(totalDebt);
-  document.getElementById('loan-total-monthly').textContent = fmtF(totalMonthly);
-  document.getElementById('loan-paid-pct').textContent      = paidPct+'%';
+  setText('loan-total-debt', fmtF(totalDebt));
+  setText('loan-total-monthly', fmtF(totalMonthly));
+  setText('loan-paid-pct', paidPct+'%');
 
   // Target banner
   const banner = document.getElementById('loan-target-banner');
@@ -1968,7 +1968,7 @@ function renderLoans() {
     if(inactiveLoans.length > 0) {
       impactText += ` · ${inactiveLoans.length} loan${inactiveLoans.length>1?'s':''} outside active period (not counted)`;
     }
-    document.getElementById('loan-target-impact').textContent = impactText;
+    setText('loan-target-impact', impactText);
   }
 
   // Active loan list
@@ -2195,9 +2195,9 @@ async function saveRenameBiz(bizId) {
 
   // Update topbar if this is the active business
   if(bizId === currentBizId) {
-    document.getElementById('biz-name-bar').textContent = newName;
-    document.getElementById('biz-icon-bar').textContent = newIcon;
-    document.getElementById('app-logo').textContent     = newIcon;
+    setText('biz-name-bar', newName);
+    setText('biz-icon-bar', newIcon);
+    setText('app-logo', newIcon);
   }
 
   // Re-render
@@ -2233,7 +2233,7 @@ function selectBizToShare(bizId, loadMembers=true) {
   // Show share panel
   document.getElementById('share-panel').style.display = 'block';
   document.getElementById('share-code-display').style.display = 'none';
-  document.getElementById('share-msg').textContent = '';
+  setText('share-msg', '');
   if(loadMembers) loadShareMembers(bizId);
 }
 
@@ -2342,7 +2342,7 @@ async function generateShareCode() {
     const joinUrl = window.location.origin + window.location.pathname + '?join=' + encodeURIComponent(fullCode);
     localStorage.setItem('smt_shareJoinUrl_'+code, joinUrl);
 
-    document.getElementById('share-code-value').textContent = fullCode;
+    setText('share-code-value', fullCode);
     const linkEl = document.getElementById('share-link-display'); if(linkEl) linkEl.textContent = joinUrl;
 
     // Generate QR code using Google Charts API (reliable, no library needed)
@@ -2767,7 +2767,7 @@ let aiBannerOpen = true;
 function toggleAiBanner() {
   aiBannerOpen = !aiBannerOpen;
   document.getElementById('ai-content').style.display = aiBannerOpen ? 'block' : 'none';
-  document.getElementById('ai-toggle-btn').textContent = aiBannerOpen ? '⌄' : '⌃';
+  setText('ai-toggle-btn', aiBannerOpen ? '⌄' : '⌃');
 }
 
 async function loadAiInsights() {
@@ -2984,7 +2984,7 @@ function applyStaticTranslations(){
   });
   // Update biz bar meta
   if(currentBizId){
-    document.getElementById('biz-meta-bar').textContent=openDaysPerWeek()+' '+t('openDaysWeek')+' · '+document.getElementById('cur').value;
+    setText('biz-meta-bar', openDaysPerWeek()+' '+t('openDaysWeek')+' · '+document.getElementById('cur').value);
   }
 }
 
@@ -3025,8 +3025,8 @@ function renderSummary(){
 function startClock(){ if(clockTimer)clearInterval(clockTimer); tick(); clockTimer=setInterval(tick,1000); }
 function tick(){
   const now=new Date();
-  document.getElementById('hero-clock').textContent=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
-  document.getElementById('hero-date').textContent=now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  setText('hero-clock', String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0'));
+  setText('hero-date', now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}));
   const h=tradingHours[dayIdx()],nowMins=now.getHours()*60+now.getMinutes()+now.getSeconds()/60;
   const fromMins=h.open?timeToMins(h.from):0,toMins=h.open?timeToMins(h.to):0;
   const isOpen=h.open&&nowMins>=fromMins&&nowMins<toMins,isBefore=h.open&&nowMins<fromMins;
@@ -3042,25 +3042,25 @@ function tick(){
   const targetByNow=openMins>0?dwm*(elapsedMins/openMins):0;
   const tbn=document.getElementById('hero-target-now');
   tbn.textContent=fmtF(targetByNow);tbn.style.color=elapsedMins>0?'#D85A30':'var(--txt3)';
-  document.getElementById('hero-target-now-sub').textContent=openMins>0?Math.floor(elapsedMins)+'m '+t('elapsed').replace(':','')+' '+openMins+'m':t('targetByNow');
-  document.getElementById('hero-clock-sub').textContent=isOpen?t('shopOpen'):isBefore?t('shopNotOpenYet'):t('closedForToday');
+  setText('hero-target-now-sub', openMins>0?Math.floor(elapsedMins)+'m '+t('elapsed').replace(':','')+' '+openMins+'m':t('targetByNow'));
+  setText('hero-clock-sub', isOpen?t('shopOpen'):isBefore?t('shopNotOpenYet'):t('closedForToday'));
   const sales=parseFloat(document.getElementById('today-sales').value)||incomeToday()||0;
   const diff=sales-targetByNow,banner=document.getElementById('diff-banner'),dlbl=document.getElementById('diff-label'),damt=document.getElementById('diff-amount');
   if(sales>0){if(diff>=0){banner.className='diff-banner diff-ahead';dlbl.textContent=t('aheadOfTarget');damt.textContent='+'+fmtF(diff);}else{banner.className='diff-banner diff-behind';dlbl.textContent=t('behindTarget');damt.textContent=fmtF(Math.abs(diff))+' '+t('behind');}}
   else{banner.className='diff-banner diff-neutral';dlbl.textContent=isOpen?t('enterSalesBelow'):t('shopNotOpen');damt.textContent='';}
   const pct=Math.min(100,openMins>0?elapsedMins/openMins*100:0);
   const bar=document.getElementById('prog-bar');bar.style.width=pct.toFixed(2)+'%';bar.style.background=pct>=90?'#D85A30':pct>=60?'#BA7517':'#1D9E75';
-  document.getElementById('prog-pct').textContent=pct.toFixed(1)+'%';
-  if(isOpen){document.getElementById('prog-elapsed').textContent=t('elapsed')+' '+Math.floor(elapsedMins)+'m';document.getElementById('prog-left').textContent=Math.floor(Math.max(0,toMins-nowMins))+'m '+t('leftToday');}
-  else if(isBefore){document.getElementById('prog-elapsed').textContent=t('notOpenedYet');document.getElementById('prog-left').textContent=t('opensIn')+' '+Math.floor(fromMins-nowMins)+'m';}
-  else{document.getElementById('prog-elapsed').textContent=h.open?t('tradingDayEnded'):t('closedToday');document.getElementById('prog-left').textContent='';}
-  document.getElementById('lc-sec').textContent=fmtDec(perSec,4);
-  document.getElementById('lc-min').textContent=fmtDec(perMin,1);
-  document.getElementById('lc-hr').textContent=fmtF(perHr);
-  document.getElementById('lc-day').textContent=fmtF(dwm);
-  document.getElementById('lc-day-sub').textContent=t('inclMargin',{m:getMargin()});
-  document.getElementById('lc-sales').textContent=fmtF(sales);
-  document.getElementById('lc-left').textContent=fmtF(Math.max(0,dwm-sales));
+  setText('prog-pct', pct.toFixed(1)+'%');
+  if(isOpen){setText('prog-elapsed', t('elapsed')+' '+Math.floor(elapsedMins)+'m');setText('prog-left', Math.floor(Math.max(0,toMins-nowMins))+'m '+t('leftToday'));}
+  else if(isBefore){setText('prog-elapsed', t('notOpenedYet'));setText('prog-left', t('opensIn')+' '+Math.floor(fromMins-nowMins)+'m');}
+  else{setText('prog-elapsed', h.open?t('tradingDayEnded'):t('closedToday'));setText('prog-left', '');}
+  setText('lc-sec', fmtDec(perSec,4));
+  setText('lc-min', fmtDec(perMin,1));
+  setText('lc-hr', fmtF(perHr));
+  setText('lc-day', fmtF(dwm));
+  setText('lc-day-sub', t('inclMargin',{m:getMargin()}));
+  setText('lc-sales', fmtF(sales));
+  setText('lc-left', fmtF(Math.max(0,dwm-sales)));
 }
 function updateSalesResult(){tick();renderSalesResult();}
 function renderSalesResult(){
@@ -3212,10 +3212,10 @@ function renderIncome(){
 // OPS LOG
 // ═══════════════════════════════
 function renderOpsLog(){
-  if(!opsLog.length){document.getElementById('ops-log').innerHTML=`<div style="text-align:center;padding:20px;color:#888780;font-size:12px">${t('noDailyRec')}</div>`;document.getElementById('ops-streak').textContent='';return;}
+  if(!opsLog.length){document.getElementById('ops-log').innerHTML=`<div style="text-align:center;padding:20px;color:#888780;font-size:12px">${t('noDailyRec')}</div>`;setText('ops-streak', '');return;}
   let streak=0;const today=new Date();
   for(let i=0;i<30;i++){const d=new Date(today);d.setDate(d.getDate()-i);const s=d.toISOString().slice(0,10);if(opsLog.find(o=>o.date===s&&o.hit))streak++;else break;}
-  document.getElementById('ops-streak').textContent=streak>0?streak+' '+t('dayStreak'):'';
+  setText('ops-streak', streak>0?streak+' '+t('dayStreak'):'');
   document.getElementById('ops-log').innerHTML=`<table class="ops-table"><thead><tr><th>${t('dateCol')}</th><th class="r">${t('salesCol')}</th><th class="r">${t('targetCol')}</th><th class="r">${t('diffCol')}</th><th class="r">${t('grossProfitCol')}</th><th class="r">${t('netCol')}</th><th class="r">${t('statusCol')}</th></tr></thead>
   <tbody>${opsLog.slice(0,30).map(o=>{const diff=o.sales-o.target,pct=o.target>0?diff/o.target*100:0,sp=o.hit?'sp-hit':pct>=-15?'sp-close':'sp-miss';return`<tr><td style="white-space:nowrap">${fmtDate(o.date)}</td><td class="r" style="font-weight:500">${fmtF(o.sales)}</td><td class="r" style="color:#888780">${fmtF(o.target)}</td><td class="r" style="color:${diff>=0?'#1D9E75':'#D85A30'}">${(diff>=0?'+':'')+fmtF(diff)}</td><td class="r" style="color:#1D9E75">${fmtF(o.profit||0)}</td><td class="r" style="color:${(o.net||0)>=0?'#1D9E75':'#D85A30'}">${((o.net||0)>=0?'+':'')+fmtF(o.net||0)}</td><td class="r"><span class="sp ${sp}">${o.hit?t('hitStatus'):pct>=-15?t('closeStatus'):t('missedStatus')}</span></td></tr>`;}).join('')}</tbody></table>`;
 }
@@ -3383,12 +3383,12 @@ function initApp(){
   loadLocalForBiz(currentBizId);
   // Update biz bar
   const biz=businesses.find(b=>b.id===currentBizId)||businesses[0];
-  document.getElementById('biz-icon-bar').textContent=biz.icon||'🏪';
+  setText('biz-icon-bar', biz.icon||'🏪');
   document.getElementById('biz-icon-bar').style.background=biz.color||'#E6F1FB';
-  document.getElementById('biz-name-bar').textContent=biz.name;
-  document.getElementById('app-logo').textContent=biz.icon||'🏪';
+  setText('biz-name-bar', biz.name);
+  setText('app-logo', biz.icon||'🏪');
   document.getElementById('app-logo').style.background=biz.color||'#E6F1FB';
-  document.getElementById('biz-meta-bar').textContent=openDaysPerWeek()+' '+t('openDaysWeek')+' · '+document.getElementById('cur').value;
+  setText('biz-meta-bar', openDaysPerWeek()+' '+t('openDaysWeek')+' · '+document.getElementById('cur').value);
   renderAll();renderExpenses();renderIncome();renderWeekSchedule();
   startClock();
   document.getElementById('today-sales').addEventListener('input',renderSalesResult);
@@ -3663,11 +3663,11 @@ function obSaveBiz() {
 
 function adjustMargin(delta) {
   obMarginVal = Math.max(1, Math.min(90, obMarginVal + delta));
-  document.getElementById('ob-margin-display').textContent = obMarginVal;
+  setText('ob-margin-display', obMarginVal);
 }
 function setMarginQuick(v) {
   obMarginVal = v;
-  document.getElementById('ob-margin-display').textContent = v;
+  setText('ob-margin-display', v);
 }
 
 function copyScript() {
@@ -3902,7 +3902,7 @@ function obSignOut() {
   document.getElementById('ob-user-card').style.display   = 'none';
   document.getElementById('ob-setup-progress').style.display = 'none';
   document.getElementById('ob-auth-continue-btn').style.display = 'none';
-  document.getElementById('ob-sheet-msg').textContent = '';
+  setText('ob-sheet-msg', '');
   resetSignInBtn();
 }
 
@@ -4345,7 +4345,7 @@ const LEGAL_CONTENT = {
 function showLegalPage(type) {
   const page = LEGAL_CONTENT[type];
   if(!page) return;
-  document.getElementById('legal-title').textContent = page.title;
+  setText('legal-title', page.title);
   document.getElementById('legal-body').innerHTML = page.body;
   document.getElementById('legal-overlay').style.display = 'block';
   document.getElementById('legal-overlay').scrollTop = 0;
