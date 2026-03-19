@@ -1120,9 +1120,7 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
             <div style="background:var(--bg2);border:1px solid var(--brd);border-radius:var(--r8);padding:14px;text-align:center">
               <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Invite to join</div>
               <!-- QR code -->
-              <div id="share-qr" style="display:flex;justify-content:center;margin-bottom:10px">
-                <canvas id="qr-canvas" width="160" height="160" style="border-radius:8px;background:#fff;padding:6px"></canvas>
-              </div>
+              <div id="share-qr" style="display:flex;justify-content:center;margin-bottom:10px"></div>
               <!-- Short link -->
               <div style="font-size:11px;color:var(--txt3);margin-bottom:6px">Or share this link</div>
               <div style="background:var(--bg1);border:1px solid var(--brd);border-radius:6px;padding:7px 10px;font-size:11px;font-family:'DM Mono',monospace;word-break:break-all;color:var(--txt2);text-align:left" id="share-link-display">—</div>
@@ -1167,11 +1165,13 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
 </div><!-- end main-app -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 // ═══════════════════════════════
 // CONSTANTS & CATEGORIES
 // ═══════════════════════════════
+// Safe DOM helper — prevents null crashes
+function setText(id, val) { const e=document.getElementById(id); if(e) e.textContent=val; }
+function setHtml(id, val) { const e=document.getElementById(id); if(e) e.innerHTML=val; }
 // Global safety net — if any unhandled error occurs after the user is onboarded,
 // make sure the app stays visible instead of getting stuck on the welcome screen
 window.addEventListener('error', ()=>{
@@ -2285,7 +2285,7 @@ async function loadShareMembers(bizId) {
     const codeRows = await sheetsRead(token, ssId, '_sharecodes!A2:E20');
     const activeCode = codeRows.find(r=>r[2]===bizId && r[3]==='YES');
     if(activeCode) {
-      document.getElementById('share-code-value').textContent = activeCode[0];
+      const scv = document.getElementById('share-code-value'); if(scv) scv.textContent = activeCode[0];
       document.getElementById('share-code-display').style.display = 'block';
       document.getElementById('btn-gen-code').style.display = 'none';
     } else {
@@ -2343,25 +2343,13 @@ async function generateShareCode() {
     localStorage.setItem('smt_shareJoinUrl_'+code, joinUrl);
 
     document.getElementById('share-code-value').textContent = fullCode;
-    document.getElementById('share-link-display').textContent = joinUrl;
+    const linkEl = document.getElementById('share-link-display'); if(linkEl) linkEl.textContent = joinUrl;
 
-    // Generate QR code
-    const canvas = document.getElementById('qr-canvas');
-    if(canvas && typeof QRCode !== 'undefined') {
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0,0,160,160);
-      QRCode.toCanvas(canvas, joinUrl, {
-        width:160, margin:1,
-        color:{dark:'#1a1a18',light:'#ffffff'}
-      }, err => { if(err) console.error('QR error:', err); });
-    } else if(canvas) {
-      // Fallback: use QR API service
-      const img = new Image();
-      img.onload = () => {
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, 160, 160);
-      };
-      img.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(joinUrl)}`;
+    // Generate QR code using Google Charts API (reliable, no library needed)
+    const qrContainer = document.getElementById('share-qr');
+    if(qrContainer) {
+      const qrUrl = `https://chart.googleapis.com/chart?cht=qr&chs=160x160&chl=${encodeURIComponent(joinUrl)}&choe=UTF-8`;
+      qrContainer.innerHTML = `<img src="${qrUrl}" width="160" height="160" style="border-radius:8px;background:#fff;padding:6px" alt="QR Code">`;
     }
     document.getElementById('share-code-display').style.display = 'block';
     document.getElementById('btn-gen-code').style.display = 'none';
@@ -2383,7 +2371,7 @@ function copyShareLink() {
 }
 
 function copyShareCode() {
-  const code = document.getElementById('share-code-value').textContent;
+  const code = document.getElementById('share-code-value')?.textContent || '';
   if(!code || code==='------') return;
   navigator.clipboard.writeText(code).then(()=>{
     const btn = document.getElementById('btn-copy-raw');
@@ -3930,10 +3918,7 @@ function setPStep(id, state, txt) {
     else if(state==='err')     icon.textContent = '✗';
     else                       icon.textContent = '○';
   }
-  if(txt) {
-    const nodes = el.childNodes;
-    nodes[nodes.length - 1].textContent = ' ' + txt;
-  }
+  if(txt) { try { const nodes=el.childNodes; if(nodes.length>0) nodes[nodes.length-1].textContent=' '+txt; } catch(e){} }
 }
 
 // ── Main setup: find existing sheet OR create new one ──
