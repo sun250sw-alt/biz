@@ -1117,14 +1117,21 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
         <!-- Generate / show invite code -->
         <div id="share-invite-area">
           <div id="share-code-display" style="display:none;margin-bottom:10px">
-            <div style="background:var(--bg2);border:1px solid var(--brd);border-radius:var(--r8);padding:12px;text-align:center">
-              <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Invite code</div>
-              <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;letter-spacing:2px;color:var(--txt);word-break:break-all;line-height:1.8" id="share-code-value">------</div>
-              <div style="font-size:11px;color:var(--txt3);margin-top:5px">Anyone with this code can join — share it once, it stays active</div>
+            <div style="background:var(--bg2);border:1px solid var(--brd);border-radius:var(--r8);padding:14px;text-align:center">
+              <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Invite to join</div>
+              <!-- QR code -->
+              <div id="share-qr" style="display:flex;justify-content:center;margin-bottom:10px">
+                <canvas id="qr-canvas" width="160" height="160" style="border-radius:8px;background:#fff;padding:6px"></canvas>
+              </div>
+              <!-- Short link -->
+              <div style="font-size:11px;color:var(--txt3);margin-bottom:6px">Or share this link</div>
+              <div style="background:var(--bg1);border:1px solid var(--brd);border-radius:6px;padding:7px 10px;font-size:11px;font-family:'DM Mono',monospace;word-break:break-all;color:var(--txt2);text-align:left" id="share-link-display">—</div>
+              <div style="font-size:10px;color:var(--txt3);margin-top:8px">Scan QR code or open the link to join instantly</div>
             </div>
             <div style="display:flex;gap:8px;margin-top:8px">
-              <button class="btn-sm" style="flex:1" onclick="copyShareCode()" id="btn-copy-code">📋 Copy code</button>
-              <button class="btn-sm" style="flex:1" onclick="revokeAllAccess()" id="btn-revoke-all" style="color:var(--red)">🚫 Revoke all</button>
+              <button class="btn-sm" style="flex:1" onclick="copyShareLink()" id="btn-copy-code">🔗 Copy link</button>
+              <button class="btn-sm" style="flex:1" onclick="copyShareCode()" id="btn-copy-raw">📋 Copy code</button>
+              <button class="btn-sm" onclick="revokeAllAccess()" id="btn-revoke-all" style="color:var(--red)">🚫</button>
             </div>
           </div>
           <button class="btn-primary" onclick="generateShareCode()" id="btn-gen-code">+ Invite someone</button>
@@ -1138,11 +1145,11 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
     <div class="card">
       <div class="card-title" id="lbl-join-title">Join another business</div>
       <div style="font-size:12px;color:var(--txt3);margin-bottom:12px;line-height:1.6" id="lbl-join-desc">
-        Enter the 6-character code from the business owner.
+        Open the invite link, scan the QR code, or paste the code below.
       </div>
       <div style="display:flex;gap:8px;align-items:flex-end">
         <div style="flex:1">
-          <label style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;font-weight:500;display:block;margin-bottom:5px" id="lbl-enter-code">Enter code</label>
+          <label style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;font-weight:500;display:block;margin-bottom:5px" id="lbl-enter-code">Paste invite code</label>
           <input type="text" id="join-code-input"
             style="text-transform:uppercase;font-family:'DM Mono',monospace;font-size:18px;letter-spacing:4px;text-align:center;height:44px"
             maxlength="80" placeholder="Paste code here"
@@ -1160,6 +1167,7 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
 </div><!-- end main-app -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 // ═══════════════════════════════
 // CONSTANTS & CATEGORIES
@@ -2329,7 +2337,32 @@ async function generateShareCode() {
     // Full code = SHORT_CODE.ENCODED_SHEET_ID so partner can find the sheet
     const fullCode = code + '.' + encodeSheetId(ssId);
     localStorage.setItem('smt_shareCodeMap_'+code, JSON.stringify({ssId, bizId}));
+
+    // Build the join link — opens the app and auto-fills the code
+    const joinUrl = window.location.origin + window.location.pathname + '?join=' + encodeURIComponent(fullCode);
+    localStorage.setItem('smt_shareJoinUrl_'+code, joinUrl);
+
     document.getElementById('share-code-value').textContent = fullCode;
+    document.getElementById('share-link-display').textContent = joinUrl;
+
+    // Generate QR code
+    const canvas = document.getElementById('qr-canvas');
+    if(canvas && typeof QRCode !== 'undefined') {
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0,0,160,160);
+      QRCode.toCanvas(canvas, joinUrl, {
+        width:160, margin:1,
+        color:{dark:'#1a1a18',light:'#ffffff'}
+      }, err => { if(err) console.error('QR error:', err); });
+    } else if(canvas) {
+      // Fallback: use QR API service
+      const img = new Image();
+      img.onload = () => {
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, 160, 160);
+      };
+      img.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(joinUrl)}`;
+    }
     document.getElementById('share-code-display').style.display = 'block';
     document.getElementById('btn-gen-code').style.display = 'none';
     msg.style.color='var(--green)'; msg.textContent='✓ Invite code ready — share it with anyone you want to invite.';
@@ -2339,14 +2372,23 @@ async function generateShareCode() {
   document.getElementById('btn-gen-code').disabled = false;
 }
 
+function copyShareLink() {
+  const link = document.getElementById('share-link-display')?.textContent || '';
+  if(!link || link === '—') return;
+  navigator.clipboard.writeText(link).then(()=>{
+    const btn = document.getElementById('btn-copy-code');
+    btn.textContent = '✓ Copied!';
+    setTimeout(()=>btn.textContent='🔗 Copy link', 2000);
+  }).catch(()=>prompt('Copy this link:', link));
+}
+
 function copyShareCode() {
   const code = document.getElementById('share-code-value').textContent;
-  const biz  = businesses.find(b=>b.id===selectedShareBizId)||{};
-  const text = `Join "${biz.name||'my business'}" on Business Tracker — enter code: ${code}`;
-  navigator.clipboard.writeText(text).then(()=>{
-    const btn=document.getElementById('btn-copy-code'); btn.textContent='✓ Copied!';
-    setTimeout(()=>btn.textContent='📋 Copy code',2000);
-  }).catch(()=>prompt('Share this:', text));
+  if(!code || code==='------') return;
+  navigator.clipboard.writeText(code).then(()=>{
+    const btn = document.getElementById('btn-copy-raw');
+    if(btn) { btn.textContent='✓ Copied!'; setTimeout(()=>btn.textContent='📋 Copy code',2000); }
+  }).catch(()=>prompt('Copy this code:', code));
 }
 
 // ── Revoke a specific member ──
@@ -4371,6 +4413,15 @@ window.addEventListener('load',()=>{
   const useDirectApi= localStorage.getItem('smt_useDirectApi');
   const hasSsId     = localStorage.getItem('smt_spreadsheetId');
 
+  // Check for ?join= parameter (from QR code scan or link)
+  const urlParams = new URLSearchParams(window.location.search);
+  const joinCode  = urlParams.get('join');
+  if(joinCode) {
+    // Clean URL without reloading
+    history.replaceState(null,'', window.location.pathname);
+    localStorage.setItem('smt_pendingJoinCode', joinCode);
+  }
+
   const isReturning = !!(onboarded || hasBiz || hasSsId || useDirectApi);
 
   if(isReturning){
@@ -4385,6 +4436,23 @@ window.addEventListener('load',()=>{
       document.getElementById('main-app').style.display='block';
     }
     if(savedUrl||useDirectApi) setTimeout(()=>{ try{syncNow();}catch(e){console.error(e);} }, 1000);
+
+    // Handle pending join code from QR scan or invite link
+    const pendingJoin = localStorage.getItem('smt_pendingJoinCode');
+    if(pendingJoin) {
+      localStorage.removeItem('smt_pendingJoinCode');
+      setTimeout(()=>{
+        try {
+          sw('manage', document.getElementById('nav-manage'));
+          const inp = document.getElementById('join-code-input');
+          if(inp) {
+            inp.value = pendingJoin.toUpperCase();
+            const msg = document.getElementById('join-msg');
+            if(msg) { msg.style.color='var(--blue-txt)'; msg.textContent='✓ Code filled from invite link — tap Connect to join.'; }
+          }
+        } catch(e) {}
+      }, 1000);
+    }
   } else {
     obShowSlide(0);
   }
