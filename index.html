@@ -256,6 +256,22 @@ input:focus,select:focus{outline:none;border-color:var(--blue)}
 .lp-high{background:var(--red-bg);color:var(--red-txt)}
 .lp-med{background:var(--amber-bg);color:var(--amber-txt)}
 .lp-low{background:var(--green-bg);color:var(--green-txt)}
+.loan-detail-panel{border-top:1px solid var(--brd);margin-top:10px;padding-top:12px;display:none}
+.loan-mo-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bg2);font-size:12px}
+.loan-mo-row:last-child{border-bottom:none}
+.loan-mo-num{width:20px;height:20px;border-radius:50%;background:var(--bg3);font-size:9px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--txt3)}
+.loan-mo-row.paid-row .loan-mo-num{background:var(--green-bg);color:var(--green-txt)}
+.loan-mo-row.overdue-row .loan-mo-num{background:var(--red-bg);color:var(--red-txt)}
+.loan-mo-row.future-row{opacity:.5}
+.loan-mo-check{width:20px;height:20px;border-radius:4px;border:2px solid var(--brd);flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,border .15s}
+.loan-mo-check.checked{background:var(--green);border-color:var(--green);color:#fff}
+.loan-mo-date{flex:1;color:var(--txt)}
+.loan-mo-amt{color:var(--txt3);font-weight:500}
+.loan-mo-status{font-size:10px;padding:2px 6px;border-radius:3px}
+.lms-paid{background:var(--green-bg);color:var(--green-txt)}
+.lms-overdue{background:var(--red-bg);color:var(--red-txt)}
+.lms-due{background:var(--amber-bg);color:var(--amber-txt)}
+.lms-upcoming{background:var(--bg3);color:var(--txt3)}
 .lm-suggest-card{background:var(--bg1);border-radius:var(--r8);padding:8px 10px;cursor:pointer;transition:border .15s,background .15s;border:2px solid transparent}
 .lm-suggest-card:hover{background:var(--bg2)}
 .lm-suggest-card.active-suggest{background:var(--blue-bg)}
@@ -896,6 +912,27 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
         <div class="lc"><div class="lc-lbl" id="lbl-still-earn">Still to earn</div><div class="lc-val mono" id="lc-left" style="color:#D4537E">—</div><div class="lc-sub" id="sub-still-earn">to hit target</div></div>
       </div>
     </div>
+
+    <!-- AI INSIGHTS BANNER -->
+    <div id="ai-banner" style="background:var(--bg2);border:1px solid var(--brd);border-radius:var(--r12);padding:14px 16px;margin-bottom:12px;position:relative">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:7px">
+          <div style="width:22px;height:22px;border-radius:6px;background:#4285F4;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;color:#fff;font-weight:700">G</div>
+          <span style="font-size:12px;font-weight:500;color:var(--txt)">AI Business Insights</span>
+          <span style="font-size:10px;padding:2px 6px;background:var(--blue-bg);color:var(--blue-txt);border-radius:4px;font-weight:500">Gemini</span>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn-sm" onclick="loadAiInsights()" id="ai-refresh-btn" style="font-size:10px;padding:3px 8px">↻ Refresh</button>
+          <button onclick="toggleAiBanner()" style="background:none;border:none;color:var(--txt3);cursor:pointer;font-size:18px;line-height:1;padding:0 4px" id="ai-toggle-btn">⌄</button>
+        </div>
+      </div>
+      <div id="ai-content">
+        <div style="font-size:12px;color:var(--txt3);text-align:center;padding:8px 0">
+          Tap ↻ Refresh to get AI insights on your business performance
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-head">
         <span class="card-title" style="margin-bottom:0" id="lbl-today-sales">Today's sales</span>
@@ -945,7 +982,7 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
         <span class="card-title" style="margin-bottom:0" id="lbl-tgt-by-day">Target by day</span>
         <div class="margin-row">
           <span>Margin %</span>
-          <input type="number" id="margin2" value="30" min="0" max="100" style="width:52px;text-align:center" oninput="syncMargins();renderHourlyTargets()">
+          <input type="number" id="margin2" value="30" min="0" max="100" style="width:52px;text-align:center" oninput="syncMargins()">
         </div>
       </div>
       <div style="overflow-x:auto"><div id="hourly-targets"></div></div>
@@ -1127,6 +1164,19 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
 // ═══════════════════════════════
 // CONSTANTS & CATEGORIES
 // ═══════════════════════════════
+// Global safety net — if any unhandled error occurs after the user is onboarded,
+// make sure the app stays visible instead of getting stuck on the welcome screen
+window.addEventListener('error', ()=>{
+  const onboarded = localStorage.getItem('smt_onboarded') ||
+                    localStorage.getItem('smt_businesses') ||
+                    localStorage.getItem('smt_spreadsheetId');
+  if(onboarded) {
+    const overlay = document.getElementById('ob-overlay');
+    const app     = document.getElementById('main-app');
+    if(overlay && overlay.style.display !== 'none') overlay.style.display = 'none';
+    if(app    && app.style.display === 'none')      app.style.display     = 'block';
+  }
+});
 const CATS=[
   {id:'stock',    name:'Stock & inventory',   color:'#378ADD'},
   {id:'staff',    name:'Staff & wages',        color:'#1D9E75'},
@@ -1224,6 +1274,22 @@ function save(){
     pushToSheet('saveSetting',{key:'margin',value:getMargin()});
     pushToSheet('saveSetting',{key:'currency',value:document.getElementById('cur').value});
   }, 1500);
+}
+
+// Debounced version of renderAll — updates the live target display
+// WITHOUT re-rendering the expenses DOM (which would kill keyboard focus)
+let _renderDebTimer = null;
+function saveAndUpdate(){
+  saveLocal();
+  clearTimeout(_renderDebTimer);
+  _renderDebTimer = setTimeout(()=>{
+    renderSummary(); // update live target numbers only
+    clearTimeout(save._t);
+    save._t = setTimeout(()=>{
+      if(!sheetUrl&&!localStorage.getItem('smt_useDirectApi')) return;
+      pushToSheet('saveExpenses',{data:expenses});
+    }, 2000);
+  }, 400);
 }
 
 // ═══════════════════════════════
@@ -1722,6 +1788,141 @@ function deleteLoan(loanId) {
   renderAll();
 }
 
+// ── Monthly payment breakdown ──
+
+function toggleLoanDetail(loanId) {
+  const panel = document.getElementById('loan-detail-'+loanId);
+  if(!panel) return;
+  const isOpen = panel.style.display === 'block';
+  // Close all panels first
+  document.querySelectorAll('.loan-detail-panel').forEach(p=>p.style.display='none');
+  document.querySelectorAll('[id^="loan-row-"] .btn-xs').forEach(b=>{ if(b.textContent.includes('View')||b.textContent.includes('Hide')) b.textContent='📋 View'; });
+  if(!isOpen) {
+    panel.style.display = 'block';
+    const btn = document.querySelector(`#loan-row-${loanId} .btn-xs`);
+    if(btn && btn.textContent.includes('View')) btn.textContent = '🔼 Hide';
+    renderLoanMonths(loanId);
+  }
+}
+
+function renderLoanMonths(loanId) {
+  const loan = loans.find(l=>l.id===loanId);
+  if(!loan) return;
+  const container = document.getElementById('loan-months-'+loanId);
+  const countEl   = document.getElementById('loan-paid-count-'+loanId);
+  if(!container) return;
+
+  // Build month list from startDate to endDate (or estimate from term/remaining)
+  const payments = loan.payments || {}; // {YYYY-MM: true/false}
+  const today    = new Date();
+  const todayKey = today.toISOString().slice(0,7); // YYYY-MM
+
+  // Determine start month
+  let start = loan.startDate ? new Date(loan.startDate) : (() => {
+    // Estimate from remaining: work backwards
+    const moPaid = loan.total && loan.monthly ? Math.round((loan.total - (loan.remaining||0)) / loan.monthly) : 0;
+    const d = new Date(today);
+    d.setMonth(d.getMonth() - moPaid);
+    return d;
+  })();
+
+  // Determine total months
+  let totalMonths = loan.term || 0;
+  if(!totalMonths && loan.endDate && loan.startDate) {
+    totalMonths = Math.round((new Date(loan.endDate) - new Date(loan.startDate)) / (1000*60*60*24*30.44));
+  }
+  if(!totalMonths && loan.remaining && loan.monthly) {
+    totalMonths = Math.ceil((loan.remaining||loan.total||0) / loan.monthly);
+  }
+  if(!totalMonths) totalMonths = 24; // fallback show 24 months
+
+  // Cap at 120 months
+  totalMonths = Math.min(totalMonths, 120);
+
+  let paidCount = 0, overdueCount = 0;
+  const rows = [];
+
+  for(let i = 0; i < totalMonths; i++) {
+    const d = new Date(start);
+    d.setMonth(d.getMonth() + i);
+    const key     = d.toISOString().slice(0,7);
+    const isPaid  = payments[key] === true;
+    const isPast  = key < todayKey;
+    const isCurr  = key === todayKey;
+    const isFuture= key > todayKey;
+    const isOverdue = isPast && !isPaid;
+
+    if(isPaid) paidCount++;
+    if(isOverdue) overdueCount++;
+
+    const moName = d.toLocaleDateString('en-GB', {month:'short', year:'numeric'});
+    const rowClass = isPaid ? 'paid-row' : isOverdue ? 'overdue-row' : isFuture ? 'future-row' : '';
+    const statusBadge = isPaid
+      ? '<span class="loan-mo-status lms-paid">✓ Paid</span>'
+      : isOverdue
+        ? '<span class="loan-mo-status lms-overdue">Overdue</span>'
+        : isCurr
+          ? '<span class="loan-mo-status lms-due">Due this month</span>'
+          : '<span class="loan-mo-status lms-upcoming">Upcoming</span>';
+
+    rows.push(`
+      <div class="loan-mo-row ${rowClass}">
+        <div class="loan-mo-num">${i+1}</div>
+        <div class="loan-mo-check ${isPaid?'checked':''}" onclick="toggleMonthPaid('${loanId}','${key}')" title="${isPaid?'Mark unpaid':'Mark paid'}">
+          ${isPaid?'✓':''}
+        </div>
+        <div class="loan-mo-date">${moName}</div>
+        <div class="loan-mo-amt">${fmtF(loan.monthly)}</div>
+        ${statusBadge}
+      </div>`);
+  }
+
+  container.innerHTML = rows.join('');
+  if(countEl) {
+    const parts = [];
+    if(paidCount > 0) parts.push(`${paidCount} paid`);
+    if(overdueCount > 0) parts.push(`<span style="color:var(--red)">${overdueCount} overdue</span>`);
+    parts.push(`${totalMonths - paidCount} remaining`);
+    countEl.innerHTML = parts.join(' · ');
+  }
+}
+
+function toggleMonthPaid(loanId, monthKey) {
+  const loan = loans.find(l=>l.id===loanId);
+  if(!loan) return;
+  if(!loan.payments) loan.payments = {};
+  loan.payments[monthKey] = !loan.payments[monthKey];
+
+  // Update remaining amount based on paid months
+  const paidCount = Object.values(loan.payments).filter(Boolean).length;
+  const newRemaining = Math.max(0, (loan.total||0) - paidCount * (loan.monthly||0));
+  loan.remaining = newRemaining;
+
+  // Auto mark fully paid if all months done
+  if(newRemaining <= 0 && loan.total > 0) {
+    loan.paidOff = true;
+    loan.paidAt  = loan.paidAt || new Date().toISOString();
+  } else {
+    // Unmark if remaining is positive
+    if(loan.paidOff && newRemaining > 0) loan.paidOff = false;
+  }
+
+  saveLocal();
+  saveLoanToSheet();
+
+  // Re-render just the month row area without closing the panel
+  renderLoanMonths(loanId);
+  // Update the progress bar in the parent row
+  renderLoans();
+  // Re-open the panel since renderLoans closes it
+  const panel = document.getElementById('loan-detail-'+loanId);
+  if(panel) {
+    panel.style.display = 'block';
+    renderLoanMonths(loanId);
+  }
+  renderAll();
+}
+
 function renderLoans() {
   const cur = document.getElementById('cur')?.value || 'LKR';
   const activeLoans = loans.filter(l=>!l.paidOff);
@@ -1742,9 +1943,24 @@ function renderLoans() {
   // Target banner
   const banner = document.getElementById('loan-target-banner');
   if(banner) {
-    banner.style.display = activeLoans.length>0 ? 'flex' : 'none';
-    document.getElementById('loan-target-impact').textContent =
-      `${fmtF(totalMonthly)}/month = ${fmtF(dailyImpact)}/day added to your target`;
+    const today = new Date();
+    const todayKey = today.toISOString().slice(0,7);
+    const activeNow = activeLoans.filter(l => {
+      if(l.endDate && l.endDate < todayKey) return false;
+      if(l.startDate && l.startDate > todayKey) return false;
+      return true;
+    });
+    const inactiveLoans = activeLoans.filter(l => {
+      if(l.endDate && l.endDate < todayKey) return true;
+      if(l.startDate && l.startDate > todayKey) return true;
+      return false;
+    });
+    banner.style.display = activeNow.length > 0 ? 'flex' : 'none';
+    let impactText = `${fmtF(dailyImpact)}/day added to your target`;
+    if(inactiveLoans.length > 0) {
+      impactText += ` · ${inactiveLoans.length} loan${inactiveLoans.length>1?'s':''} outside active period (not counted)`;
+    }
+    document.getElementById('loan-target-impact').textContent = impactText;
   }
 
   // Active loan list
@@ -1760,12 +1976,23 @@ function renderLoans() {
       const priLabel = interest>=15?'High interest':interest>=8?'Medium':'Low interest';
       const priClass = priority==='high'?'lp-high':priority==='med'?'lp-med':'lp-low';
       const progColor = priority==='high'?'var(--red)':priority==='med'?'var(--amber)':'var(--green)';
+      // Check if loan is active today
+      const todayK = new Date().toISOString().slice(0,7);
+      const isNotStarted = loan.startDate && loan.startDate > todayK;
+      const isEnded      = loan.endDate   && loan.endDate   < todayK;
+      const isInactive   = isNotStarted || isEnded;
+      const inactiveBadge = isNotStarted
+        ? `<span class="loan-priority" style="background:var(--bg3);color:var(--txt3)">Starts ${new Date(loan.startDate).toLocaleDateString('en-GB',{month:'short',year:'numeric'})}</span>`
+        : isEnded
+          ? `<span class="loan-priority" style="background:var(--bg3);color:var(--txt3)">Period ended — not in target</span>`
+          : '';
       return `
-      <div class="loan-row">
+      <div class="loan-row" id="loan-row-${loan.id}">
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:7px;margin-bottom:3px;flex-wrap:wrap">
-            <div style="font-size:13px;font-weight:500;color:var(--txt)">${loan.name}</div>
-            ${interest>0?`<span class="loan-priority ${priClass}">${priLabel} (${interest}%)</span>`:''}
+            <div style="font-size:13px;font-weight:500;color:var(--txt)${isInactive?';opacity:.6':''}">${loan.name}</div>
+            ${interest>0&&!isInactive?`<span class="loan-priority ${priClass}">${priLabel} (${interest}%)</span>`:''}
+            ${inactiveBadge}
           </div>
           <div style="font-size:11px;color:var(--txt3)">
             ${fmtF(loan.remaining||0)} remaining
@@ -1790,10 +2017,19 @@ function renderLoans() {
             <div class="loan-prog-fill" style="width:${pctClamped}%;background:${progColor}"></div>
           </div>
           <div style="font-size:10px;color:var(--txt3);margin-top:3px">${pctClamped}% paid · ${fmtF(loan.monthly/30.44)}/day on target</div>
+
+          <!-- Monthly breakdown panel -->
+          <div class="loan-detail-panel" id="loan-detail-${loan.id}">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <div style="font-size:11px;font-weight:500;color:var(--txt)">Monthly payments</div>
+              <div style="font-size:10px;color:var(--txt3)" id="loan-paid-count-${loan.id}"></div>
+            </div>
+            <div id="loan-months-${loan.id}"></div>
+          </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0;margin-left:10px">
+          <button class="btn-xs" onclick="toggleLoanDetail('${loan.id}')">📋 View</button>
           <button class="btn-xs" onclick="openAddLoan('${loan.id}')">Edit</button>
-          <button class="btn-xs" onclick="markLoanPaid('${loan.id}')" style="color:var(--green)">✓ Paid</button>
           <button class="btn-danger" onclick="deleteLoan('${loan.id}')">Del</button>
         </div>
       </div>`;
@@ -1834,9 +2070,9 @@ async function saveLoanToSheet() {
       method:'POST', headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
       body: JSON.stringify({requests:[{addSheet:{properties:{title:currentBizId+'_loans'}}}]})
     });
-    // Write header + all loans
-    const rows = [['ID','Name','Total','Remaining','Monthly','Interest','Lender','PaidOff','CreatedAt','PaidAt']];
-    loans.forEach(l=>rows.push([l.id,l.name,l.total||0,l.remaining||0,l.monthly||0,l.interest||0,l.lender||'',l.paidOff?'YES':'NO',l.createdAt||'',l.paidAt||'']));
+    // Write header + all loans (include payments as JSON in column K)
+    const rows = [['ID','Name','Total','Remaining','Monthly','Interest','Lender','PaidOff','CreatedAt','PaidAt','Payments']];
+    loans.forEach(l=>rows.push([l.id,l.name,l.total||0,l.remaining||0,l.monthly||0,l.interest||0,l.lender||'',l.paidOff?'YES':'NO',l.createdAt||'',l.paidAt||'',l.payments?JSON.stringify(l.payments):'']));
     await sheetsWrite(token, ssId, currentBizId+'_loans!A1', rows);
   } catch(e) { console.error('saveLoanToSheet:', e); }
 }
@@ -1848,7 +2084,8 @@ async function loadLoansFromSheet(token, ssId, bizId) {
     loans = rows.filter(r=>r[0]).map(r=>({
       id:r[0], name:r[1], total:Number(r[2])||0, remaining:Number(r[3])||0,
       monthly:Number(r[4])||0, interest:Number(r[5])||0, lender:r[6]||'',
-      paidOff:r[7]==='YES', createdAt:r[8]||'', paidAt:r[9]||''
+      paidOff:r[7]==='YES', createdAt:r[8]||'', paidAt:r[9]||'',
+      payments:r[10]?JSON.parse(r[10]):{}
     }));
     localStorage.setItem(lsKey(bizId,'loans'), JSON.stringify(loans));
   } catch(e) { /* tab may not exist yet */ }
@@ -2082,6 +2319,13 @@ async function generateShareCode() {
     } else {
       await sheetsAppend(token, ssId, '_sharecodes', [code,ssId,bizId,'YES',new Date().toISOString()]);
     }
+
+    // Make sheet publicly readable so the partner can access it with the code
+    await makeSheetPublic(token, ssId);
+
+    // Store code→ssId+bizId mapping locally (owner's device) as backup
+    localStorage.setItem('smt_shareCodeMap_'+code, JSON.stringify({ssId, bizId}));
+
     document.getElementById('share-code-value').textContent = code;
     document.getElementById('share-code-display').style.display = 'block';
     document.getElementById('btn-gen-code').style.display = 'none';
@@ -2159,57 +2403,139 @@ async function joinBusiness() {
     const resolved = await resolveShareCode(token, code);
     if(!resolved) {
       msg.style.color='var(--red)';
-      msg.textContent='❌ Code not found or no longer active. Ask the owner for a new code.';
+      msg.textContent='❌ Code not found. Make sure the owner has generated a code and try again.';
       document.getElementById('btn-join').disabled=false; return;
     }
-    const {ssId,bizId} = resolved;
-    // Load the specific business info
-    const bizRows = await sheetsRead(token, ssId, '_businesses!A2:E');
-    const ownerBiz = bizRows.filter(r=>r[0]).map(r=>({id:r[0],name:r[1],icon:r[2]||'🏪',color:r[3]||'#E6F1FB'})).find(b=>b.id===bizId);
-    if(!ownerBiz) throw new Error('Business not found in that sheet.');
+    const {ssId, bizId} = resolved;
+
+    // Read owner's sheet — try with auth first, fallback to public read
+    let bizRows = [];
+    try {
+      bizRows = await sheetsRead(token, ssId, '_businesses!A2:E');
+    } catch(e) {
+      // Try public read (no auth) — works if owner made sheet public
+      bizRows = await sheetsReadPublic(ssId, '_businesses!A2:E');
+    }
+
+    const ownerBiz = bizRows.filter(r=>r[0]).map(r=>({
+      id:r[0], name:r[1], icon:r[2]||'🏪', color:r[3]||'#E6F1FB'
+    })).find(b=>b.id===bizId);
+
+    if(!ownerBiz) throw new Error('Business not found. Ask the owner to regenerate the code.');
     if(businesses.find(b=>b.id===ownerBiz.id)) {
-      msg.style.color='var(--amber)'; msg.textContent=`⚠️ "${ownerBiz.name}" is already in your list.`;
+      msg.style.color='var(--amber)';
+      msg.textContent=`⚠️ "${ownerBiz.name}" is already in your list.`;
       document.getElementById('btn-join').disabled=false; return;
     }
-    // Register this user as a member in the owner's sheet
+
+    // Register as member in owner's sheet (partner writes with their own token)
     const accessKey = 'ak_'+Date.now()+'_'+(Math.random()*9999|0);
     const userInfo  = googleUser || {};
-    await sheetsAppend(token, ssId, '_sharemembers', [
-      bizId, new Date().toISOString(), userInfo.email||'', userInfo.name||'Partner', accessKey
-    ]);
+    try {
+      await sheetsAppend(token, ssId, '_sharemembers', [
+        bizId, new Date().toISOString(), userInfo.email||'', userInfo.name||'Partner', accessKey
+      ]);
+    } catch(e) {
+      console.log('Could not register as member (sheet may be read-only):', e.message);
+    }
+
     // Add business locally
     businesses.push({...ownerBiz, sharedSsId:ssId});
     localStorage.setItem('smt_sharedSheet_'+ownerBiz.id, ssId);
     localStorage.setItem('smt_sharedAccessKey_'+ownerBiz.id, accessKey);
+    localStorage.setItem('smt_onboarded', '1');
     localStorage.setItem('smt_businesses', JSON.stringify(businesses));
     msg.style.color='var(--green)'; msg.textContent=`✓ "${ownerBiz.name}" connected!`;
     document.getElementById('join-code-input').value='';
     renderManageBiz(); renderBizDropdown();
-    setTimeout(()=>switchBiz(ownerBiz.id),600);
+    setTimeout(()=>switchBiz(ownerBiz.id), 600);
   } catch(e) {
     msg.style.color='var(--red)'; msg.textContent='Error: '+e.message; console.error(e);
   }
   document.getElementById('btn-join').disabled=false;
 }
 
+// Read a public Google Sheet without auth token
+async function sheetsReadPublic(ssId, range) {
+  const apiKey = ''; // No API key needed for public sheets via v4 with ?alt=json workaround
+  // Use the public export URL which works without auth for sheets shared as "anyone can view"
+  const url = `${SHEETS_API}/${ssId}/values/${encodeURIComponent(range)}${GOOGLE_API_KEY&&!GOOGLE_API_KEY.includes('YOUR_API_KEY')?'?key='+GOOGLE_API_KEY:''}`;
+  // Note: above uses a generic public API key for read-only sheets access
+  // For production, register your own API key in Google Cloud Console (free, no auth needed)
+  const r = await fetch(url);
+  if(!r.ok) {
+    // Fallback: try without key (sometimes works for truly public sheets)
+    const r2 = await fetch(`${SHEETS_API}/${ssId}/values/${encodeURIComponent(range)}`);
+    if(!r2.ok) throw new Error('Cannot read sheet. Make sure owner has shared it.');
+    const d = await r2.json();
+    return d.values || [];
+  }
+  const d = await r.json();
+  return d.values || [];
+}
+
 // ── Resolve code — checks if code is active ──
+// ── Resolve a share code ──
+// Strategy: the code is a hash of ssId+bizId. We can reverse-lookup
+// by trying the owner's sheet ID directly — BUT the partner doesn't know it.
+// Solution: owner publishes their sheet ID in a well-known public registry sheet,
+// OR we encode the sheet ID into the code itself (base62).
+// Simplest working approach: store code→ssId in the owner's sheet AND
+// make it readable by anyone with the sheet ID by sharing the sheet publicly.
+// When owner generates code, we also share the sheet as "anyone with link can view".
 async function resolveShareCode(token, code) {
+  // Step 1: search partner's own Drive (in case they already have the sheet)
   const query = encodeURIComponent("mimeType='application/vnd.google-apps.spreadsheet' and trashed=false");
-  const resp  = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)&pageSize=30`,
-    {headers:{Authorization:'Bearer '+token}});
-  if(!resp.ok) throw new Error('Drive search failed');
-  const files = (await resp.json()).files||[];
-  for(const file of files) {
+  const resp  = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)&pageSize=50`,
+    { headers: { Authorization: 'Bearer ' + token } }
+  );
+  if(resp.ok) {
+    const files = (await resp.json()).files || [];
+    for(const file of files) {
+      try {
+        const rows = await sheetsRead(token, file.id, '_sharecodes!A2:E20');
+        for(const row of rows) {
+          if(row[0] && row[0].toUpperCase() === code && row[3] === 'YES') {
+            return { ssId: row[1] || file.id, bizId: row[2] };
+          }
+        }
+      } catch(e) {}
+    }
+  }
+
+  // Step 2: try to decode the sheet ID from the code itself
+  // The code is makeShareCode(ssId, bizId) — deterministic hash
+  // We can't reverse it directly, but we stored ssId in the code row.
+  // The owner needs to share the sheet publicly so we can read it.
+  // We store a mapping in localStorage when we generate the code.
+  const storedMapping = localStorage.getItem('smt_shareCodeMap_' + code);
+  if(storedMapping) {
     try {
-      const rows = await sheetsRead(token, file.id, '_sharecodes!A2:E20');
+      const { ssId, bizId } = JSON.parse(storedMapping);
+      // Try reading it directly (works if sheet is shared publicly)
+      const rows = await sheetsRead(token, ssId, '_sharecodes!A2:E20');
       for(const row of rows) {
-        if(row[0]&&row[0].toUpperCase()===code&&row[3]==='YES') {
-          return {ssId:row[1]||file.id, bizId:row[2]};
+        if(row[0] && row[0].toUpperCase() === code && row[3] === 'YES') {
+          return { ssId: row[1] || ssId, bizId: row[2] || bizId };
         }
       }
     } catch(e) {}
   }
+
   return null;
+}
+
+// ── When owner generates a code, make their sheet publicly readable
+// AND store the code→ssId mapping so it can be shared out-of-band ──
+async function makeSheetPublic(token, ssId) {
+  try {
+    await fetch(`https://www.googleapis.com/drive/v3/files/${ssId}/permissions`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'reader', type: 'anyone' })
+    });
+  } catch(e) { console.log('makeSheetPublic:', e.message); }
 }
 
 // Override pushToSheet / sync to use shared sheet for shared businesses
@@ -2223,7 +2549,18 @@ function getSheetIdForBiz(bizId) {
 function toDailyAmt(a,f){ if(!a)return 0; if(f==='daily')return a; if(f==='weekly')return a/7; if(f==='monthly')return a/30.44; if(f==='annual')return a/365; if(f==='onetime')return a/365; return a/30.44; }
 function isOnetime(f){ return f==='onetime'; }
 function totalDailyAllExp(){ let t=0; CATS.forEach(c=>(expenses[c.id]||[]).forEach(r=>{t+=toDailyAmt(r.amt||0,r.freq||'monthly');})); return t; }
-function totalDailyLoans(){ return (loans||[]).filter(l=>!l.paidOff).reduce((a,l)=>a+toDailyAmt(l.monthly||0,'monthly'),0); }
+function totalDailyLoans() {
+  const today = new Date();
+  const todayKey = today.toISOString().slice(0,7); // YYYY-MM
+  return (loans||[]).filter(l => {
+    if(l.paidOff) return false;
+    // If end date is set and already passed — loan is done, don't count it
+    if(l.endDate && l.endDate < todayKey) return false;
+    // If start date is set and hasn't started yet — don't count it
+    if(l.startDate && l.startDate > todayKey) return false;
+    return true;
+  }).reduce((a,l) => a + toDailyAmt(l.monthly||0,'monthly'), 0);
+}
 function catDailyAmt(id){ return (expenses[id]||[]).reduce((a,r)=>a+toDailyAmt(r.amt||0,r.freq||'monthly'),0); }
 function catOnetimeTotal(id){ return (expenses[id]||[]).filter(r=>isOnetime(r.freq)).reduce((a,r)=>a+r.amt,0); }
 function dayIdx(){ const d=new Date().getDay(); return d===0?6:d-1; }
@@ -2250,7 +2587,10 @@ function fmtDate(s){ const d=new Date(s); return d.toLocaleDateString('en-GB',{d
 function getWeek(s){ const d=new Date(s),jan=new Date(d.getFullYear(),0,1); return Math.ceil(((d-jan)/86400000+jan.getDay()+1)/7); }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function getMargin(){ return Math.max(0,Math.min(100,parseFloat(document.getElementById('global-margin').value)||30)); }
-function syncMargins(){ document.getElementById('global-margin').value=document.getElementById('margin2').value; save(); }
+function syncMargins(){
+  document.getElementById('global-margin').value=document.getElementById('margin2').value;
+  saveAndUpdate();
+}
 function onMarginChange(){ document.getElementById('margin2').value=document.getElementById('global-margin').value; save(); renderSummary(); if(aT==='hours')renderHourlyTargets(); if(aT==='charts')renderCharts(); if(aT==='expenses')renderTargetBreakdown(); }
 
 // ═══════════════════════════════
@@ -2390,6 +2730,148 @@ function getCatName(id){ const map={stock:'catStock',staff:'catStaff',rent:'catR
 function getFreqLabel(v){ const map={daily:'freqDaily',weekly:'freqWeekly',monthly:'freqMonthly',annual:'freqAnnual',onetime:'freqOnetime'}; return t(map[v]||v); }
 
 // ═══════════════════════════════
+// ═══════════════════════════════════════════════════
+// AI INSIGHTS — Gemini powered business analysis
+// ═══════════════════════════════════════════════════
+let aiBannerOpen = true;
+
+function toggleAiBanner() {
+  aiBannerOpen = !aiBannerOpen;
+  document.getElementById('ai-content').style.display = aiBannerOpen ? 'block' : 'none';
+  document.getElementById('ai-toggle-btn').textContent = aiBannerOpen ? '⌄' : '⌃';
+}
+
+async function loadAiInsights() {
+  if(GEMINI_API_KEY.includes('YOUR_GEMINI_API_KEY')) {
+    document.getElementById('ai-content').innerHTML = `
+      <div style="font-size:12px;color:var(--amber-txt);background:var(--amber-bg);border-radius:var(--r6);padding:10px 12px;line-height:1.6">
+        ⚠️ Add your Gemini API key to enable AI insights.<br>
+        Get a free key at <a href="https://aistudio.google.com" target="_blank" style="color:var(--blue)">aistudio.google.com</a>
+        → Get API key → paste it in the code where it says <code>YOUR_GEMINI_API_KEY_HERE</code>
+      </div>`;
+    return;
+  }
+
+  const btn = document.getElementById('ai-refresh-btn');
+  btn.disabled = true; btn.textContent = '...';
+
+  document.getElementById('ai-content').innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;font-size:12px;color:var(--txt3)">
+      <span style="display:inline-block;animation:spin .8s linear infinite">↻</span>
+      Analysing your business data...
+    </div>`;
+
+  try {
+    const biz      = businesses.find(b=>b.id===currentBizId) || {};
+    const cur      = document.getElementById('cur')?.value || 'LKR';
+    const margin   = getMargin();
+    const dailyTgt = dailyWithMargin();
+    const breakeven= dailyBreakEven();
+    const openDays = openDaysPerWeek();
+    const thisMonthInc = incomeThisMonth();
+    const last30   = opsLog.slice(0,30);
+    const hitDays  = last30.filter(o=>o.hit).length;
+    const avgSales = last30.length>0 ? Math.round(last30.reduce((a,o)=>a+o.sales,0)/last30.length) : 0;
+
+    const expLines = [];
+    CATS.forEach(c=>{ const mo=catDailyAmt(c.id)*30.44; if(mo>0) expLines.push(`  ${getCatName(c.id)}: ${cur} ${Math.round(mo)}/mo`); });
+
+    const loanLines = loans.filter(l=>!l.paidOff).map(l=>
+      `  ${l.name}: ${cur} ${l.monthly}/mo repayment, ${cur} ${l.remaining} remaining${l.interest?`, ${l.interest}% interest`:''}`
+    );
+
+    const prompt = `You are a smart business advisor for a small business in Sri Lanka.
+
+Business: ${biz.name||'My Business'} | Currency: ${cur} | Margin target: ${margin}% | Open: ${openDays} days/week
+
+PERFORMANCE:
+- Daily target (with margin): ${cur} ${Math.round(dailyTgt)}
+- Daily breakeven: ${cur} ${Math.round(breakeven)}
+- This month income: ${cur} ${Math.round(thisMonthInc)}
+- Avg daily sales last 30 days: ${cur} ${avgSales}
+- Target hit rate last 30 days: ${hitDays}/${last30.length} days
+
+MONTHLY EXPENSES:
+${expLines.length>0?expLines.join('\n'):'None recorded'}
+
+ACTIVE LOANS:
+${loanLines.length>0?loanLines.join('\n'):'None'}
+
+Respond ONLY with a valid JSON array. No markdown, no code blocks, just raw JSON.
+Return exactly 4 objects, each with this structure:
+{
+  "type": "warning" | "good" | "tip",
+  "insight": "1-2 sentence observation about the business, specific with numbers",
+  "solutions": ["specific action step 1", "specific action step 2", "specific action step 3"]
+}
+Be honest and direct. Use ${cur} for amounts. Solutions must be concrete and immediately actionable.`;
+
+    const res = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        contents: [{parts:[{text:prompt}]}],
+        generationConfig: {temperature:0.7, maxOutputTokens:1000}
+      })
+    });
+
+    if(!res.ok) { const e=await res.json(); throw new Error(e.error?.message||'API error '+res.status); }
+
+    const data = await res.json();
+    let text = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+    // Strip any markdown fences
+    text = text.replace(/```json|```/g,'').trim();
+
+    let insights = [];
+    try { insights = JSON.parse(text); } catch(e) {
+      // Fallback: parse as plain lines if JSON fails
+      const lines = text.split('\n').map(l=>l.replace(/^[\-\*\•\d\.\s]+/,'').trim()).filter(Boolean);
+      insights = lines.map(l=>({type:'tip',insight:l,solutions:[]}));
+    }
+
+    const typeMap = {
+      warning: { bg:'var(--red-bg)',   col:'var(--red-txt)',   icon:'⚠️', label:'Action needed' },
+      good:    { bg:'var(--green-bg)', col:'var(--green-txt)', icon:'✓',  label:'Doing well' },
+      tip:     { bg:'var(--blue-bg)',  col:'var(--blue-txt)',  icon:'💡', label:'Suggestion' },
+    };
+
+    const rendered = insights.map((item,i)=>{
+      const style = typeMap[item.type] || typeMap.tip;
+      const solsHtml = item.solutions && item.solutions.length > 0
+        ? `<div style="margin-top:8px;border-top:1px solid ${item.type==='warning'?'#F5C4B3':item.type==='good'?'#9FE1CB':'#B5D4F4'};padding-top:8px">
+            <div style="font-size:10px;font-weight:500;color:${style.col};text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">How to fix this</div>
+            ${item.solutions.map((s,si)=>`
+              <div style="display:flex;gap:6px;align-items:flex-start;margin-bottom:4px">
+                <span style="flex-shrink:0;width:16px;height:16px;border-radius:50%;background:${style.col};color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px">${si+1}</span>
+                <span style="font-size:11px;color:${style.col};line-height:1.5;opacity:.9">${s}</span>
+              </div>`).join('')}
+           </div>`
+        : '';
+      return `
+        <div style="background:${style.bg};border-radius:var(--r8);padding:10px 12px;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+            <span style="font-size:14px">${style.icon}</span>
+            <span style="font-size:10px;font-weight:500;color:${style.col};text-transform:uppercase;letter-spacing:.06em">${style.label}</span>
+          </div>
+          <div style="font-size:12px;color:${style.col};line-height:1.6;font-weight:500">${item.insight}</div>
+          ${solsHtml}
+        </div>`;
+    }).join('');
+
+    document.getElementById('ai-content').innerHTML = rendered +
+      `<div style="font-size:10px;color:var(--txt3);text-align:right;margin-top:4px">
+        Powered by Gemini · Updated ${new Date().toLocaleTimeString()}
+       </div>`;
+
+  } catch(e) {
+    document.getElementById('ai-content').innerHTML =
+      `<div style="font-size:12px;color:var(--red-txt);background:var(--red-bg);border-radius:6px;padding:10px 12px">❌ ${e.message}</div>`;
+    console.error('Gemini error:', e);
+  }
+  btn.disabled=false; btn.textContent='↻ Refresh';
+}
+
+// ═══════════════════════════════
 // DARK / LIGHT MODE
 // ═══════════════════════════════
 let currentTheme = localStorage.getItem('shopTheme') || 'light';
@@ -2455,12 +2937,21 @@ function applyStaticTranslations(){
     ['lbl-exp-split','expBreakdown']||'expBreakdown',
   ];
   ids.forEach(([id,key])=>{ const el=document.getElementById(id); if(el&&key) el.textContent=t(key)||el.textContent; });
-  // Nav tabs
-  const navKeys=['navLive','navCharts','navHours','navExpenses','navIncome','navOps','navReport'];
-  const navEn=['Live target','Charts','Trading hours','Expenses','Income','Daily log','Report'];
-  const navSi=['සජීව ඉලක්කය','ප්‍රස්ථාර','වෙළඳ වේලා','වියදම්','ආදායම','දෛනික සටහන','වාර්තාව'];
-  document.querySelectorAll('.ntab').forEach((btn,i)=>{
-    if(i<navEn.length) btn.textContent = currentLang==='si'?(navSi[i]||navEn[i]):navEn[i];
+  // Nav tabs — use IDs to avoid index mismatch
+  const navMap = {
+    'nav-live':     ['Live target',    'සජීව ඉලක්කය'],
+    'nav-charts':   ['Charts',         'ප්‍රස්ථාර'],
+    'nav-hours':    ['Trading hours',  'වෙළඳ වේලා'],
+    'nav-expenses': ['Expenses',       'වියදම්'],
+    'nav-income':   ['Income',         'ආදායම'],
+    'nav-loans':    ['💳 Loans',        '💳 ණය'],
+    'nav-ops':      ['Daily log',      'දෛනික සටහන'],
+    'nav-report':   ['Report',         'වාර්තාව'],
+    'nav-manage':   ['⚙',             '⚙'],
+  };
+  Object.entries(navMap).forEach(([id,[en,si]])=>{
+    const el = document.getElementById(id);
+    if(el) el.textContent = currentLang==='si' ? si : en;
   });
   // Update biz bar meta
   if(currentBizId){
@@ -2643,7 +3134,7 @@ function renderExpenses(){
     const rows=expenses[c.id]||[],daily=catDailyAmt(c.id),onetime=catOnetimeTotal(c.id),od=openDaysPerWeek();
     return`<div class="card"><div class="cat-head"><div class="cat-name"><div class="cat-dot" style="background:${c.color}"></div>${getCatName(c.id)}</div><div style="font-size:12px;font-weight:500">${fmtF(daily*(7/Math.max(1,od)))}${t('perDayLbl')} · ${fmtF(daily*30.44)}${t('moEquivLbl')}${onetime>0?' · <span class="onetime-badge">+'+fmtF(onetime)+' '+t('onetimeLbl')+'</span>':''}</div></div>
       <div class="row-hdr"><div class="row-lbl">${t('itemCol')}</div><div class="row-lbl">${t('amountCol')}</div><div class="row-lbl">${t('freqCol')}</div><div></div></div>
-      ${rows.map((r,i)=>`<div class="exp-row"><input type="text" value="${r.name||''}" placeholder="${t('itemCol')}" oninput="expenses['${c.id}'][${i}].name=this.value;save();renderAll()"><input type="number" value="${r.amt||''}" placeholder="0" oninput="expenses['${c.id}'][${i}].amt=parseFloat(this.value)||0;save();renderAll()"><select onchange="expenses['${c.id}'][${i}].freq=this.value;save();renderAll()">${FREQS.map(f=>`<option value="${f.v}" ${r.freq===f.v?'selected':''}>${getFreqLabel(f.v)}</option>`).join('')}</select><button class="btn-del" onclick="expenses['${c.id}'].splice(${i},1);save();renderAll()">×</button></div>`).join('')}
+      ${rows.map((r,i)=>`<div class="exp-row"><input type="text" value="${r.name||''}" placeholder="${t('itemCol')}" oninput="expenses['${c.id}'][${i}].name=this.value;saveAndUpdate()"><input type="number" value="${r.amt||''}" placeholder="0" oninput="expenses['${c.id}'][${i}].amt=parseFloat(this.value)||0;saveAndUpdate()"><select onchange="expenses['${c.id}'][${i}].freq=this.value;save();renderExpenses()">${FREQS.map(f=>`<option value="${f.v}" ${r.freq===f.v?'selected':''}>${getFreqLabel(f.v)}</option>`).join('')}</select><button class="btn-del" onclick="expenses['${c.id}'].splice(${i},1);save();renderAll()">×</button></div>`).join('')}
       <button class="btn-add" onclick="expenses['${c.id}'].push({name:'',amt:0,freq:'monthly'});save();renderExpenses()">+ ${t('addItem').replace('+ ','')}</button>
       <div class="total-row"><span class="total-lbl">${t('dailyContrib')}</span><span class="total-val">${fmtF(daily*(7/Math.max(1,od)))}${t('perDayLbl')}${onetime>0?` <span class="onetime-badge">+${fmtF(onetime)} ${t('onetimeLbl')}</span>`:''}</span></div>
     </div>`;
@@ -3241,6 +3732,12 @@ const GOOGLE_CLIENT_ID = '1082558685541-805v35o6v8q8g2vi617shdm6kd9ptsq0.apps.go
 // ↑ Paste your Client ID here — looks like: 123456789-abcdef.apps.googleusercontent.com
 
 const SHEETS_API = 'https://sheets.googleapis.com/v4/spreadsheets';
+// API key for reading public sheets (share code feature) — create in Google Cloud Console
+// APIs & Services → Credentials → + Create credentials → API key → restrict to Sheets API
+const GOOGLE_API_KEY = 'AIzaSyCl-hAskPjQBDdElXjmYM9XB9eyM1W6lYU';
+// Gemini API key — get free from aistudio.google.com → Create API key
+const GEMINI_API_KEY = 'AIzaSyDifCKDcQO1LlDqkgmoF--xsLPwPmxaJSk';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
 let googleToken   = null;
 let googleUser    = null;
@@ -3250,8 +3747,8 @@ let spreadsheetId = null;
 // GOOGLE OAUTH — Manual popup window
 // Popup opens Google login, polls for token in URL hash.
 // Google Cloud needs:
-//   Authorised JavaScript origins: https://biz-tracker.sun250-sw.workers.dev
-//   Authorised redirect URIs:      https://biz-tracker.sun250-sw.workers.dev
+//   Authorised JavaScript origins: https://sun250sw-alt.github.io/biz
+//   Authorised redirect URIs:      https://sun250sw-alt.github.io/biz
 // ════════════════════════════════════════════════════════════════
 
 function initGoogleAuth() { /* no-op */ }
@@ -3264,7 +3761,7 @@ let _popupTimer = null;
 // Uses google.accounts.oauth2.initTokenClient which Google officially
 // supports — opens a popup, no redirect URI needed at all.
 // Google Cloud Console only needs:
-//   Authorised JavaScript origins: https://biz-tracker.sun250-sw.workers.dev
+//   Authorised JavaScript origins: https://sun250sw-alt.github.io/biz
 // NO redirect URI needed for this flow.
 
 function obSignIn() {
@@ -3673,7 +4170,7 @@ async function syncFromSheetsDirect() {
       loans = loanRows.filter(r=>r[0]).map(r=>({
         id:r[0],name:r[1],total:Number(r[2])||0,remaining:Number(r[3])||0,
         monthly:Number(r[4])||0,interest:Number(r[5])||0,lender:r[6]||'',
-        paidOff:r[7]==='YES',createdAt:r[8]||'',paidAt:r[9]||''
+        paidOff:r[7]==='YES',createdAt:r[8]||'',paidAt:r[9]||'',payments:r[10]?JSON.parse(r[10]):{}
       }));
     }
     setRows.filter(r=>r[0]).forEach(r=>{
@@ -3704,9 +4201,9 @@ function showClientIdHelp() {
     '3. OAuth consent screen → External → add your email\n' +
     '4. Credentials → OAuth 2.0 Client ID → Web application\n' +
     '5. Authorised JavaScript origins:\n' +
-    '   https://biz-tracker.sun250-sw.workers.dev\n' +
+    '   https://sun250sw-alt.github.io/biz\n' +
     '6. Authorised redirect URIs:\n' +
-    '   https://biz-tracker.sun250-sw.workers.dev/shop-tracker-final.html\n' +
+    '   https://sun250sw-alt.github.io/biz/shop-tracker-final.html\n' +
     '7. Save → copy Client ID → paste in code'
   );
   return false;
@@ -3725,7 +4222,7 @@ const LEGAL_CONTENT = {
 <p style="color:var(--txt3);font-size:11px;margin-bottom:20px">Last updated: ${new Date().toLocaleDateString('en-GB',{year:'numeric',month:'long',day:'numeric'})}</p>
 
 <h2 style="font-size:15px;font-weight:600;color:var(--txt);margin:0 0 8px">1. Who we are</h2>
-<p>Business Tracker is a free web application hosted at biz-tracker.sun250-sw.workers.dev. This policy explains how we handle your data when you use this app.</p>
+<p>Business Tracker is a free web application hosted at sun250sw-alt.github.io/biz. This policy explains how we handle your data when you use this app.</p>
 
 <h2 style="font-size:15px;font-weight:600;color:var(--txt);margin:20px 0 8px">2. Data we collect</h2>
 <p>We collect only what is necessary to provide the service:</p>
@@ -3852,54 +4349,44 @@ function obFinish() {
 
 // skipSetup defined earlier
 
-// connectSheet still needed for in-app sync bar
-async function connectSheet(){
-  const urlEl=document.getElementById('sheet-url');
-  const url=(urlEl?.value||'').trim();
-  if(!url)return;
-  setSyncStatus('pending','Connecting...');
-  try{
-    const r=await fetch(url+'?action=listBusinesses');
-    const d=await r.json();
-    if(d.status!=='ok')throw new Error(d.message||'Failed');
-    sheetUrl=url;
-    localStorage.setItem('smt_sheetUrl',url);
-    if(document.getElementById('sheet-url-manage'))document.getElementById('sheet-url-manage').value=url;
-    setSyncStatus('ok','Connected');
-    if(d.data&&d.data.length>0){businesses=d.data;localStorage.setItem('smt_businesses',JSON.stringify(businesses));}
-    if(businesses.length===0){const id='biz_'+Date.now();businesses=[{id,name:'My Shop',icon:'🏪',color:'#E6F1FB'}];await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'addBusiness',biz:id,name:'My Shop',icon:'🏪',color:'#E6F1FB'})});}
-    await loadBizFromSheet(currentBizId||businesses[0].id);
-    switchBiz(currentBizId||businesses[0].id);
-  }catch(e){ setSyncStatus('err','Failed: '+e.message); }
-}
-
 // ── Auto-start ──
 window.addEventListener('load',()=>{
-  // Apply saved theme immediately (before anything else renders)
-  const savedTheme = localStorage.getItem('shopTheme') || 'light';
-  applyTheme(savedTheme);
+  // Apply saved theme immediately
+  try {
+    const savedTheme = localStorage.getItem('shopTheme') || 'light';
+    applyTheme(savedTheme);
+  } catch(e) {}
 
   const lang=localStorage.getItem('shopLang')||'en';
   currentLang=lang;
   document.body.className=lang==='si'?'si':'';
-  document.getElementById('ob-btn-en').className='ob-lang-btn'+(lang==='en'?' active':'');
-  document.getElementById('ob-btn-si').className='ob-lang-btn'+(lang==='si'?' active':'');
-  applyObTranslations();
+  try {
+    document.getElementById('ob-btn-en').className='ob-lang-btn'+(lang==='en'?' active':'');
+    document.getElementById('ob-btn-si').className='ob-lang-btn'+(lang==='si'?' active':'');
+    applyObTranslations();
+  } catch(e) {}
 
-  const onboarded   =localStorage.getItem('smt_onboarded');
-  const hasBiz      =localStorage.getItem('smt_businesses');
-  const savedUrl    =localStorage.getItem('smt_sheetUrl');
-  const useDirectApi=localStorage.getItem('smt_useDirectApi');
-  const hasSsId     =localStorage.getItem('smt_spreadsheetId');
+  const onboarded   = localStorage.getItem('smt_onboarded');
+  const hasBiz      = localStorage.getItem('smt_businesses');
+  const savedUrl    = localStorage.getItem('smt_sheetUrl');
+  const useDirectApi= localStorage.getItem('smt_useDirectApi');
+  const hasSsId     = localStorage.getItem('smt_spreadsheetId');
 
-  if(onboarded||hasBiz||hasSsId||useDirectApi){
-    // Returning user — go straight to app
+  const isReturning = !!(onboarded || hasBiz || hasSsId || useDirectApi);
+
+  if(isReturning){
     document.getElementById('ob-overlay').style.display='none';
     document.getElementById('main-app').style.display='block';
-    initApp();
-    if(savedUrl||useDirectApi) setTimeout(syncNow,1000);
+    try {
+      initApp();
+    } catch(e) {
+      console.error('initApp error:', e);
+      // Still keep app visible even if initApp partially fails
+      document.getElementById('ob-overlay').style.display='none';
+      document.getElementById('main-app').style.display='block';
+    }
+    if(savedUrl||useDirectApi) setTimeout(()=>{ try{syncNow();}catch(e){console.error(e);} }, 1000);
   } else {
-    // New user — start onboarding
     obShowSlide(0);
   }
 });
@@ -3961,34 +4448,7 @@ function openEmojiPicker(inputId, anchorEl, callback) {
   }, 100);
 }
 
-function epFilter(query) {
-  const scroll = document.getElementById('ep-scroll');
-  const q = query.toLowerCase().trim();
-  let html = '';
-
-  EMOJI_CATS.forEach(({ cat, emojis }) => {
-    // Simple filter — just check if query chars appear in category name
-    const filtered = q ? emojis.filter(e => {
-      // For search we check a rough name match using category
-      return cat.toLowerCase().includes(q) ||
-             // or just show all — emoji search by glyph isn't really possible without a db
-             false;
-    }) : emojis;
-
-    const show = q ? emojis : emojis; // show all in category always
-    if(show.length === 0) return;
-    html += `<div class="ep-cat">${cat}</div><div class="ep-grid">`;
-    show.forEach(em => {
-      html += `<button class="ep-btn" onclick="epSelect('${em}')" title="${em}">${em}</button>`;
-    });
-    html += '</div>';
-  });
-
-  if(!html) html = '<div class="ep-no-results">No emojis found</div>';
-  scroll.innerHTML = html;
-}
-
-// Better search — show matching categories + highlight
+// epFilter — show matching emoji categories
 function epFilter(query) {
   const scroll = document.getElementById('ep-scroll');
   const q = query.toLowerCase().trim();
