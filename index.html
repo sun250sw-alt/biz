@@ -2742,7 +2742,7 @@ function toggleAiBanner() {
 }
 
 async function loadAiInsights() {
-  if(GEMINI_API_KEY.includes('AIzaSyCGTKqnfw-zU8q8ITT3c_3Nblns21Dyt0o')) {
+  if(GEMINI_API_KEY.includes('YOUR_GEMINI_API_KEY')) {
     document.getElementById('ai-content').innerHTML = `
       <div style="font-size:12px;color:var(--amber-txt);background:var(--amber-bg);border-radius:var(--r6);padding:10px 12px;line-height:1.6">
         ⚠️ Add your Gemini API key to enable AI insights.<br>
@@ -3737,7 +3737,7 @@ const SHEETS_API = 'https://sheets.googleapis.com/v4/spreadsheets';
 const GOOGLE_API_KEY = 'AIzaSyCl-hAskPjQBDdElXjmYM9XB9eyM1W6lYU';
 // Gemini API key — get free from aistudio.google.com → Create API key
 const GEMINI_API_KEY = 'AIzaSyDifCKDcQO1LlDqkgmoF--xsLPwPmxaJSk';
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
 let googleToken   = null;
 let googleUser    = null;
