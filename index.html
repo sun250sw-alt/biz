@@ -1184,8 +1184,10 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn-sm" onclick="sw('live',document.getElementById('nav-live'))" style="flex:1">→ View AI Insights</button>
-          <button class="btn-sm" onclick="clearGeminiKey()" style="color:var(--red)">Remove key</button>
+          <button class="btn-sm" onclick="testActiveGeminiKey()">Test key</button>
+          <button class="btn-sm" onclick="clearGeminiKey()" style="color:var(--red)">Remove</button>
         </div>
+        <div id="gemini-connected-msg" style="font-size:11px;margin-top:8px;min-height:14px"></div>
       </div>
 
       <!-- Setup state -->
@@ -1214,6 +1216,7 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
           <input type="password" id="gemini-key-input" placeholder="Paste your Gemini API key here"
             style="flex:1;font-family:monospace;font-size:12px"
             oninput="geminiKeyChanged()">
+          <button class="btn-sm" onclick="testGeminiKey()" id="gemini-test-btn" style="white-space:nowrap;height:36px" disabled>Test</button>
           <button class="btn-primary" onclick="saveGeminiKey()" id="gemini-save-btn" style="white-space:nowrap;padding:0 14px;height:36px" disabled>Activate ✦</button>
         </div>
         <div id="gemini-setup-msg" style="font-size:11px;margin-top:8px;min-height:16px"></div>
@@ -2834,8 +2837,62 @@ function getGeminiKey() {
 
 function geminiKeyChanged() {
   const val = document.getElementById('gemini-key-input')?.value?.trim() || '';
+  const ok = val.length > 10;
   const btn = document.getElementById('gemini-save-btn');
-  if(btn) btn.disabled = val.length < 10;
+  const testBtn = document.getElementById('gemini-test-btn');
+  if(btn) btn.disabled = !ok;
+  if(testBtn) testBtn.disabled = !ok;
+}
+
+async function testGeminiKey() {
+  const key = document.getElementById('gemini-key-input')?.value?.trim() || '';
+  const msg = document.getElementById('gemini-setup-msg');
+  const btn = document.getElementById('gemini-test-btn');
+  if(!key || !msg) return;
+
+  btn.disabled = true; btn.textContent = '...';
+  msg.style.color = 'var(--txt3)'; msg.textContent = 'Testing key...';
+
+  try {
+    const r = await fetch(`${GEMINI_URL}?key=${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: 'Say the word OK' }] }],
+        generationConfig: { maxOutputTokens: 10 }
+      })
+    });
+
+    const data = await r.json();
+
+    if(r.ok) {
+      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      msg.style.color = 'var(--green-txt)';
+      msg.textContent = `✓ Key works! Model replied: "${reply.trim()}"`;
+    } else {
+      const code    = data.error?.code    || r.status;
+      const message = data.error?.message || 'Unknown error';
+
+      if(code === 429 || message.includes('quota') || message.includes('QUOTA')) {
+        msg.style.color = 'var(--amber-txt)';
+        msg.textContent = `⚠️ Quota exceeded — this key works but has no free requests left. Create a new key in a NEW project at aistudio.google.com/apikey.`;
+      } else if(code === 400 && message.includes('API_KEY_INVALID')) {
+        msg.style.color = 'var(--red-txt)';
+        msg.textContent = '❌ Invalid key — copy it again exactly from AI Studio.';
+      } else if(code === 403) {
+        msg.style.color = 'var(--red-txt)';
+        msg.textContent = '❌ Access denied — make sure Generative Language API is enabled in your Google Cloud project.';
+      } else {
+        msg.style.color = 'var(--red-txt)';
+        msg.textContent = `❌ Error ${code}: ${message.slice(0,120)}`;
+      }
+    }
+  } catch(e) {
+    msg.style.color = 'var(--red-txt)';
+    msg.textContent = '❌ Network error — check your connection and try again.';
+  }
+
+  btn.disabled = false; btn.textContent = 'Test';
 }
 
 function saveGeminiKey() {
@@ -2988,6 +3045,31 @@ function playGeminiActivation() {
       setTimeout(()=>toast.remove(),400);
     },2200);
   });
+}
+
+async function testActiveGeminiKey() {
+  const key = getGeminiKey();
+  const msg = document.getElementById('gemini-connected-msg');
+  if(!key || !msg) return;
+  msg.style.color = 'var(--txt3)'; msg.textContent = 'Testing...';
+  try {
+    const r = await fetch(`${GEMINI_URL}?key=${key}`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({contents:[{parts:[{text:'Say OK'}]}],generationConfig:{maxOutputTokens:5}})
+    });
+    const data = await r.json();
+    if(r.ok) {
+      msg.style.color='var(--green-txt)'; msg.textContent='✓ Key is working fine';
+    } else {
+      const code=data.error?.code||r.status, message=data.error?.message||'';
+      if(code===429||message.includes('quota')) {
+        msg.style.color='var(--amber-txt)';
+        msg.textContent='⚠️ Quota exceeded — create a new key in a new project at aistudio.google.com/apikey';
+      } else {
+        msg.style.color='var(--red-txt)'; msg.textContent=`❌ Error ${code}: ${message.slice(0,100)}`;
+      }
+    }
+  } catch(e) { msg.style.color='var(--red-txt)'; msg.textContent='❌ Network error'; }
 }
 
 function checkGeminiStatus() {
