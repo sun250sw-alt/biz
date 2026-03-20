@@ -381,6 +381,12 @@ body.dark .google-btn{background:#2a2a2d;border-color:#4a4a4f;color:#f0ede6}
 .ob-pstep.err{color:var(--red-txt);background:var(--red-bg)}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spin{display:inline-block;animation:spin .8s linear infinite}
+@keyframes gemini-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(1.15)}}
+@keyframes gemini-glow{0%,100%{box-shadow:0 0 0 0 rgba(66,133,244,0)}50%{box-shadow:0 0 0 6px rgba(66,133,244,.15)}}
+@keyframes ai-shimmer{0%{background-position:200% center}100%{background-position:-200% center}}
+.gemini-active-dot{background:linear-gradient(135deg,#4285F4,#A142F4)!important;animation:gemini-pulse 2s ease-in-out infinite,gemini-glow 2s ease-in-out infinite}
+.gemini-banner-active{border-color:rgba(66,133,244,.3)!important;background:linear-gradient(135deg,var(--bg2) 0%,rgba(66,133,244,.05) 100%)!important}
+.ai-badge-active{background:linear-gradient(90deg,#4285F4,#A142F4,#4285F4)!important;background-size:200% auto!important;animation:ai-shimmer 3s linear infinite!important;color:#fff!important}
 /* Install tip */
 .ob-install{background:var(--green-bg);border:1px solid #9FE1CB;border-radius:var(--r8);padding:10px 13px;font-size:12px;color:var(--green-txt);margin-bottom:14px;line-height:1.6}
 .ob-install strong{color:var(--green-txt)}
@@ -1157,6 +1163,61 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
         <button class="btn-primary" onclick="joinBusiness()" id="btn-join" style="height:44px;white-space:nowrap">Connect →</button>
       </div>
       <div id="join-msg" style="font-size:11px;margin-top:8px"></div>
+    </div>
+
+    <!-- GEMINI AI SETUP -->
+    <div class="card" id="gemini-setup-card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div id="gemini-status-dot" style="width:10px;height:10px;border-radius:50%;background:var(--bg3);flex-shrink:0;transition:background .4s"></div>
+        <div class="card-title" style="margin:0">AI Insights — Gemini</div>
+        <span id="gemini-status-badge" style="font-size:10px;padding:2px 8px;border-radius:10px;background:var(--bg3);color:var(--txt3);font-weight:500">Not connected</span>
+      </div>
+
+      <!-- Connected state -->
+      <div id="gemini-connected-view" style="display:none">
+        <div style="display:flex;align-items:center;gap:10px;background:var(--green-bg);border-radius:var(--r8);padding:10px 12px;margin-bottom:12px">
+          <span style="font-size:20px">✦</span>
+          <div>
+            <div style="font-size:12px;font-weight:500;color:var(--green-txt)">Gemini AI is active</div>
+            <div style="font-size:11px;color:var(--green-txt);opacity:.8;margin-top:2px">AI insights are powered on the Live tab</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-sm" onclick="sw('live',document.getElementById('nav-live'))" style="flex:1">→ View AI Insights</button>
+          <button class="btn-sm" onclick="clearGeminiKey()" style="color:var(--red)">Remove key</button>
+        </div>
+      </div>
+
+      <!-- Setup state -->
+      <div id="gemini-setup-view">
+        <div style="font-size:12px;color:var(--txt2);line-height:1.7;margin-bottom:14px">
+          Connect Gemini AI to get smart suggestions on your income, expenses and loans — completely free.
+        </div>
+
+        <!-- Steps -->
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="width:20px;height:20px;border-radius:50%;background:var(--blue-bg);color:var(--blue-txt);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">1</div>
+            <div style="font-size:12px;color:var(--txt2);line-height:1.6">Go to <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--blue);font-weight:500">aistudio.google.com/apikey</a> and sign in with any Google account</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="width:20px;height:20px;border-radius:50%;background:var(--blue-bg);color:var(--blue-txt);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">2</div>
+            <div style="font-size:12px;color:var(--txt2);line-height:1.6">Click <strong>Create API key</strong> → <strong>Create API key in new project</strong></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="width:20px;height:20px;border-radius:50%;background:var(--blue-bg);color:var(--blue-txt);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">3</div>
+            <div style="font-size:12px;color:var(--txt2);line-height:1.6">Copy the key and paste it below — it starts with <code style="background:var(--bg2);padding:1px 5px;border-radius:4px;font-size:11px">AIza...</code></div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="password" id="gemini-key-input" placeholder="Paste your Gemini API key here"
+            style="flex:1;font-family:monospace;font-size:12px"
+            oninput="geminiKeyChanged()">
+          <button class="btn-primary" onclick="saveGeminiKey()" id="gemini-save-btn" style="white-space:nowrap;padding:0 14px;height:36px" disabled>Activate ✦</button>
+        </div>
+        <div id="gemini-setup-msg" style="font-size:11px;margin-top:8px;min-height:16px"></div>
+      </div>
     </div>
 
     </div>
@@ -2760,6 +2821,188 @@ function getFreqLabel(v){ const map={daily:'freqDaily',weekly:'freqWeekly',month
 
 // ═══════════════════════════════
 // ═══════════════════════════════════════════════════
+// GEMINI KEY MANAGEMENT
+// ═══════════════════════════════════════════════════
+
+function getGeminiKey() {
+  // Check localStorage first (user-saved), fall back to hardcoded
+  const stored = localStorage.getItem('smt_gemini_key');
+  if(stored) return stored;
+  if(typeof GEMINI_API_KEY !== 'undefined' && !GEMINI_API_KEY.includes('YOUR_GEMINI')) return GEMINI_API_KEY;
+  return null;
+}
+
+function geminiKeyChanged() {
+  const val = document.getElementById('gemini-key-input')?.value?.trim() || '';
+  const btn = document.getElementById('gemini-save-btn');
+  if(btn) btn.disabled = val.length < 10;
+}
+
+function saveGeminiKey() {
+  const key = document.getElementById('gemini-key-input')?.value?.trim() || '';
+  const msg = document.getElementById('gemini-setup-msg');
+  if(!key || key.length < 10) return;
+  if(msg) { msg.style.color='var(--txt3)'; msg.textContent = 'Verifying key...'; }
+  const btn = document.getElementById('gemini-save-btn');
+  if(btn) { btn.disabled=true; btn.textContent='...'; }
+
+  // Test the key with a quick ping
+  fetch(`${GEMINI_URL}?key=${key}`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({contents:[{parts:[{text:'Say OK'}]}], generationConfig:{maxOutputTokens:5}})
+  }).then(r => {
+    if(r.status === 400 || r.ok) {
+      // 400 can mean wrong format but key is valid; ok means success
+      localStorage.setItem('smt_gemini_key', key);
+      if(msg) { msg.style.color='var(--green-txt)'; msg.textContent='✓ Key saved!'; }
+      activateGemini();
+    } else if(r.status === 403 || r.status === 429) {
+      r.json().then(e => {
+        if(msg) { msg.style.color='var(--red-txt)'; msg.textContent='❌ '+(e.error?.message||'Key rejected — check quota or plan'); }
+        if(btn) { btn.disabled=false; btn.textContent='Activate ✦'; }
+      });
+    } else {
+      // Still save — might work even if test fails
+      localStorage.setItem('smt_gemini_key', key);
+      activateGemini();
+    }
+  }).catch(() => {
+    // Offline — save anyway
+    localStorage.setItem('smt_gemini_key', key);
+    activateGemini();
+  });
+}
+
+function clearGeminiKey() {
+  if(!confirm('Remove Gemini API key? AI insights will be disabled.')) return;
+  localStorage.removeItem('smt_gemini_key');
+  deactivateGemini();
+}
+
+function activateGemini() {
+  // Update setup card UI
+  const setupView     = document.getElementById('gemini-setup-view');
+  const connectedView = document.getElementById('gemini-connected-view');
+  const dot           = document.getElementById('gemini-status-dot');
+  const badge         = document.getElementById('gemini-status-badge');
+  if(setupView)     setupView.style.display = 'none';
+  if(connectedView) connectedView.style.display = 'block';
+  if(dot)   dot.className = 'gemini-active-dot';
+  if(badge) { badge.textContent = '✦ Connected'; badge.style.background='var(--green-bg)'; badge.style.color='var(--green-txt)'; }
+
+  // Animate the AI banner on Live tab
+  const banner = document.getElementById('ai-banner');
+  if(banner) banner.classList.add('gemini-banner-active');
+  const aiBadge = banner?.querySelector('span[style*="blue"]');
+
+  // Play activation animation
+  playGeminiActivation();
+
+  // Refresh insights
+  setTimeout(loadAiInsights, 600);
+}
+
+function deactivateGemini() {
+  const setupView     = document.getElementById('gemini-setup-view');
+  const connectedView = document.getElementById('gemini-connected-view');
+  const dot           = document.getElementById('gemini-status-dot');
+  const badge         = document.getElementById('gemini-status-badge');
+  if(setupView)     { setupView.style.display = 'block'; document.getElementById('gemini-key-input').value=''; }
+  if(connectedView) connectedView.style.display = 'none';
+  if(dot)   { dot.className=''; dot.style.background='var(--bg3)'; }
+  if(badge) { badge.textContent='Not connected'; badge.style.background='var(--bg3)'; badge.style.color='var(--txt3)'; }
+  const banner = document.getElementById('ai-banner');
+  if(banner) banner.classList.remove('gemini-banner-active');
+  // Reset AI banner to placeholder
+  setHtml('ai-content','<div style="font-size:12px;color:var(--txt3);text-align:center;padding:8px 0">Connect Gemini in ⚙ Settings to enable AI insights</div>');
+}
+
+function playGeminiActivation() {
+  // Fullscreen sweep animation
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;pointer-events:none;overflow:hidden;`;
+
+  // Animated gradient sweep
+  const sweep = document.createElement('div');
+  sweep.style.cssText = `
+    position:absolute;inset:0;
+    background:linear-gradient(135deg,rgba(66,133,244,.12),rgba(161,66,244,.12),rgba(66,133,244,.08));
+    opacity:0;transition:opacity .4s ease;
+  `;
+  overlay.appendChild(sweep);
+
+  // Sparkle particles
+  for(let i=0;i<12;i++) {
+    const p = document.createElement('div');
+    const size = 4 + Math.random()*6;
+    const x = 10 + Math.random()*80;
+    const y = 10 + Math.random()*80;
+    const delay = Math.random()*600;
+    p.style.cssText = `
+      position:absolute;left:${x}%;top:${y}%;
+      width:${size}px;height:${size}px;border-radius:50%;
+      background:${Math.random()>.5?'#4285F4':'#A142F4'};
+      opacity:0;transform:scale(0);
+      transition:opacity .3s ${delay}ms,transform .4s ${delay}ms;
+    `;
+    overlay.appendChild(p);
+    setTimeout(()=>{p.style.opacity='.7';p.style.transform='scale(1)';},50);
+    setTimeout(()=>{p.style.opacity='0';p.style.transform='scale(0) translateY(-20px)';},delay+500);
+  }
+
+  document.body.appendChild(overlay);
+  requestAnimationFrame(()=>{
+    sweep.style.opacity = '1';
+    setTimeout(()=>{
+      sweep.style.opacity = '0';
+      setTimeout(()=>overlay.remove(), 500);
+    }, 700);
+  });
+
+  // Pulse the AI banner
+  const banner = document.getElementById('ai-banner');
+  if(banner) {
+    banner.style.transition = 'transform .25s ease,box-shadow .25s ease';
+    banner.style.transform = 'scale(1.02)';
+    banner.style.boxShadow = '0 0 0 3px rgba(66,133,244,.3)';
+    setTimeout(()=>{ banner.style.transform=''; banner.style.boxShadow=''; }, 400);
+  }
+
+  // Show toast
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:#1a1a18;color:#fff;font-size:13px;font-weight:500;
+    padding:10px 20px;border-radius:24px;z-index:10000;
+    display:flex;align-items:center;gap:8px;
+    opacity:0;transition:opacity .3s,transform .3s;white-space:nowrap;
+    box-shadow:0 4px 20px rgba(0,0,0,.3);
+  `;
+  toast.innerHTML = '<span style="font-size:16px">✦</span> Gemini AI activated!';
+  document.body.appendChild(toast);
+  requestAnimationFrame(()=>{
+    toast.style.opacity='1'; toast.style.transform='translateX(-50%) translateY(0)';
+    setTimeout(()=>{
+      toast.style.opacity='0'; toast.style.transform='translateX(-50%) translateY(10px)';
+      setTimeout(()=>toast.remove(),400);
+    },2200);
+  });
+}
+
+function checkGeminiStatus() {
+  const key = getGeminiKey();
+  if(key) {
+    activateGemini();
+  } else {
+    const setupView     = document.getElementById('gemini-setup-view');
+    const connectedView = document.getElementById('gemini-connected-view');
+    if(setupView)     setupView.style.display = 'block';
+    if(connectedView) connectedView.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════════
 // AI INSIGHTS — Gemini powered business analysis
 // ═══════════════════════════════════════════════════
 let aiBannerOpen = true;
@@ -2771,18 +3014,21 @@ function toggleAiBanner() {
 }
 
 async function loadAiInsights() {
-  if(GEMINI_API_KEY.includes('YOUR_GEMINI_API_KEY')) {
-    document.getElementById('ai-content').innerHTML = `
-      <div style="font-size:12px;color:var(--amber-txt);background:var(--amber-bg);border-radius:var(--r6);padding:10px 12px;line-height:1.6">
-        ⚠️ Add your Gemini API key to enable AI insights.<br>
-        Get a free key at <a href="https://aistudio.google.com" target="_blank" style="color:var(--blue)">aistudio.google.com</a>
-        → Get API key → paste it in the code where it says <code>YOUR_GEMINI_API_KEY_HERE</code>
-      </div>`;
+  const activeKey = getGeminiKey();
+  if(!activeKey) {
+    setHtml('ai-content',`
+      <div style="display:flex;align-items:center;gap:10px;background:var(--bg1);border-radius:var(--r8);padding:12px;cursor:pointer" onclick="sw('manage',document.getElementById('nav-manage'))">
+        <span style="font-size:22px">✦</span>
+        <div>
+          <div style="font-size:12px;font-weight:500;color:var(--txt)">Connect Gemini AI</div>
+          <div style="font-size:11px;color:var(--blue);margin-top:2px">Tap here → Settings → AI Insights to set up</div>
+        </div>
+      </div>`);
     return;
   }
 
   const btn = document.getElementById('ai-refresh-btn');
-  btn.disabled = true; btn.textContent = '...';
+  if(btn) { btn.disabled = true; btn.textContent = '...'; }
 
   document.getElementById('ai-content').innerHTML = `
     <div style="display:flex;align-items:center;gap:8px;padding:8px 0;font-size:12px;color:var(--txt3)">
@@ -2835,7 +3081,7 @@ Return exactly 4 objects, each with this structure:
 }
 Be honest and direct. Use ${cur} for amounts. Solutions must be concrete and immediately actionable.`;
 
-    const res = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+    const res = await fetch(`${GEMINI_URL}?key=${activeKey}`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
@@ -2929,6 +3175,7 @@ function setLang(lang){
   document.getElementById('btn-en').className='lang-btn'+(lang==='en'?' active':'');
   document.getElementById('btn-si').className='lang-btn'+(lang==='si'?' active':'');
   applyStaticTranslations();
+  setTimeout(checkGeminiStatus, 300);
   renderAll();renderExpenses();renderIncome();renderWeekSchedule();
   if(aT==='hours'){renderHoursEditor();renderHourlyTargets();}
   if(aT==='ops')renderOpsLog();
@@ -3322,7 +3569,7 @@ function sw(name,el){
   if(name==='hours'){renderHoursEditor();renderHourlyTargets();}
   if(name==='live'){renderWeekSchedule();startClock();}
   if(name==='charts')setTimeout(renderCharts,60);
-  if(name==='manage')renderManageBiz();
+  if(name==='manage'){renderManageBiz();checkGeminiStatus();}
   if(name==='loans')renderLoans();
 }
 function renderAll(){
@@ -3394,6 +3641,21 @@ function initApp(){
   document.getElementById('today-sales').addEventListener('input',renderSalesResult);
   // Auto sync if connected
   if(sheetUrl){ syncNow(); setInterval(()=>{ if(sheetUrl&&currentBizId) syncNow(); }, 5*60*1000); }
+  // Restore Gemini state silently (no animation on load, just restore UI)
+  setTimeout(()=>{
+    if(getGeminiKey()) {
+      const setupView     = document.getElementById('gemini-setup-view');
+      const connectedView = document.getElementById('gemini-connected-view');
+      const dot           = document.getElementById('gemini-status-dot');
+      const badge         = document.getElementById('gemini-status-badge');
+      if(setupView)     setupView.style.display = 'none';
+      if(connectedView) connectedView.style.display = 'block';
+      if(dot)   dot.className = 'gemini-active-dot';
+      if(badge) { badge.textContent='✦ Connected'; badge.style.background='var(--green-bg)'; badge.style.color='var(--green-txt)'; }
+      const banner = document.getElementById('ai-banner');
+      if(banner) banner.classList.add('gemini-banner-active');
+    }
+  }, 300);
 }
 
 // Close dropdown when clicking outside
@@ -3835,7 +4097,7 @@ function obSignIn() {
         resetSignInBtn();
         return;
       }
-      await handleGoogleToken(resp.access_token);
+      await handleGoogleToken(resp.access_token, resp.expires_in);
     },
   });
 
@@ -3843,8 +4105,9 @@ function obSignIn() {
   client.requestAccessToken({ prompt: 'select_account' });
 }
 
-async function handleGoogleToken(token) {
+async function handleGoogleToken(token, expiresIn) {
   googleToken = token;
+  _tokenExpiry = Date.now() + ((expiresIn || 3600) * 1000);
   localStorage.setItem('smt_googleToken', token);
   const user = await fetchGoogleUserInfo(token);
   googleUser = user;
@@ -4108,7 +4371,14 @@ async function sheetsWrite(token, ssId, range, values) {
     headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
     body: JSON.stringify({ values })
   });
-  if(!r.ok) { const t=await r.text(); throw new Error('sheetsWrite '+r.status+': '+t.slice(0,100)); }
+  if(r.status === 401) {
+    // Token expired — refresh and retry once
+    googleToken = null; _tokenExpiry = 0;
+    const newToken = await ensureToken();
+    if(!newToken) throw new Error('Auth expired — please sign in again');
+    return sheetsWrite(newToken, ssId, range, values);
+  }
+  if(!r.ok) { const t=await r.text(); throw new Error('sheetsWrite '+r.status+': '+t.slice(0,200)); }
 }
 
 async function sheetsAppend(token, ssId, sheetName, row) {
@@ -4117,24 +4387,95 @@ async function sheetsAppend(token, ssId, sheetName, row) {
     headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
     body: JSON.stringify({ values: [row] })
   });
-  if(!r.ok) { const t=await r.text(); throw new Error('sheetsAppend '+r.status+': '+t.slice(0,100)); }
+  if(r.status === 401) {
+    // Token expired — refresh and retry once
+    googleToken = null; _tokenExpiry = 0;
+    const newToken = await ensureToken();
+    if(!newToken) throw new Error('Auth expired — please sign in again');
+    return sheetsAppend(newToken, ssId, sheetName, row);
+  }
+  if(!r.ok) { const t=await r.text(); throw new Error('sheetsAppend '+r.status+': '+t.slice(0,200)); }
 }
 
 async function sheetsRead(token, ssId, range) {
   const r = await fetch(`${SHEETS_API}/${ssId}/values/${encodeURIComponent(range)}`, {
     headers: { Authorization: 'Bearer ' + token }
   });
+  if(r.status === 401) {
+    // Token expired — refresh and retry once
+    googleToken = null; _tokenExpiry = 0;
+    const newToken = await ensureToken();
+    if(!newToken) return [];
+    return sheetsRead(newToken, ssId, range);
+  }
   if(!r.ok) return [];
   const d = await r.json();
   return d.values || [];
 }
 
 // ── Ensure we have a valid token (re-request if expired) ──
+// ── Token management with auto-refresh ──
+let _tokenClient = null;
+let _tokenExpiry  = 0; // epoch ms when current token expires
+let _tokenRefreshPromise = null;
+
+function getTokenClient() {
+  if(_tokenClient) return _tokenClient;
+  if(typeof google === 'undefined' || !google.accounts) return null;
+  _tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: [
+      'https://www.googleapis.com/auth/spreadsheets',
+      'https://www.googleapis.com/auth/drive.file',
+      'https://www.googleapis.com/auth/drive.metadata.readonly',
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile',
+    ].join(' '),
+    prompt: '', // no prompt = silent refresh
+    callback: () => {}, // overridden per-call
+  });
+  return _tokenClient;
+}
+
 async function ensureToken() {
-  if(googleToken) return googleToken;
-  const stored = localStorage.getItem('smt_googleToken');
-  if(stored) { googleToken = stored; return stored; }
-  return null;
+  // If we have a valid non-expired token, return it
+  const now = Date.now();
+  if(googleToken && _tokenExpiry > now + 60000) return googleToken;
+
+  // Try silent refresh via GIS (no popup, no prompt)
+  if(_tokenRefreshPromise) return _tokenRefreshPromise;
+
+  const client = getTokenClient();
+  if(!client) {
+    // GIS not loaded — fall back to stored token
+    const stored = localStorage.getItem('smt_googleToken');
+    if(stored) { googleToken = stored; return stored; }
+    return null;
+  }
+
+  _tokenRefreshPromise = new Promise((resolve) => {
+    client.callback = (resp) => {
+      _tokenRefreshPromise = null;
+      if(resp.error || !resp.access_token) {
+        // Silent refresh failed — return existing token as last resort
+        resolve(googleToken || localStorage.getItem('smt_googleToken'));
+        return;
+      }
+      googleToken = resp.access_token;
+      _tokenExpiry = Date.now() + ((resp.expires_in || 3600) * 1000);
+      localStorage.setItem('smt_googleToken', googleToken);
+      resolve(googleToken);
+    };
+    // Request with no prompt = silent (won't show popup if user already consented)
+    client.requestAccessToken({ prompt: '' });
+  });
+
+  return _tokenRefreshPromise;
+}
+
+// Call this when we know a token is good (after sign-in)
+function setTokenExpiry(expiresIn) {
+  _tokenExpiry = Date.now() + ((expiresIn || 3600) * 1000);
 }
 
 // ── Push data to sheet directly ──
