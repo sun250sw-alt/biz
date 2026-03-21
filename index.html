@@ -78,6 +78,8 @@ body.si .mono{font-family:'DM Mono',monospace}
 .port-bk-bar-wrap{flex:1;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden}
 .port-bk-bar{height:100%;border-radius:2px;transition:width .6s}
 .active-view{background:var(--blue-bg)!important;border-color:var(--blue)!important;color:var(--blue-txt)!important;font-weight:500!important}
+.m-type-card{background:var(--bg1);border:1.5px solid var(--brd);border-radius:10px;padding:10px 8px;cursor:pointer;text-align:center;transition:all .15s}
+.m-type-card:hover{border-color:var(--blue);background:var(--blue-bg)}
 .dot-live{background:var(--green);animation:pulse 1.4s infinite}
 .dot-err{background:var(--red)}
 
@@ -760,45 +762,191 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
   </div>
 </div>
 
-<!-- ADD BUSINESS MODAL -->
+<!-- ADD INCOME SOURCE MODAL -->
 <div class="modal-overlay" id="add-biz-modal">
-  <div class="modal">
-    <h3 id="m-title">Add new business</h3>
+  <div class="modal" style="max-height:90vh;overflow-y:auto">
+    <h3 id="m-title">Add income source</h3>
 
-    <!-- Name — full width prominent -->
-    <div class="field" style="margin-bottom:12px">
-      <label id="m-name-lbl" style="font-size:10px;font-weight:500;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em">Business name</label>
-      <input type="text" id="m-name" placeholder="e.g. Kandy Bakery"
-        style="height:44px;font-size:15px;font-weight:500;margin-top:5px"
-        onkeydown="if(event.key==='Enter')saveBiz()">
-    </div>
-
-    <!-- Icon + colour row -->
-    <div style="display:grid;grid-template-columns:60px 1fr;gap:12px;margin-bottom:14px;align-items:start">
-      <div class="field">
-        <label style="font-size:10px;font-weight:500;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em">Icon</label>
-        <input type="text" id="m-icon" value="🏪" maxlength="2"
-          style="height:44px;font-size:24px;text-align:center;margin-top:5px;cursor:pointer" class="emoji-trigger"
-          onclick="openEmojiPicker('m-icon',this)" readonly>
-      </div>
-      <div class="field">
-        <label id="m-color-lbl" style="font-size:10px;font-weight:500;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em">Colour</label>
-        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:9px">
-          <div onclick="pickColor('#E6F1FB')" style="width:30px;height:30px;border-radius:7px;background:#E6F1FB;border:2.5px solid #378ADD;cursor:pointer" class="color-swatch" data-color="#E6F1FB"></div>
-          <div onclick="pickColor('#E1F5EE')" style="width:30px;height:30px;border-radius:7px;background:#E1F5EE;border:2.5px solid transparent;cursor:pointer" class="color-swatch" data-color="#E1F5EE"></div>
-          <div onclick="pickColor('#FAEEDA')" style="width:30px;height:30px;border-radius:7px;background:#FAEEDA;border:2.5px solid transparent;cursor:pointer" class="color-swatch" data-color="#FAEEDA"></div>
-          <div onclick="pickColor('#FAECE7')" style="width:30px;height:30px;border-radius:7px;background:#FAECE7;border:2.5px solid transparent;cursor:pointer" class="color-swatch" data-color="#FAECE7"></div>
-          <div onclick="pickColor('#EEEDFE')" style="width:30px;height:30px;border-radius:7px;background:#EEEDFE;border:2.5px solid transparent;cursor:pointer" class="color-swatch" data-color="#EEEDFE"></div>
-          <div onclick="pickColor('#EAF3DE')" style="width:30px;height:30px;border-radius:7px;background:#EAF3DE;border:2.5px solid transparent;cursor:pointer" class="color-swatch" data-color="#EAF3DE"></div>
-          <div onclick="pickColor('#FCE8F5')" style="width:30px;height:30px;border-radius:7px;background:#FCE8F5;border:2.5px solid transparent;cursor:pointer" class="color-swatch" data-color="#FCE8F5"></div>
+    <!-- Step 1: Type picker -->
+    <div id="m-step-type">
+      <div style="font-size:11px;color:var(--txt3);margin-bottom:10px">What type of income is this?</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+        <div class="m-type-card" onclick="selectIncomeType('business')" id="mtype-business" style="border:2px solid var(--blue);background:var(--blue-bg)">
+          <div style="font-size:22px;margin-bottom:4px">🏪</div>
+          <div style="font-size:11px;font-weight:500;color:var(--blue-txt)">Business</div>
+          <div style="font-size:9px;color:var(--blue-txt);opacity:.8;margin-top:2px">Sales & expenses</div>
+        </div>
+        <div class="m-type-card" onclick="selectIncomeType('job')" id="mtype-job">
+          <div style="font-size:22px;margin-bottom:4px">💼</div>
+          <div style="font-size:11px;font-weight:500;color:var(--txt)">Job</div>
+          <div style="font-size:9px;color:var(--txt3);margin-top:2px">Salary & attendance</div>
+        </div>
+        <div class="m-type-card" onclick="selectIncomeType('rental')" id="mtype-rental">
+          <div style="font-size:22px;margin-bottom:4px">🏠</div>
+          <div style="font-size:11px;font-weight:500;color:var(--txt)">Rental</div>
+          <div style="font-size:9px;color:var(--txt3);margin-top:2px">Property income</div>
+        </div>
+        <div class="m-type-card" onclick="selectIncomeType('fd')" id="mtype-fd">
+          <div style="font-size:22px;margin-bottom:4px">🏦</div>
+          <div style="font-size:11px;font-weight:500;color:var(--txt)">Fixed deposit</div>
+          <div style="font-size:9px;color:var(--txt3);margin-top:2px">Interest income</div>
+        </div>
+        <div class="m-type-card" onclick="selectIncomeType('investment')" id="mtype-investment">
+          <div style="font-size:22px;margin-bottom:4px">📈</div>
+          <div style="font-size:11px;font-weight:500;color:var(--txt)">Investment</div>
+          <div style="font-size:9px;color:var(--txt3);margin-top:2px">Stocks & crypto</div>
+        </div>
+        <div class="m-type-card" onclick="selectIncomeType('farming')" id="mtype-farming">
+          <div style="font-size:22px;margin-bottom:4px">🌾</div>
+          <div style="font-size:11px;font-weight:500;color:var(--txt)">Farming</div>
+          <div style="font-size:9px;color:var(--txt3);margin-top:2px">Crops & harvest</div>
+        </div>
+        <div class="m-type-card" onclick="selectIncomeType('other')" id="mtype-other" style="grid-column:span 3">
+          <div style="font-size:22px;margin-bottom:4px">✦</div>
+          <div style="font-size:11px;font-weight:500;color:var(--txt)">Other income</div>
+          <div style="font-size:9px;color:var(--txt3);margin-top:2px">Freelance, pension, allowances…</div>
         </div>
       </div>
     </div>
 
+    <!-- Step 2: Common fields -->
+    <div id="m-step-fields" style="display:none">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 10px;background:var(--bg2);border-radius:var(--r8)">
+        <span style="font-size:20px" id="m-type-icon">🏪</span>
+        <span style="font-size:12px;font-weight:500" id="m-type-label">Business</span>
+        <button onclick="backToTypeStep()" style="margin-left:auto;background:none;border:none;font-size:11px;color:var(--blue);cursor:pointer">Change</button>
+      </div>
+
+      <!-- Currency picker per source -->
+      <div class="field" style="margin-bottom:10px">
+        <label style="font-size:10px;font-weight:500;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em">Currency</label>
+        <select id="m-currency" style="margin-top:5px;height:40px;font-size:13px">
+          <option value="LKR">LKR රු — Sri Lankan Rupee</option>
+          <option value="USD">USD $ — US Dollar</option>
+          <option value="EUR">EUR € — Euro</option>
+          <option value="GBP">GBP £ — British Pound</option>
+          <option value="AUD">AUD A$ — Australian Dollar</option>
+          <option value="CAD">CAD C$ — Canadian Dollar</option>
+          <option value="SGD">SGD S$ — Singapore Dollar</option>
+          <option value="JPY">JPY ¥ — Japanese Yen</option>
+          <option value="CNY">CNY ¥ — Chinese Yuan</option>
+          <option value="INR">INR ₹ — Indian Rupee</option>
+          <option value="AED">AED د.إ — UAE Dirham</option>
+          <option value="SAR">SAR ر.س — Saudi Riyal</option>
+          <option value="MYR">MYR RM — Malaysian Ringgit</option>
+          <option value="THB">THB ฿ — Thai Baht</option>
+          <option value="KRW">KRW ₩ — Korean Won</option>
+          <option value="QAR">QAR ر.ق — Qatari Riyal</option>
+          <option value="KWD">KWD د.ك — Kuwaiti Dinar</option>
+        </select>
+      </div>
+
+      <!-- Name -->
+      <div class="field" style="margin-bottom:10px">
+        <label id="m-name-lbl" style="font-size:10px;font-weight:500;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em">Name</label>
+        <input type="text" id="m-name" placeholder="e.g. Kandy Bakery"
+          style="height:44px;font-size:15px;font-weight:500;margin-top:5px"
+          onkeydown="if(event.key==='Enter')saveBiz()">
+      </div>
+
+      <!-- Icon + colour -->
+      <div style="display:grid;grid-template-columns:60px 1fr;gap:12px;margin-bottom:12px;align-items:start">
+        <div class="field">
+          <label style="font-size:10px;font-weight:500;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em">Icon</label>
+          <input type="text" id="m-icon" value="🏪" maxlength="2"
+            style="height:44px;font-size:24px;text-align:center;margin-top:5px;cursor:pointer" class="emoji-trigger"
+            onclick="openEmojiPicker('m-icon',this)" readonly>
+        </div>
+        <div class="field">
+          <label id="m-color-lbl" style="font-size:10px;font-weight:500;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em">Colour</label>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:9px">
+            <div onclick="pickColor('#E6F1FB')" style="width:28px;height:28px;border-radius:7px;background:#E6F1FB;border:2.5px solid #378ADD;cursor:pointer" class="color-swatch" data-color="#E6F1FB"></div>
+            <div onclick="pickColor('#E1F5EE')" style="width:28px;height:28px;border-radius:7px;background:#E1F5EE;border:2.5px solid transparent;cursor:pointer" class="color-swatch" data-color="#E1F5EE"></div>
+            <div onclick="pickColor('#FAEEDA')" style="width:28px;height:28px;border-radius:7px;background:#FAEEDA;border:2.5px solid transparent;cursor:pointer" class="color-swatch" data-color="#FAEEDA"></div>
+            <div onclick="pickColor('#FAECE7')" style="width:28px;height:28px;border-radius:7px;background:#FAECE7;border:2.5px solid transparent;cursor:pointer" class="color-swatch" data-color="#FAECE7"></div>
+            <div onclick="pickColor('#EEEDFE')" style="width:28px;height:28px;border-radius:7px;background:#EEEDFE;border:2.5px solid transparent;cursor:pointer" class="color-swatch" data-color="#EEEDFE"></div>
+            <div onclick="pickColor('#EAF3DE')" style="width:28px;height:28px;border-radius:7px;background:#EAF3DE;border:2.5px solid transparent;cursor:pointer" class="color-swatch" data-color="#EAF3DE"></div>
+            <div onclick="pickColor('#FBEAF0')" style="width:28px;height:28px;border-radius:7px;background:#FBEAF0;border:2.5px solid transparent;cursor:pointer" class="color-swatch" data-color="#FBEAF0"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Type-specific extra fields -->
+
+      <!-- JOB fields -->
+      <div id="m-extra-job" style="display:none;background:var(--bg2);border-radius:var(--r8);padding:10px;margin-bottom:10px">
+        <div style="font-size:10px;font-weight:500;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Job details</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div class="field"><label style="font-size:10px;color:var(--txt3)">Monthly salary</label><input type="number" id="mx-salary" placeholder="85000" min="0" style="margin-top:4px"></div>
+          <div class="field"><label style="font-size:10px;color:var(--txt3)">Work days/week</label><input type="number" id="mx-workdays" placeholder="5" min="1" max="7" style="margin-top:4px"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="field"><label style="font-size:10px;color:var(--txt3)">Work hours/day</label><input type="number" id="mx-workhours" placeholder="8" min="1" max="24" style="margin-top:4px"></div>
+          <div class="field"><label style="font-size:10px;color:var(--txt3)">Pay day (date)</label><input type="number" id="mx-payday" placeholder="25" min="1" max="31" style="margin-top:4px"></div>
+        </div>
+      </div>
+
+      <!-- RENTAL fields -->
+      <div id="m-extra-rental" style="display:none;background:var(--bg2);border-radius:var(--r8);padding:10px;margin-bottom:10px">
+        <div style="font-size:10px;font-weight:500;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Rental details</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div class="field"><label style="font-size:10px;color:var(--txt3)">Monthly rent</label><input type="number" id="mx-rent" placeholder="45000" min="0" style="margin-top:4px"></div>
+          <div class="field"><label style="font-size:10px;color:var(--txt3)">Due date (day)</label><input type="number" id="mx-rentdue" placeholder="1" min="1" max="31" style="margin-top:4px"></div>
+        </div>
+        <div class="field"><label style="font-size:10px;color:var(--txt3)">Tenant name (optional)</label><input type="text" id="mx-tenant" placeholder="e.g. Nimal Perera" style="margin-top:4px"></div>
+      </div>
+
+      <!-- FIXED DEPOSIT fields -->
+      <div id="m-extra-fd" style="display:none;background:var(--bg2);border-radius:var(--r8);padding:10px;margin-bottom:10px">
+        <div style="font-size:10px;font-weight:500;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Fixed deposit details</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div class="field"><label style="font-size:10px;color:var(--txt3)">Principal amount</label><input type="number" id="mx-fdprincipal" placeholder="500000" min="0" style="margin-top:4px"></div>
+          <div class="field"><label style="font-size:10px;color:var(--txt3)">Interest rate % p.a.</label><input type="number" id="mx-fdrate" placeholder="11.5" min="0" step="0.1" style="margin-top:4px"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="field"><label style="font-size:10px;color:var(--txt3)">Start date</label><input type="date" id="mx-fdstart" style="margin-top:4px"></div>
+          <div class="field"><label style="font-size:10px;color:var(--txt3)">Maturity date</label><input type="date" id="mx-fdend" style="margin-top:4px"></div>
+        </div>
+      </div>
+
+      <!-- INVESTMENT fields -->
+      <div id="m-extra-investment" style="display:none;background:var(--bg2);border-radius:var(--r8);padding:10px;margin-bottom:10px">
+        <div style="font-size:10px;font-weight:500;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Investment details</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div class="field"><label style="font-size:10px;color:var(--txt3)">Amount invested</label><input type="number" id="mx-invested" placeholder="250000" min="0" style="margin-top:4px"></div>
+          <div class="field"><label style="font-size:10px;color:var(--txt3)">Current value</label><input type="number" id="mx-curval" placeholder="312000" min="0" style="margin-top:4px"></div>
+        </div>
+        <div class="field"><label style="font-size:10px;color:var(--txt3)">Type</label>
+          <select id="mx-invtype" style="margin-top:4px"><option>Stocks</option><option>Crypto</option><option>Mutual fund</option><option>Bonds</option><option>Other</option></select>
+        </div>
+      </div>
+
+      <!-- FARMING fields -->
+      <div id="m-extra-farming" style="display:none;background:var(--bg2);border-radius:var(--r8);padding:10px;margin-bottom:10px">
+        <div style="font-size:10px;font-weight:500;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Farming details</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div class="field"><label style="font-size:10px;color:var(--txt3)">Expected harvest value</label><input type="number" id="mx-farmvalue" placeholder="180000" min="0" style="margin-top:4px"></div>
+          <div class="field"><label style="font-size:10px;color:var(--txt3)">Season length (days)</label><input type="number" id="mx-farmdays" placeholder="120" min="1" style="margin-top:4px"></div>
+        </div>
+      </div>
+
+      <!-- OTHER fields -->
+      <div id="m-extra-other" style="display:none;background:var(--bg2);border-radius:var(--r8);padding:10px;margin-bottom:10px">
+        <div style="font-size:10px;font-weight:500;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Income details</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="field"><label style="font-size:10px;color:var(--txt3)">Expected monthly income</label><input type="number" id="mx-otherincome" placeholder="80000" min="0" style="margin-top:4px"></div>
+          <div class="field"><label style="font-size:10px;color:var(--txt3)">Frequency</label>
+            <select id="mx-otherfreq" style="margin-top:4px"><option value="monthly">Monthly</option><option value="weekly">Weekly</option><option value="annual">Annual</option><option value="onetime">One-off</option></select>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
     <div id="m-msg" style="font-size:11px;color:var(--red);margin-bottom:8px;min-height:16px"></div>
-    <div class="modal-actions">
+    <div class="modal-actions" id="m-actions" style="display:none">
       <button class="btn-sm" onclick="closeModal()" id="m-cancel-btn">Cancel</button>
-      <button class="btn-primary" onclick="saveBiz()" id="m-save-btn">Add business</button>
+      <button class="btn-primary" onclick="saveBiz()" id="m-save-btn">Add source</button>
     </div>
   </div>
 </div>
@@ -829,6 +977,19 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
         <option value="USD">USD $</option>
         <option value="EUR">EUR €</option>
         <option value="GBP">GBP £</option>
+        <option value="AUD">AUD A$</option>
+        <option value="CAD">CAD C$</option>
+        <option value="SGD">SGD S$</option>
+        <option value="JPY">JPY ¥</option>
+        <option value="CNY">CNY ¥</option>
+        <option value="INR">INR ₹</option>
+        <option value="AED">AED د.إ</option>
+        <option value="SAR">SAR ر.س</option>
+        <option value="MYR">MYR RM</option>
+        <option value="THB">THB ฿</option>
+        <option value="KRW">KRW ₩</option>
+        <option value="QAR">QAR ر.ق</option>
+        <option value="KWD">KWD د.ك</option>
       </select>
     </div>
   </div>
@@ -858,7 +1019,7 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
     <div class="biz-divider"></div>
     <div class="biz-add-row" onclick="openAddBiz()">
       <div class="biz-add-icon">+</div>
-      <span id="add-biz-lbl">Add new business</span>
+      <span id="add-biz-lbl">Add income source</span>
     </div>
     <div class="biz-edit-row" onclick="sw('manage',this);closeBizDrop()">
       <span id="manage-biz-lbl">⚙ Manage businesses</span>
@@ -951,7 +1112,7 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
     <div style="background:var(--bg2);border:1px dashed var(--brd);border-radius:12px;padding:14px;text-align:center;margin-bottom:10px">
       <div style="font-size:13px;font-weight:500;margin-bottom:4px">Add more income sources</div>
       <div style="font-size:11px;color:var(--txt3);margin-bottom:10px">Rental, job, fixed deposit, investment, farming…</div>
-      <button class="btn-primary" onclick="sw('manage',document.getElementById('nav-manage'))">+ Add income source</button>
+      <button class="btn-primary" onclick="closeBizDrop();sw('manage',document.getElementById('nav-manage'));setTimeout(openAddBiz,300)">+ Add income source</button>
     </div>
 
   </div>
@@ -1166,13 +1327,555 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
     </div>
   </div>
 
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- JOB TABS                                       -->
+  <!-- ══════════════════════════════════════════════ -->
+
+  <!-- JOB: Live earnings -->
+  <div class="tc" id="tab-job-live">
+    <div class="card" style="text-align:center;padding:20px 16px;margin-bottom:10px">
+      <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Net salary this month so far</div>
+      <div style="font-size:38px;font-weight:500;font-family:'DM Mono',monospace;color:#D4537E;letter-spacing:-1px;line-height:1" id="job-live-sec">—</div>
+      <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">earned this month</div>
+      <div style="font-size:10px;color:var(--green-txt);margin-bottom:4px;font-family:'DM Mono',monospace" id="job-live-per-sec">—</div>
+      <div style="font-size:11px;color:var(--txt3);margin:4px 0 14px" id="job-live-status">—</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <div style="background:var(--bg2);border-radius:8px;padding:10px 6px"><div style="font-size:9px;color:var(--txt3);text-transform:uppercase;margin-bottom:3px">Per hour</div><div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace" id="job-live-hr">—</div></div>
+        <div style="background:var(--bg2);border-radius:8px;padding:10px 6px"><div style="font-size:9px;color:var(--txt3);text-transform:uppercase;margin-bottom:3px">Today net</div><div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:#1D9E75" id="job-live-day">—</div></div>
+        <div style="background:var(--bg2);border-radius:8px;padding:10px 6px"><div style="font-size:9px;color:var(--txt3);text-transform:uppercase;margin-bottom:3px">This month</div><div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace" id="job-live-month">—</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span class="card-title" style="margin:0">Job summary</span><button class="btn-xs" id="job-edit-btn" onclick="openEditSource(currentBizId)" style="color:var(--blue)">✏ Edit details</button></div>
+      <div id="job-summary-body" style="font-size:12px;color:var(--txt3)">Add job details in ⚙ to see breakdown</div>
+    </div>
+  </div>
+
+  <!-- JOB: Salary log -->
+  <div class="tc" id="tab-job-salary">
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title" style="margin-bottom:0">Salary log</span>
+        <button class="btn-primary" onclick="openAddSalary()" style="height:32px;font-size:12px;padding:0 12px">+ Record</button>
+      </div>
+      <div id="job-salary-list"></div>
+    </div>
+  </div>
+
+  <!-- JOB: Attendance -->
+  <div class="tc" id="tab-job-attendance">
+
+    <!-- Month nav + summary -->
+    <div class="card" style="margin-bottom:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <button onclick="attChangeMonth(-1)" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--txt2);padding:0 6px">‹</button>
+        <div style="text-align:center">
+          <div style="font-size:13px;font-weight:500" id="att-month-label">—</div>
+          <div style="font-size:11px;color:var(--txt3);margin-top:2px" id="att-month-summary">—</div>
+        </div>
+        <button onclick="attChangeMonth(1)" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--txt2);padding:0 6px">›</button>
+      </div>
+
+      <!-- Stat cards -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px">
+        <div style="background:var(--green-bg);border-radius:8px;padding:8px 4px;text-align:center">
+          <div style="font-size:9px;color:var(--green-txt);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Days worked</div>
+          <div style="font-size:16px;font-weight:500;color:var(--green-txt)" id="att-stat-days">0</div>
+        </div>
+        <div style="background:var(--blue-bg);border-radius:8px;padding:8px 4px;text-align:center">
+          <div style="font-size:9px;color:var(--blue-txt);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Hours</div>
+          <div style="font-size:16px;font-weight:500;color:var(--blue-txt)" id="att-stat-hours">0</div>
+        </div>
+        <div style="background:var(--amber-bg);border-radius:8px;padding:8px 4px;text-align:center">
+          <div style="font-size:9px;color:var(--amber-txt);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Hourly rate</div>
+          <div style="font-size:14px;font-weight:500;color:var(--amber-txt)" id="att-stat-rate">—</div>
+        </div>
+        <div style="background:var(--bg2);border-radius:8px;padding:8px 4px;text-align:center">
+          <div style="font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Earned</div>
+          <div style="font-size:14px;font-weight:500" id="att-stat-earned">—</div>
+        </div>
+      </div>
+
+      <!-- Weekday headers -->
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px">
+        <div style="font-size:9px;color:var(--txt3);text-align:center;font-weight:500">Mon</div>
+        <div style="font-size:9px;color:var(--txt3);text-align:center;font-weight:500">Tue</div>
+        <div style="font-size:9px;color:var(--txt3);text-align:center;font-weight:500">Wed</div>
+        <div style="font-size:9px;color:var(--txt3);text-align:center;font-weight:500">Thu</div>
+        <div style="font-size:9px;color:var(--txt3);text-align:center;font-weight:500">Fri</div>
+        <div style="font-size:9px;color:var(--txt3);text-align:center;font-weight:500">Sat</div>
+        <div style="font-size:9px;color:var(--txt3);text-align:center;font-weight:500">Sun</div>
+      </div>
+      <div id="job-attendance-cal"></div>
+
+      <!-- Legend -->
+      <div style="display:flex;gap:10px;margin-top:10px;font-size:10px;color:var(--txt3);flex-wrap:wrap">
+        <span>🟢 Full day</span><span>🟡 Half day</span><span>🔵 Custom hours</span><span>🔴 Absent</span><span>⬜ Weekend/holiday</span>
+      </div>
+    </div>
+
+    <!-- Day detail panel (shows when a day is tapped) -->
+    <div class="card" id="att-day-panel" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:500" id="att-day-title">—</div>
+        <button onclick="closeAttDayPanel()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--txt3)">×</button>
+      </div>
+
+      <!-- Status buttons -->
+      <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Status</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px">
+        <button class="att-status-btn" id="att-btn-worked"    onclick="setAttStatus('worked')"   style="font-size:11px;padding:7px 4px;border-radius:8px;border:1.5px solid var(--brd);background:var(--bg1);cursor:pointer;transition:all .15s">🟢 Full</button>
+        <button class="att-status-btn" id="att-btn-half"      onclick="setAttStatus('half')"     style="font-size:11px;padding:7px 4px;border-radius:8px;border:1.5px solid var(--brd);background:var(--bg1);cursor:pointer;transition:all .15s">🟡 Half</button>
+        <button class="att-status-btn" id="att-btn-custom"    onclick="setAttStatus('custom')"   style="font-size:11px;padding:7px 4px;border-radius:8px;border:1.5px solid var(--brd);background:var(--bg1);cursor:pointer;transition:all .15s">🔵 Custom</button>
+        <button class="att-status-btn" id="att-btn-absent"    onclick="setAttStatus('absent')"   style="font-size:11px;padding:7px 4px;border-radius:8px;border:1.5px solid var(--brd);background:var(--bg1);cursor:pointer;transition:all .15s">🔴 Absent</button>
+      </div>
+
+      <!-- Time entry (shown for worked/custom) -->
+      <div id="att-time-fields" style="display:none">
+        <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Hours worked</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div>
+            <label style="font-size:10px;color:var(--txt3);display:block;margin-bottom:3px">Start time</label>
+            <input type="time" id="att-time-start" style="width:100%" onchange="attCalcHours()">
+          </div>
+          <div>
+            <label style="font-size:10px;color:var(--txt3);display:block;margin-bottom:3px">End time</label>
+            <input type="time" id="att-time-end" style="width:100%" onchange="attCalcHours()">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+          <div>
+            <label style="font-size:10px;color:var(--txt3);display:block;margin-bottom:3px">Break (mins)</label>
+            <input type="number" id="att-break" placeholder="30" min="0" max="480" style="width:100%" oninput="attCalcHours()">
+          </div>
+          <div style="background:var(--bg2);border-radius:var(--r6);padding:8px 10px">
+            <div style="font-size:10px;color:var(--txt3);margin-bottom:2px">Net hours</div>
+            <div style="font-size:16px;font-weight:500" id="att-net-hours">—</div>
+          </div>
+        </div>
+        <div style="background:var(--green-bg);border-radius:var(--r6);padding:8px 10px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11px;color:var(--green-txt)">Earned this day</span>
+          <span style="font-size:14px;font-weight:500;color:var(--green-txt)" id="att-day-earned">—</span>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div style="margin-bottom:12px">
+        <label style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Note (optional)</label>
+        <input type="text" id="att-note" placeholder="e.g. Left early, worked overtime…" style="width:100%">
+      </div>
+
+      <button class="btn-primary" onclick="saveAttDay()" style="width:100%;height:38px">Save this day</button>
+
+      <!-- Quick repeat buttons -->
+      <div style="margin-top:8px">
+        <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;text-align:center">Apply same settings to whole month</div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px" id="att-repeat-btns">
+          <button onclick="repeatAttForDay(1)" class="att-repeat-day" title="All Mondays" style="font-size:10px;padding:5px 2px;border-radius:6px;border:1px solid var(--brd);background:var(--bg1);cursor:pointer;color:var(--txt3)">Mon</button>
+          <button onclick="repeatAttForDay(2)" class="att-repeat-day" title="All Tuesdays" style="font-size:10px;padding:5px 2px;border-radius:6px;border:1px solid var(--brd);background:var(--bg1);cursor:pointer;color:var(--txt3)">Tue</button>
+          <button onclick="repeatAttForDay(3)" class="att-repeat-day" title="All Wednesdays" style="font-size:10px;padding:5px 2px;border-radius:6px;border:1px solid var(--brd);background:var(--bg1);cursor:pointer;color:var(--txt3)">Wed</button>
+          <button onclick="repeatAttForDay(4)" class="att-repeat-day" title="All Thursdays" style="font-size:10px;padding:5px 2px;border-radius:6px;border:1px solid var(--brd);background:var(--bg1);cursor:pointer;color:var(--txt3)">Thu</button>
+          <button onclick="repeatAttForDay(5)" class="att-repeat-day" title="All Fridays" style="font-size:10px;padding:5px 2px;border-radius:6px;border:1px solid var(--brd);background:var(--bg1);cursor:pointer;color:var(--txt3)">Fri</button>
+          <button onclick="repeatAttForDay(6)" class="att-repeat-day" title="All Saturdays" style="font-size:10px;padding:5px 2px;border-radius:6px;border:1px solid var(--brd);background:var(--bg1);cursor:pointer;color:var(--txt3)">Sat</button>
+          <button onclick="repeatAttForDay(0)" class="att-repeat-day" title="All Sundays" style="font-size:10px;padding:5px 2px;border-radius:6px;border:1px solid var(--brd);background:var(--bg1);cursor:pointer;color:var(--txt3)">Sun</button>
+        </div>
+        <div style="margin-top:6px;display:flex;gap:4px">
+          <button onclick="repeatAttForAll()" style="flex:1;font-size:10px;padding:5px;border-radius:6px;border:1px solid var(--brd);background:var(--bg1);cursor:pointer;color:var(--txt3)">All weekdays this month</button>
+          <button onclick="clearAttMonth()" style="flex:1;font-size:10px;padding:5px;border-radius:6px;border:1px solid var(--red-bg);background:var(--red-bg);cursor:pointer;color:var(--red-txt)">Clear month</button>
+        </div>
+      </div>
+
+      <!-- Bulk apply for the whole weekday in this month -->
+      <div style="margin-top:8px;padding-top:10px;border-top:1px solid var(--brd)">
+        <div style="font-size:10px;color:var(--txt3);margin-bottom:6px">Apply same hours to all <span id="att-weekday-name">—</span>s this month</div>
+        <button onclick="applyToAllWeekday()" style="width:100%;height:36px;font-size:12px;background:var(--blue-bg);border:1.5px solid var(--blue);border-radius:var(--r6);color:var(--blue-txt);cursor:pointer;font-family:inherit;font-weight:500" id="att-bulk-btn">
+          Apply to all <span id="att-bulk-day-label">—</span>s in <span id="att-bulk-month-label">—</span>
+        </button>
+        <div style="font-size:10px;color:var(--txt3);margin-top:5px;text-align:center" id="att-bulk-preview">—</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- JOB: Job expenses -->
+  <div class="tc" id="tab-job-expenses">
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title" style="margin-bottom:0">Job expenses</span>
+        <button class="btn-primary" onclick="openAddJobExpense()" style="height:32px;font-size:12px;padding:0 12px">+ Add</button>
+      </div>
+      <div style="font-size:11px;color:var(--txt3);margin-bottom:10px">Costs tied to working — transport, food, uniform etc. Deducted from net pay.</div>
+      <div id="job-expense-list"></div>
+      <div style="border-top:1px solid var(--brd);margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;font-size:12px;font-weight:500">
+        <span style="color:var(--txt3)">Total job expenses/month</span>
+        <span style="color:var(--red)" id="job-exp-total">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- JOB: Leave tracker -->
+  <div class="tc" id="tab-job-leave">
+    <div class="card">
+      <div class="card-head"><span class="card-title" style="margin-bottom:0">Leave tracker</span><button class="btn-primary" onclick="openAddLeave()" style="height:32px;font-size:12px;padding:0 12px">+ Log leave</button></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+        <div style="background:var(--green-bg);border-radius:8px;padding:10px;text-align:center"><div style="font-size:9px;color:var(--green-txt);text-transform:uppercase;margin-bottom:3px">Annual left</div><div style="font-size:18px;font-weight:500;color:var(--green-txt)" id="leave-annual-left">—</div></div>
+        <div style="background:var(--blue-bg);border-radius:8px;padding:10px;text-align:center"><div style="font-size:9px;color:var(--blue-txt);text-transform:uppercase;margin-bottom:3px">Sick left</div><div style="font-size:18px;font-weight:500;color:var(--blue-txt)" id="leave-sick-left">—</div></div>
+        <div style="background:var(--bg2);border-radius:8px;padding:10px;text-align:center"><div style="font-size:9px;color:var(--txt3);text-transform:uppercase;margin-bottom:3px">Used this yr</div><div style="font-size:18px;font-weight:500" id="leave-used">—</div></div>
+      </div>
+      <div id="job-leave-list"></div>
+    </div>
+  </div>
+
+  <!-- JOB: Charts -->
+  <div class="tc" id="tab-job-charts">
+    <div class="card"><div class="card-title">Earnings trend</div><canvas id="job-chart-earnings" style="max-height:220px"></canvas></div>
+    <div class="card"><div class="card-title">Attendance rate</div><canvas id="job-chart-att" style="max-height:180px"></canvas></div>
+  </div>
+
+  <!-- JOB: Payslips -->
+  <div class="tc" id="tab-job-payslips">
+    <div class="card">
+      <div class="card-head"><span class="card-title" style="margin-bottom:0">Payslips</span><button class="btn-primary" onclick="openAddPayslip()" style="height:32px;font-size:12px;padding:0 12px">+ Add</button></div>
+      <div id="job-payslip-list"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- RENTAL TABS                                    -->
+  <!-- ══════════════════════════════════════════════ -->
+
+  <!-- RENTAL: Live earnings -->
+  <div class="tc" id="tab-rental-live">
+    <div class="card" style="text-align:center;padding:20px 16px;margin-bottom:10px">
+      <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Rental income this month so far</div>
+      <div style="font-size:38px;font-weight:500;font-family:'DM Mono',monospace;color:#1D9E75;letter-spacing:-1px;line-height:1" id="rental-live-sec">—</div>
+      <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">earned this month</div>
+      <div style="font-size:10px;color:var(--green-txt);margin-bottom:2px;font-family:'DM Mono',monospace" id="rental-live-per-sec">—</div>
+      <div style="font-size:11px;color:var(--green-txt);margin:4px 0 4px">24 hours a day · 7 days a week</div>
+      <div style="font-size:10px;color:var(--txt3);margin-bottom:14px" id="rental-live-sub">—</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <div style="background:var(--bg2);border-radius:8px;padding:10px 6px"><div style="font-size:9px;color:var(--txt3);text-transform:uppercase;margin-bottom:3px">Per day</div><div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:#1D9E75" id="rental-live-day">—</div></div>
+        <div style="background:var(--bg2);border-radius:8px;padding:10px 6px"><div style="font-size:9px;color:var(--txt3);text-transform:uppercase;margin-bottom:3px">This month</div><div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace" id="rental-live-month">—</div></div>
+        <div style="background:var(--bg2);border-radius:8px;padding:10px 6px"><div style="font-size:9px;color:var(--txt3);text-transform:uppercase;margin-bottom:3px">Next due</div><div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace" id="rental-live-due">—</div></div>
+      </div>
+    </div>
+    <div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span class="card-title" style="margin:0">Property summary</span><button class="btn-xs" id="rental-edit-btn" onclick="openEditSource(currentBizId)" style="color:var(--blue)">✏ Edit details</button></div><div id="rental-summary-body" style="font-size:12px;color:var(--txt3)">Add rental details in ⚙ to see summary</div></div>
+  </div>
+
+  <!-- RENTAL: Payments -->
+  <div class="tc" id="tab-rental-payments">
+    <div class="card">
+      <div class="card-head"><span class="card-title" style="margin-bottom:0">Rent payments</span><button class="btn-primary" onclick="openAddRentPayment()" style="height:32px;font-size:12px;padding:0 12px">+ Record</button></div>
+      <div id="rental-payment-list"></div>
+    </div>
+  </div>
+
+  <!-- RENTAL: Tenants -->
+  <div class="tc" id="tab-rental-tenants">
+    <div class="card">
+      <div class="card-head"><span class="card-title" style="margin-bottom:0">Tenants</span><button class="btn-primary" onclick="openAddTenant()" style="height:32px;font-size:12px;padding:0 12px">+ Add</button></div>
+      <div id="rental-tenant-list"></div>
+    </div>
+  </div>
+
+  <!-- RENTAL: Maintenance -->
+  <div class="tc" id="tab-rental-maintenance">
+    <div class="card">
+      <div class="card-head"><span class="card-title" style="margin-bottom:0">Maintenance costs</span><button class="btn-primary" onclick="openAddMaintenance()" style="height:32px;font-size:12px;padding:0 12px">+ Add</button></div>
+      <div id="rental-maintenance-list"></div>
+      <div style="border-top:1px solid var(--brd);margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;font-size:12px;font-weight:500"><span style="color:var(--txt3)">Total maintenance this year</span><span style="color:var(--red)" id="rental-maint-total">—</span></div>
+    </div>
+  </div>
+
+  <!-- RENTAL: Loans -->
+  <div class="tc" id="tab-rental-loans">
+    <div style="background:var(--green-bg);border:1px solid #9FE1CB;border-radius:var(--r8);padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--green-txt)">
+      💡 Track mortgage or property loans here — their repayments are included in your daily target.
+    </div>
+    <div id="rental-loans-content"></div>
+  </div>
+
+  <!-- RENTAL: Charts -->
+  <div class="tc" id="tab-rental-charts">
+    <div class="card"><div class="card-title">Rental income trend</div><canvas id="rental-chart-income" style="max-height:220px"></canvas></div>
+    <div class="card"><div class="card-title">Income vs maintenance</div><canvas id="rental-chart-costs" style="max-height:180px"></canvas></div>
+  </div>
+
+  <!-- RENTAL: Report -->
+  <div class="tc" id="tab-rental-report">
+    <div class="card">
+      <div class="card-head"><span class="card-title" style="margin-bottom:0">Rental report</span><button class="btn-sm" onclick="exportRentalCSV()">Export CSV</button></div>
+      <div style="overflow-x:auto"><table class="ops-table" id="rental-report-table"></table></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- FIXED DEPOSIT TABS                             -->
+  <!-- ══════════════════════════════════════════════ -->
+
+  <!-- FD: Live interest -->
+  <div class="tc" id="tab-fd-live">
+    <div class="card" style="text-align:center;padding:20px 16px;margin-bottom:10px">
+      <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Interest earned this month so far</div>
+      <div style="font-size:38px;font-weight:500;font-family:'DM Mono',monospace;color:#BA7517;letter-spacing:-1px;line-height:1" id="fd-live-sec">—</div>
+      <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">interest earned this month</div>
+      <div style="font-size:10px;color:var(--amber-txt);margin-bottom:2px;font-family:'DM Mono',monospace" id="fd-live-per-sec">—</div>
+      <div style="font-size:11px;color:var(--amber-txt);margin:4px 0 4px">Growing every second, day and night</div>
+      <div style="font-size:10px;color:var(--txt3);margin-bottom:14px" id="fd-live-sub">—</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <div style="background:var(--bg2);border-radius:8px;padding:10px 6px"><div style="font-size:9px;color:var(--txt3);text-transform:uppercase;margin-bottom:3px">Per day</div><div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:#BA7517" id="fd-live-day">—</div></div>
+        <div style="background:var(--bg2);border-radius:8px;padding:10px 6px"><div style="font-size:9px;color:var(--txt3);text-transform:uppercase;margin-bottom:3px">This month</div><div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace" id="fd-live-month">—</div></div>
+        <div style="background:var(--bg2);border-radius:8px;padding:10px 6px"><div style="font-size:9px;color:var(--txt3);text-transform:uppercase;margin-bottom:3px">Matures in</div><div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace" id="fd-live-matures">—</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><span class="card-title" style="margin:0">FD summary</span><button class="btn-xs" id="fd-edit-btn" onclick="openEditSource(currentBizId)" style="color:var(--blue)">✏ Edit details</button></div>
+      <div id="fd-summary-body" style="font-size:12px;color:var(--txt3)">Add FD details in ⚙ to see summary</div>
+    </div>
+  </div>
+
+  <!-- FD: Interest log -->
+  <div class="tc" id="tab-fd-interest">
+    <div class="card">
+      <div class="card-head"><span class="card-title" style="margin-bottom:0">Interest log</span><button class="btn-primary" onclick="openAddFdInterest()" style="height:32px;font-size:12px;padding:0 12px">+ Record</button></div>
+      <div id="fd-interest-list"></div>
+    </div>
+  </div>
+
+  <!-- FD: Maturity tracker -->
+  <div class="tc" id="tab-fd-maturity">
+    <div class="card">
+      <div class="card-title">Maturity tracker</div>
+      <div id="fd-maturity-body"></div>
+    </div>
+  </div>
+
+  <!-- FD: Renewals -->
+  <div class="tc" id="tab-fd-renewals">
+    <div class="card">
+      <div class="card-head"><span class="card-title" style="margin-bottom:0">Renewals</span><button class="btn-primary" onclick="openAddFdRenewal()" style="height:32px;font-size:12px;padding:0 12px">+ Log renewal</button></div>
+      <div id="fd-renewal-list"></div>
+    </div>
+  </div>
+
+  <!-- FD: Loans (against FD as collateral) -->
+  <div class="tc" id="tab-fd-loans">
+    <div style="background:var(--amber-bg);border:1px solid #FAC775;border-radius:var(--r8);padding:10px 14px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:500;color:var(--amber-txt)">🏦 FD-backed loans</div>
+      <div style="font-size:11px;color:var(--amber-txt);opacity:.8;margin-top:2px">Loans taken using this fixed deposit as collateral. Usually up to 90% of FD value.</div>
+    </div>
+    <div id="fd-loans-content"></div>
+  </div>
+
+  <!-- FD: Charts -->
+  <div class="tc" id="tab-fd-charts">
+    <div class="card"><div class="card-title">Interest earned over time</div><canvas id="fd-chart" style="max-height:220px"></canvas></div>
+  </div>
+
+  <!-- FD: Loans (collateral loans against FD) -->
+  <div class="tc" id="tab-fd-loans">
+    <div style="background:var(--amber-bg);border:1px solid var(--amber);border-radius:var(--r8);padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--amber-txt)">
+      💡 Fixed deposits can be used as collateral — banks often offer loans at 1-2% above the FD rate.
+    </div>
+    <div id="fd-loans-content"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- INVESTMENT TABS                                -->
+  <!-- ══════════════════════════════════════════════ -->
+
+  <!-- INV: Live value -->
+  <div class="tc" id="tab-inv-live">
+    <div class="card" style="text-align:center;padding:20px 16px;margin-bottom:10px">
+      <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Portfolio value</div>
+      <div style="font-size:38px;font-weight:500;font-family:'DM Mono',monospace;color:#7F77DD;letter-spacing:-1px;line-height:1" id="inv-live-value">—</div>
+      <div style="font-size:11px;color:var(--txt3);margin:6px 0 14px" id="inv-live-return">—</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <div style="background:var(--bg2);border-radius:8px;padding:10px 6px"><div style="font-size:9px;color:var(--txt3);text-transform:uppercase;margin-bottom:3px">Invested</div><div style="font-size:13px;font-weight:500;font-family:'DM Mono',monospace" id="inv-live-invested">—</div></div>
+        <div style="background:var(--bg2);border-radius:8px;padding:10px 6px"><div style="font-size:9px;color:var(--txt3);text-transform:uppercase;margin-bottom:3px">Gain/Loss</div><div style="font-size:13px;font-weight:500;font-family:'DM Mono',monospace" id="inv-live-gain">—</div></div>
+        <div style="background:var(--bg2);border-radius:8px;padding:10px 6px"><div style="font-size:9px;color:var(--txt3);text-transform:uppercase;margin-bottom:3px">Return %</div><div style="font-size:13px;font-weight:500;font-family:'DM Mono',monospace" id="inv-live-pct">—</div></div>
+      </div>
+    </div>
+    <button class="btn-xs" id="inv-edit-btn" onclick="openEditSource(currentBizId)" style="color:var(--blue);margin-top:10px;width:100%">✏ Edit investment details</button>
+  </div>
+
+  <!-- INV: Holdings -->
+  <div class="tc" id="tab-inv-holdings">
+    <div class="card">
+      <div class="card-head"><span class="card-title" style="margin-bottom:0">Holdings</span><button class="btn-primary" onclick="openAddHolding()" style="height:32px;font-size:12px;padding:0 12px">+ Add</button></div>
+      <div id="inv-holdings-list"></div>
+    </div>
+  </div>
+
+  <!-- INV: Transactions -->
+  <div class="tc" id="tab-inv-transactions">
+    <div class="card">
+      <div class="card-head"><span class="card-title" style="margin-bottom:0">Transactions</span><button class="btn-primary" onclick="openAddTransaction()" style="height:32px;font-size:12px;padding:0 12px">+ Add</button></div>
+      <div id="inv-transaction-list"></div>
+    </div>
+  </div>
+
+  <!-- INV: Dividends -->
+  <div class="tc" id="tab-inv-dividends">
+    <div class="card">
+      <div class="card-head"><span class="card-title" style="margin-bottom:0">Dividends</span><button class="btn-primary" onclick="openAddDividend()" style="height:32px;font-size:12px;padding:0 12px">+ Record</button></div>
+      <div id="inv-dividend-list"></div>
+    </div>
+  </div>
+
+  <!-- INV: Loans (margin loans / loans against portfolio) -->
+  <div class="tc" id="tab-inv-loans">
+    <div style="background:var(--bg2);border:1px solid #AFA9EC;border-radius:var(--r8);padding:10px 14px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:500;color:#3C3489">📈 Investment-backed loans</div>
+      <div style="font-size:11px;color:#534AB7;opacity:.8;margin-top:2px">Margin loans or loans using your investment portfolio as collateral. Interest costs reduce your net return.</div>
+    </div>
+    <div id="inv-loans-content"></div>
+  </div>
+
+  <!-- INV: Charts -->
+  <div class="tc" id="tab-inv-charts">
+    <div class="card"><div class="card-title">Portfolio growth</div><canvas id="inv-chart" style="max-height:220px"></canvas></div>
+  </div>
+
+  <!-- INV: Loans (margin loans / loans against investments) -->
+  <div class="tc" id="tab-inv-loans">
+    <div style="background:var(--blue-bg);border:1px solid var(--blue);border-radius:var(--r8);padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--blue-txt)">
+      💡 Investments can be pledged as collateral for margin loans — track them here alongside your portfolio.
+    </div>
+    <div id="inv-loans-content"></div>
+  </div>
+
+  <!-- INV: Report -->
+  <div class="tc" id="tab-inv-report">
+    <div class="card">
+      <div class="card-head"><span class="card-title" style="margin-bottom:0">Investment report</span><button class="btn-sm" onclick="exportInvCSV()">Export CSV</button></div>
+      <div style="overflow-x:auto"><table class="ops-table" id="inv-report-table"></table></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- FARMING TABS                                   -->
+  <!-- ══════════════════════════════════════════════ -->
+
+  <!-- FARMING: Live accrual -->
+  <div class="tc" id="tab-farming-live">
+    <div class="card" style="text-align:center;padding:20px 16px;margin-bottom:10px">
+      <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Value accrued this month so far</div>
+      <div style="font-size:38px;font-weight:500;font-family:'DM Mono',monospace;color:#639922;letter-spacing:-1px;line-height:1" id="farm-live-sec">—</div>
+      <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">accrued this month</div>
+      <div style="font-size:10px;color:var(--green-txt);margin-bottom:2px;font-family:'DM Mono',monospace" id="farming-live-per-sec">—</div>
+      <div style="font-size:11px;color:var(--txt3);margin:4px 0 14px" id="farm-live-sub">—</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <div style="background:var(--bg2);border-radius:8px;padding:10px 6px"><div style="font-size:9px;color:var(--txt3);text-transform:uppercase;margin-bottom:3px">Season value</div><div style="font-size:13px;font-weight:500;font-family:'DM Mono',monospace" id="farm-live-total">—</div></div>
+        <div style="background:var(--bg2);border-radius:8px;padding:10px 6px"><div style="font-size:9px;color:var(--txt3);text-transform:uppercase;margin-bottom:3px">Accrued</div><div style="font-size:13px;font-weight:500;font-family:'DM Mono',monospace;color:#639922" id="farm-live-accrued">—</div></div>
+        <div style="background:var(--bg2);border-radius:8px;padding:10px 6px"><div style="font-size:9px;color:var(--txt3);text-transform:uppercase;margin-bottom:3px">Harvest in</div><div style="font-size:13px;font-weight:500;font-family:'DM Mono',monospace" id="farm-live-harvest">—</div></div>
+      </div>
+    </div>
+    <button class="btn-xs" id="farming-edit-btn" onclick="openEditSource(currentBizId)" style="color:var(--blue);margin-top:10px;width:100%">✏ Edit farming details</button>
+  </div>
+
+  <!-- FARMING: Seasons -->
+  <div class="tc" id="tab-farming-seasons">
+    <div class="card">
+      <div class="card-head"><span class="card-title" style="margin-bottom:0">Seasons</span><button class="btn-primary" onclick="openAddSeason()" style="height:32px;font-size:12px;padding:0 12px">+ Add season</button></div>
+      <div id="farming-season-list"></div>
+    </div>
+  </div>
+
+  <!-- FARMING: Costs -->
+  <div class="tc" id="tab-farming-costs">
+    <div class="card">
+      <div class="card-head"><span class="card-title" style="margin-bottom:0">Farming costs</span><button class="btn-primary" onclick="openAddFarmCost()" style="height:32px;font-size:12px;padding:0 12px">+ Add</button></div>
+      <div id="farming-cost-list"></div>
+    </div>
+  </div>
+
+  <!-- FARMING: Harvest log -->
+  <div class="tc" id="tab-farming-harvest">
+    <div class="card">
+      <div class="card-head"><span class="card-title" style="margin-bottom:0">Harvest log</span><button class="btn-primary" onclick="openAddHarvest()" style="height:32px;font-size:12px;padding:0 12px">+ Record</button></div>
+      <div id="farming-harvest-list"></div>
+    </div>
+  </div>
+
+  <!-- FARMING: Sales -->
+  <div class="tc" id="tab-farming-sales">
+    <div class="card">
+      <div class="card-head"><span class="card-title" style="margin-bottom:0">Sales</span><button class="btn-primary" onclick="openAddFarmSale()" style="height:32px;font-size:12px;padding:0 12px">+ Record</button></div>
+      <div id="farming-sale-list"></div>
+    </div>
+  </div>
+
+  <!-- FARMING: Loans -->
+  <div class="tc" id="tab-farming-loans">
+    <div style="background:var(--green-bg);border:1px solid #9FE1CB;border-radius:var(--r8);padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--green-txt)">
+      💡 Track agri loans or equipment loans here — repayments are included in your cost calculations.
+    </div>
+    <div id="farming-loans-content"></div>
+  </div>
+
+  <!-- FARMING: Charts -->
+  <div class="tc" id="tab-farming-charts">
+    <div class="card"><div class="card-title">Harvest vs costs</div><canvas id="farm-chart" style="max-height:220px"></canvas></div>
+  </div>
+
+  <!-- FARMING: Report -->
+  <div class="tc" id="tab-farming-report">
+    <div class="card">
+      <div class="card-head"><span class="card-title" style="margin-bottom:0">Farming report</span><button class="btn-sm" onclick="exportFarmCSV()">Export CSV</button></div>
+      <div style="overflow-x:auto"><table class="ops-table" id="farming-report-table"></table></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- OTHER INCOME TABS                              -->
+  <!-- ══════════════════════════════════════════════ -->
+
+  <!-- OTHER: Live earnings -->
+  <div class="tc" id="tab-other-live">
+    <div class="card" style="text-align:center;padding:20px 16px;margin-bottom:10px">
+      <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Income this month so far</div>
+      <div style="font-size:38px;font-weight:500;font-family:'DM Mono',monospace;color:#D85A30;letter-spacing:-1px;line-height:1" id="other-live-sec">—</div>
+      <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">earned this month</div>
+      <div style="font-size:10px;color:var(--coral-txt,#D85A30);margin-bottom:2px;font-family:'DM Mono',monospace" id="other-live-per-sec">—</div>
+      <div style="font-size:11px;color:var(--txt3);margin:4px 0 14px" id="other-live-sub">—</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <div style="background:var(--bg2);border-radius:8px;padding:10px 6px"><div style="font-size:9px;color:var(--txt3);text-transform:uppercase;margin-bottom:3px">Per day</div><div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace" id="other-live-day">—</div></div>
+        <div style="background:var(--bg2);border-radius:8px;padding:10px 6px"><div style="font-size:9px;color:var(--txt3);text-transform:uppercase;margin-bottom:3px">This month</div><div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:#1D9E75" id="other-live-month">—</div></div>
+        <div style="background:var(--bg2);border-radius:8px;padding:10px 6px"><div style="font-size:9px;color:var(--txt3);text-transform:uppercase;margin-bottom:3px">This year</div><div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace" id="other-live-year">—</div></div>
+      </div>
+    </div>
+    <button class="btn-xs" id="other-edit-btn" onclick="openEditSource(currentBizId)" style="color:var(--blue);margin-top:10px;width:100%">✏ Edit details</button>
+  </div>
+
+  <!-- OTHER: Income log -->
+  <div class="tc" id="tab-other-income">
+    <div class="card">
+      <div class="card-head"><span class="card-title" style="margin-bottom:0">Income log</span><button class="btn-primary" onclick="openAddOtherIncome()" style="height:32px;font-size:12px;padding:0 12px">+ Record</button></div>
+      <div id="other-income-list"></div>
+    </div>
+  </div>
+
+  <!-- OTHER: Expenses -->
+  <div class="tc" id="tab-other-expenses">
+    <div class="card">
+      <div class="card-head"><span class="card-title" style="margin-bottom:0">Expenses</span><button class="btn-primary" onclick="openAddOtherExpense()" style="height:32px;font-size:12px;padding:0 12px">+ Add</button></div>
+      <div id="other-expense-list"></div>
+    </div>
+  </div>
+
+  <!-- OTHER: Trends -->
+  <div class="tc" id="tab-other-trends">
+    <div class="card"><div class="card-title">Income trend</div><canvas id="other-chart" style="max-height:220px"></canvas></div>
+  </div>
+
   <!-- MANAGE BUSINESSES -->
   <div class="tc" id="tab-manage">
     <div class="card">
       <div class="card-title" id="lbl-manage-biz">Manage businesses</div>
       <div id="manage-biz-list"></div>
       <div style="margin-top:12px">
-        <button class="btn-primary" onclick="openAddBiz()" id="btn-add-new-biz">+ Add new business</button>
+        <button class="btn-primary" onclick="openAddBiz()" id="btn-add-new-biz">+ Add income source</button>
       </div>
     </div>
 
@@ -1571,7 +2274,21 @@ function connectFromManage(){
   const v = document.getElementById('sheet-url-manage')?.value?.trim();
   if(v){ document.getElementById('sheet-url').value=v; connectSheet(); }
 }
-function onCurChange(){ save(); renderSummary(); }
+function onCurChange(){
+  // Save selected currency for current business
+  const cur = document.getElementById('cur').value;
+  localStorage.setItem(lsKey(currentBizId,'cur'), cur);
+  // Also update portData.currency
+  const biz = businesses.find(b=>b.id===currentBizId);
+  if(biz) {
+    if(!biz.portData) biz.portData = {};
+    biz.portData.currency = cur;
+    localStorage.setItem('smt_businesses', JSON.stringify(businesses));
+  }
+  save();
+  renderSummary();
+  if(aT==='portfolio') renderPortfolio();
+}
 
 // ═══════════════════════════════
 // BUSINESS MANAGEMENT
@@ -1612,67 +2329,422 @@ async function switchBiz(bizId){
   setText('biz-name-bar', biz.name||bizId);
   setText('app-logo', biz.icon||'🏪');
   document.getElementById('app-logo').style.background = biz.color||'#E6F1FB';
-  setText('biz-meta-bar', openDaysPerWeek()+' '+t('openDaysWeek')+' · '+document.getElementById('cur').value);
+  setText('biz-meta-bar', openDaysPerWeek()+' '+t('openDaysWeek')+' · '+getBizCur(currentBizId));
+  // Load this biz's currency into the dropdown
+  const bizCurLoaded = getBizCur(bizId);
+  const curDropdown = document.getElementById('cur');
+  if(curDropdown && bizCurLoaded) {
+    curDropdown.value = bizCurLoaded;
+    // If option doesn't exist for this currency, just show the code
+    if(curDropdown.value !== bizCurLoaded) curDropdown.value = 'LKR';
+  }
   renderAll(); renderExpenses(); renderIncome(); renderWeekSchedule();
+  const type = biz.type || 'business';
+  renderNavForType(type);
+  // For non-business types, go to their live tab and start ticker
+  if(type !== 'business') {
+    const portData = JSON.parse(localStorage.getItem(lsKey(bizId,'portData'))||'null') || biz.portData || {};
+    const firstTab = (TYPE_TABS[type]||TYPE_TABS.business)[0].id;
+    setTimeout(()=>{
+      sw(firstTab, document.getElementById('nav-'+firstTab));
+      startTypeLiveTicker(type, portData);
+    }, 100);
+  } else {
+    stopTypeLiveTicker();
+    setTimeout(()=>sw('live', document.getElementById('nav-live')), 100);
+  }
   if(sheetUrl) loadBizFromSheet(bizId).then(()=>{ renderAll(); renderExpenses(); renderIncome(); });
 }
 
+let selectedIncomeType = 'business';
+let editingBizId = null; // null = adding new, string = editing existing
+
+function openEditSource(bizId) {
+  const biz  = businesses.find(b=>b.id===bizId);
+  if(!biz) return;
+  const type = biz.type || 'business';
+  const p    = JSON.parse(localStorage.getItem(lsKey(bizId,'portData'))||'null') || biz.portData || {};
+
+  editingBizId       = bizId;
+  selectedIncomeType = type;
+  selectedColor      = biz.color || '#E6F1FB';
+
+  // Skip type step — go straight to fields
+  document.getElementById('m-step-type').style.display   = 'none';
+  document.getElementById('m-step-fields').style.display = 'block';
+  document.getElementById('m-actions').style.display     = 'flex';
+  setText('m-title', 'Edit — '+biz.name);
+  setText('m-msg', '');
+
+  // Hide "Change" button in edit mode — type can't change
+  const changeBtn = document.querySelector('#m-step-fields button[onclick="backToTypeStep()"]');
+  if(changeBtn) changeBtn.style.display = 'none';
+
+  // Set type header
+  const meta = INCOME_TYPE_META[type] || INCOME_TYPE_META.business;
+  setText('m-type-icon',  meta.icon);
+  setText('m-type-label', meta.label);
+
+  // Fill common fields
+  document.getElementById('m-name').value  = biz.name;
+  document.getElementById('m-icon').value  = biz.icon || meta.icon;
+  pickColor(biz.color || meta.color);
+
+  // Show type-specific extra fields and fill values
+  ['job','rental','fd','investment','farming','other'].forEach(t=>{
+    const el = document.getElementById('m-extra-'+t);
+    if(el) el.style.display = t===type ? 'block' : 'none';
+  });
+
+  // Restore currency
+  const savedCur = getBizCur(bizId);
+  const curEl2 = document.getElementById('m-currency');
+  if(curEl2) curEl2.value = savedCur || 'LKR';
+
+  // Pre-fill extra field values from portData
+  const g = (id, val) => { const el=document.getElementById(id); if(el&&val!==undefined) el.value=val; };
+  if(type==='job') {
+    g('mx-salary',    p.salary);
+    g('mx-workdays',  p.workDays);
+    g('mx-workhours', p.workHours);
+    g('mx-payday',    p.payDay);
+  } else if(type==='rental') {
+    g('mx-rent',    p.rent);
+    g('mx-rentdue', p.dueDay);
+    g('mx-tenant',  p.tenant);
+  } else if(type==='fd') {
+    g('mx-fdprincipal', p.principal);
+    g('mx-fdrate',      p.rate);
+    g('mx-fdstart',     p.startDate);
+    g('mx-fdend',       p.endDate);
+  } else if(type==='investment') {
+    g('mx-invested', p.invested);
+    g('mx-curval',   p.currentValue);
+    if(p.invType) { const el=document.getElementById('mx-invtype'); if(el) el.value=p.invType; }
+  } else if(type==='farming') {
+    g('mx-farmvalue', p.harvestValue);
+    g('mx-farmdays',  p.seasonDays);
+  } else if(type==='other') {
+    g('mx-otherincome', p.income);
+    if(p.freq) { const el=document.getElementById('mx-otherfreq'); if(el) el.value=p.freq; }
+  }
+
+  // Change save button label
+  const saveBtn = document.getElementById('m-save-btn');
+  if(saveBtn) saveBtn.textContent = 'Save changes';
+
+  document.getElementById('add-biz-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('m-name').focus(), 100);
+}
+
+const INCOME_TYPE_META = {
+  business:   { icon:'🏪', label:'Business',      color:'#E6F1FB', namePlaceholder:'e.g. Kandy Bakery' },
+  job:        { icon:'💼', label:'Job',            color:'#FBEAF0', namePlaceholder:'e.g. ABC Company' },
+  rental:     { icon:'🏠', label:'Rental',        color:'#E1F5EE', namePlaceholder:'e.g. Flat 3A Colombo' },
+  fd:         { icon:'🏦', label:'Fixed deposit', color:'#FAEEDA', namePlaceholder:'e.g. Peoples Bank FD' },
+  investment: { icon:'📈', label:'Investment',    color:'#EEEDFE', namePlaceholder:'e.g. CSE Portfolio' },
+  farming:    { icon:'🌾', label:'Farming',       color:'#EAF3DE', namePlaceholder:'e.g. Rice paddy — Maha' },
+  other:      { icon:'✦',  label:'Other income',  color:'#FBEAF0', namePlaceholder:'e.g. Freelance design' },
+};
+
 function openAddBiz(){
   closeBizDrop();
+  selectedIncomeType = 'business';
   selectedColor = '#E6F1FB';
-  // Reset colour swatches
-  document.querySelectorAll('.color-swatch').forEach(s => s.style.border = '2.5px solid transparent');
-  const first = document.querySelector('.color-swatch[data-color="#E6F1FB"]');
-  if(first) first.style.border = '2.5px solid #378ADD';
-  // Reset fields
-  document.getElementById('m-name').value = '';
-  document.getElementById('m-icon').value = '🏪';
-  setText('m-msg', '');
+  // Show type step, hide fields step
+  document.getElementById('m-step-type').style.display = 'block';
+  document.getElementById('m-step-fields').style.display = 'none';
+  document.getElementById('m-actions').style.display = 'none';
+  setText('m-msg','');
+  setText('m-title','Add income source');
+  // Reset type card highlights
+  document.querySelectorAll('.m-type-card').forEach(c=>{
+    c.style.border='1.5px solid var(--brd)';
+    c.style.background='var(--bg1)';
+    c.querySelectorAll('div').forEach(d=>d.style.color='');
+  });
+  const bizCard = document.getElementById('mtype-business');
+  if(bizCard){ bizCard.style.border='2px solid var(--blue)'; bizCard.style.background='var(--blue-bg)'; }
   document.getElementById('add-biz-modal').classList.add('open');
-  // Focus name input
-  setTimeout(() => document.getElementById('m-name').focus(), 100);
 }
-function closeModal(){ document.getElementById('add-biz-modal').classList.remove('open'); }
+
+function selectIncomeType(type){
+  selectedIncomeType = type;
+  const meta = INCOME_TYPE_META[type];
+  // Highlight selected card
+  document.querySelectorAll('.m-type-card').forEach(c=>{
+    c.style.border='1.5px solid var(--brd)'; c.style.background='var(--bg1)';
+  });
+  const card = document.getElementById('mtype-'+type);
+  if(card){ card.style.border='2px solid var(--blue)'; card.style.background='var(--blue-bg)'; }
+  // Show fields step
+  document.getElementById('m-step-type').style.display = 'none';
+  document.getElementById('m-step-fields').style.display = 'block';
+  document.getElementById('m-actions').style.display = 'flex';
+  // Set type header
+  setText('m-type-icon', meta.icon);
+  setText('m-type-label', meta.label);
+  // Set defaults
+  document.getElementById('m-icon').value = meta.icon;
+  document.getElementById('m-name').placeholder = meta.namePlaceholder;
+  document.getElementById('m-name').value = '';
+  pickColor(meta.color);
+  // Default currency to current biz currency
+  const defCur = getBizCur(currentBizId) || 'LKR';
+  const curEl = document.getElementById('m-currency');
+  if(curEl) curEl.value = defCur;
+  // Show/hide extra fields
+  ['job','rental','fd','investment','farming','other'].forEach(t=>{
+    const el = document.getElementById('m-extra-'+t);
+    if(el) el.style.display = t===type ? 'block' : 'none';
+  });
+  setTimeout(()=>document.getElementById('m-name').focus(), 100);
+}
+
+function backToTypeStep(){
+  document.getElementById('m-step-type').style.display = 'block';
+  document.getElementById('m-step-fields').style.display = 'none';
+  document.getElementById('m-actions').style.display = 'none';
+}
+
+function closeModal(){
+  document.getElementById('add-biz-modal').classList.remove('open');
+  editingBizId = null;
+  // Restore change button and save label for next open
+  const changeBtn = document.querySelector('#m-step-fields button[onclick="backToTypeStep()"]');
+  if(changeBtn) changeBtn.style.display = '';
+  const saveBtn = document.getElementById('m-save-btn');
+  if(saveBtn) saveBtn.textContent = 'Add source';
+}
+
 function pickColor(c){
   selectedColor=c;
   document.querySelectorAll('.color-swatch').forEach(s=>s.style.border='2px solid transparent');
-  document.querySelector(`.color-swatch[data-color="${c}"]`).style.border='2px solid #378ADD';
+  const sw = document.querySelector(`.color-swatch[data-color="${c}"]`);
+  if(sw) sw.style.border='2px solid #378ADD';
 }
 
 async function saveBiz(){
   const name = document.getElementById('m-name').value.trim();
-  const icon = document.getElementById('m-icon').value.trim() || '🏪';
+  const icon = document.getElementById('m-icon').value.trim() || INCOME_TYPE_META[selectedIncomeType]?.icon || '🏪';
   const msg  = document.getElementById('m-msg');
-  if(!name){ msg.textContent = t('active') === 'Active' ? 'Please enter a business name' : 'කරුණාකර නමක් ඇතුළු කරන්න'; return; }
+  if(!name){ msg.textContent = 'Please enter a name.'; return; }
   msg.textContent = '';
 
-  const id  = 'biz_' + Date.now();
-  const biz = {id, name, icon, color: selectedColor || '#E6F1FB'};
+  const type     = selectedIncomeType || 'business';
+  const portData = collectExtraFields(type);
+
+  // ── EDIT MODE ──
+  if(editingBizId) {
+    const biz = businesses.find(b=>b.id===editingBizId);
+    if(biz) {
+      biz.name     = name;
+      biz.icon     = icon;
+      biz.color    = selectedColor || biz.color;
+      biz.portData = portData;
+      // Save currency
+      const editCur = document.getElementById('m-currency')?.value || 'LKR';
+      localStorage.setItem(lsKey(editingBizId,'cur'), editCur);
+      if(biz.portData) biz.portData.currency = editCur;
+      localStorage.setItem('smt_businesses', JSON.stringify(businesses));
+      if(portData) localStorage.setItem(lsKey(editingBizId,'portData'), JSON.stringify(portData));
+      // Update UI bar if editing current source
+      if(editingBizId === currentBizId) {
+        setText('biz-icon-bar', icon);
+        document.getElementById('biz-icon-bar').style.background = biz.color;
+        setText('biz-name-bar', name);
+        setText('app-logo', icon);
+        document.getElementById('app-logo').style.background = biz.color;
+        // Restart live ticker with updated data
+        if(type !== 'business') startTypeLiveTicker(type, portData);
+      }
+      closeModal();
+      renderManageBiz();
+      renderBizDropdown();
+      renderPortfolio();
+      msg.textContent = '';
+    }
+    return;
+  }
+
+  // ── ADD MODE ──
+
+  const id        = 'biz_' + Date.now();
+
+  // Collect extra fields for non-business types
+  const newPortData = portData; // already collected above
+
+  const biz = { id, name, icon, color: selectedColor||'#E6F1FB', type, portData: newPortData };
   businesses.push(biz);
   localStorage.setItem('smt_businesses', JSON.stringify(businesses));
+  // Save portData separately for quick access
+  if(newPortData) localStorage.setItem(lsKey(id,'portData'), JSON.stringify(newPortData));
 
-  // Save to Google Sheets (direct API)
+  // Create Google Sheet — each income source gets its OWN sheet in a folder
   const useDirectApi = localStorage.getItem('smt_useDirectApi');
-  const ssId = localStorage.getItem('smt_spreadsheetId');
-  if(useDirectApi && ssId && googleToken) {
+  const token = await ensureToken();
+  if(useDirectApi && token) {
+    const saveBtn = document.getElementById('m-save-btn');
+    if(saveBtn) { saveBtn.disabled=true; saveBtn.textContent='Creating…'; }
+    msg.style.color='var(--txt3)';
+    msg.textContent = '📊 Creating Google Sheet…';
     try {
-      // Create tabs for new business
-      await createBizTabs(googleToken, ssId, id);
-      // Add to _businesses registry
-      await sheetsAppend(googleToken, ssId, '_businesses', [id, name, icon, biz.color, new Date().toISOString()]);
-    } catch(e) { console.error('saveBiz sheet error:', e); }
-  } else if(sheetUrl) {
-    // Apps Script fallback
-    try {
-      await fetch(sheetUrl, {method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({action:'addBusiness', biz:id, name, icon, color:biz.color})});
-    } catch(e) {}
+      const newSsId = await createIncomeSourceSheet(token, id, name, type, icon, biz.color, newPortData);
+      msg.textContent = '';
+    } catch(e) {
+      console.error('Sheet creation error:', e);
+      msg.style.color='var(--amber-txt)';
+      msg.textContent = '⚠ Saved locally. Sheet: '+e.message;
+    }
+    if(saveBtn) { saveBtn.disabled=false; saveBtn.textContent='Add source'; }
   }
 
   closeModal();
   renderManageBiz();
   renderBizDropdown();
+  renderPortfolio();
   switchBiz(id);
+}
+
+function collectExtraFields(type) {
+  const g = id => { const el=document.getElementById(id); return el?el.value:''; };
+  const currency = g('m-currency') || 'LKR';
+  if(type==='job')        return { currency, salary:+g('mx-salary')||0, workDays:+g('mx-workdays')||5, workHours:+g('mx-workhours')||8, payDay:+g('mx-payday')||25, monthlyIncome:+g('mx-salary')||0 };
+  if(type==='rental')     return { currency, rent:+g('mx-rent')||0, dueDay:+g('mx-rentdue')||1, tenant:g('mx-tenant'), monthlyIncome:+g('mx-rent')||0 };
+  if(type==='fd')         return { currency, principal:+g('mx-fdprincipal')||0, rate:+g('mx-fdrate')||0, startDate:g('mx-fdstart'), endDate:g('mx-fdend'), monthlyIncome:Math.round((+g('mx-fdprincipal')||0)*(+g('mx-fdrate')||0)/100/12) };
+  if(type==='investment') return { currency, invested:+g('mx-invested')||0, currentValue:+g('mx-curval')||0, invType:g('mx-invtype'), monthlyIncome:Math.round(((+g('mx-curval')||0)-(+g('mx-invested')||0))/12) };
+  if(type==='farming')    return { currency, harvestValue:+g('mx-farmvalue')||0, seasonDays:+g('mx-farmdays')||120, monthlyIncome:Math.round((+g('mx-farmvalue')||0)/((+g('mx-farmdays')||120)/30.44)) };
+  if(type==='other')      return { currency, income:+g('mx-otherincome')||0, freq:g('mx-otherfreq')||'monthly', monthlyIncome:+g('mx-otherincome')||0 };
+  return null; // business
+}
+
+// ── Create a separate Google Sheet for each income source ──
+async function createIncomeSourceSheet(token, bizId, name, type, icon, color, portData) {
+  const DRIVE_API = 'https://www.googleapis.com/drive/v3/files';
+
+  // Step 1: Find or create "Income Tracker" folder in Drive
+  let folderId = localStorage.getItem('smt_folderID');
+  if(!folderId) {
+    // Search for existing folder first
+    try {
+      const search = await fetch(
+        `${DRIVE_API}?q=${encodeURIComponent("name='Income Tracker' and mimeType='application/vnd.google-apps.folder' and trashed=false")}&fields=files(id,name)&pageSize=5`,
+        { headers:{ Authorization:'Bearer '+token } }
+      );
+      if(search.ok) {
+        const sData = await search.json();
+        if(sData.files && sData.files.length > 0) folderId = sData.files[0].id;
+      }
+    } catch(e) {}
+
+    if(!folderId) {
+      // Create the folder
+      const create = await fetch(DRIVE_API, {
+        method:'POST',
+        headers:{ Authorization:'Bearer '+token, 'Content-Type':'application/json' },
+        body: JSON.stringify({ name:'Income Tracker', mimeType:'application/vnd.google-apps.folder' })
+      });
+      if(!create.ok) throw new Error('Could not create Drive folder ('+create.status+')');
+      const cData = await create.json();
+      folderId = cData.id;
+    }
+    localStorage.setItem('smt_folderID', folderId);
+  }
+
+  // Step 2: Create a new Google Sheet inside the folder
+  const sheetTitle = `${icon} ${name}`;
+  const createSheet = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+    method:'POST',
+    headers:{ Authorization:'Bearer '+token, 'Content-Type':'application/json' },
+    body: JSON.stringify({
+      properties: { title: sheetTitle },
+      sheets: getDefaultSheetsForType(type)
+    })
+  });
+  if(!createSheet.ok) {
+    const err = await createSheet.json();
+    throw new Error(err.error?.message || 'Failed to create sheet ('+createSheet.status+')');
+  }
+  const sheetData = await createSheet.json();
+  const newSsId   = sheetData.spreadsheetId;
+  if(!newSsId) throw new Error('No spreadsheet ID returned');
+
+  // Step 3: Move sheet into the Income Tracker folder
+  try {
+    await fetch(`${DRIVE_API}/${newSsId}?addParents=${folderId}&removeParents=root&fields=id,parents`, {
+      method:'PATCH',
+      headers:{ Authorization:'Bearer '+token, 'Content-Type':'application/json' },
+      body: JSON.stringify({})
+    });
+  } catch(e) { console.log('Move to folder failed (non-critical):', e.message); }
+
+  // Step 4: Write header rows for each sheet tab
+  await writeIncomeSourceHeaders(token, newSsId, type, name, portData);
+
+  // Step 5: Store the sheet ID so this source syncs to its own sheet
+  localStorage.setItem(lsKey(bizId,'ssId'), newSsId);
+  localStorage.setItem('smt_sharedSheet_'+bizId, newSsId);
+
+  // Step 6: Register in the master sheet's _businesses tab
+  const masterSsId = localStorage.getItem('smt_spreadsheetId');
+  if(masterSsId) {
+    try {
+      await sheetsAppend(token, masterSsId, '_businesses',
+        [bizId, name, icon, color, type, newSsId, new Date().toISOString()]);
+    } catch(e) { console.log('Master sheet registration failed:', e.message); }
+  }
+
+  return newSsId;
+}
+
+function getDefaultSheetsForType(type) {
+  const sheets = (names) => names.map(title=>({properties:{title}}));
+  if(type==='job')        return sheets(['Overview','Attendance','Salary log','Job expenses','Leave tracker']);
+  if(type==='rental')     return sheets(['Overview','Payments','Maintenance','Tenants']);
+  if(type==='fd')         return sheets(['Overview','Interest log','Renewals']);
+  if(type==='investment') return sheets(['Overview','Holdings','Transactions','Dividends']);
+  if(type==='farming')    return sheets(['Overview','Seasons','Costs','Harvest log','Sales']);
+  if(type==='other')      return sheets(['Overview','Income log','Trends']);
+  return sheets(['Overview','Income','Expenses','Daily log','Loans']); // business
+}
+
+async function writeIncomeSourceHeaders(token, ssId, type, name, portData) {
+  const w = (range, vals) => sheetsWrite(token, ssId, range, vals);
+  // Write a summary row on Overview sheet
+  const p = portData || {};
+  const overviewData = [
+    ['Income Source', name],
+    ['Type', type],
+    ['Created', new Date().toLocaleDateString()],
+    ...Object.entries(p).filter(([k])=>k!=='monthlyIncome').map(([k,v])=>[k,v]),
+    ['Monthly income', p.monthlyIncome||0],
+  ];
+  await w('Overview!A1', overviewData);
+  // Type-specific headers
+  if(type==='job') {
+    await w('Attendance!A1', [['Date','Day','Status','Notes']]);
+    await w('Salary log!A1',  [['Month','Expected','Received','Date received','Notes']]);
+    await w('Job expenses!A1',[['Date','Category','Amount','Notes']]);
+    await w('Leave tracker!A1',[['Type','Total days','Used','Remaining']]);
+  } else if(type==='rental') {
+    await w('Payments!A1',     [['Month','Amount','Received','Date received','Notes']]);
+    await w('Maintenance!A1',  [['Date','Description','Cost','Paid by']]);
+    await w('Tenants!A1',      [['Name','Contact','Start date','End date','Deposit']]);
+  } else if(type==='fd') {
+    await w('Interest log!A1', [['Month','Principal','Rate','Interest earned','Cumulative']]);
+    await w('Renewals!A1',     [['Date','Principal','Rate','Term','New maturity']]);
+  } else if(type==='investment') {
+    await w('Holdings!A1',     [['Asset','Quantity','Buy price','Current price','Value','Return %']]);
+    await w('Transactions!A1', [['Date','Type','Asset','Quantity','Price','Total','Notes']]);
+    await w('Dividends!A1',    [['Date','Asset','Amount','Notes']]);
+  } else if(type==='farming') {
+    await w('Seasons!A1',      [['Season','Start','End','Crop','Area','Expected yield','Actual yield']]);
+    await w('Costs!A1',        [['Date','Category','Description','Amount']]);
+    await w('Harvest log!A1',  [['Date','Quantity (kg)','Price/kg','Total value']]);
+    await w('Sales!A1',        [['Date','Buyer','Quantity','Price','Total']]);
+  } else if(type==='other') {
+    await w('Income log!A1',   [['Date','Amount','Description','Notes']]);
+  }
 }
 
 async function deleteBiz(bizId){
@@ -1758,7 +2830,7 @@ function lmRecalc() {
   }
 
   hint.style.display = 'none';
-  const cur = document.getElementById('cur')?.value || 'LKR';
+  const cur = getBizCur(currentBizId);
   const fmt = v => fmtF(v);
 
   // Three options:
@@ -2070,8 +3142,52 @@ function toggleMonthPaid(loanId, monthKey) {
   renderAll();
 }
 
+// Render a self-contained loan panel into any container element
+function renderLoansInto(containerId) {
+  const container = document.getElementById(containerId);
+  if(!container) return;
+  // Build the same UI as the main loans tab but standalone
+  const activeLoans = (loans||[]).filter(l=>!l.paidOff);
+  const paidLoans   = (loans||[]).filter(l=>l.paidOff);
+  const totalMonthly = activeLoans.reduce((a,l)=>a+(l.monthly||0),0);
+  const dailyImpact  = totalDailyLoans();
+  const sym = SYMS[getBizCur(currentBizId)] || getBizCur(currentBizId);
+
+  container.innerHTML = `
+    <div class="card" style="margin-bottom:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="card-title" style="margin:0">Loans against this asset</div>
+        <button class="btn-primary" onclick="openAddLoan()" style="height:32px;font-size:12px;padding:0 12px">+ Add loan</button>
+      </div>
+      ${activeLoans.length===0
+        ? `<div style="text-align:center;padding:20px;color:var(--txt3);font-size:12px">No loans yet. Tap + Add loan to track a loan against this asset.</div>`
+        : activeLoans.map(loan=>{
+            const pct = loan.total>0?Math.round((1-(loan.remaining/loan.total))*100):0;
+            const interest = loan.interest||0;
+            const progColor = interest>=15?'var(--red)':interest>=8?'var(--amber)':'var(--green)';
+            return `<div class="loan-row">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13px;font-weight:500">${loan.name}</div>
+                <div style="font-size:11px;color:var(--txt3)">${fmtF(loan.remaining||0)} remaining · ${fmtF(loan.monthly)}/mo${interest?` · ${interest}% interest`:''}</div>
+                <div class="loan-prog"><div class="loan-prog-fill" style="width:${pct}%;background:${progColor}"></div></div>
+                <div style="font-size:10px;color:var(--txt3);margin-top:3px">${pct}% paid · ${fmtF(loan.monthly/30.44)}/day on target</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0;margin-left:10px">
+                <button class="btn-xs" onclick="openAddLoan('${loan.id}')">Edit</button>
+                <button class="btn-danger" onclick="deleteLoan('${loan.id}');renderLoansInto('${containerId}')">Del</button>
+              </div>
+            </div>`;
+          }).join('')}
+      ${totalMonthly>0?`<div style="border-top:1px solid var(--brd);margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;font-size:12px;font-weight:500"><span style="color:var(--txt3)">Total repayment</span><span style="color:var(--red)">${fmtF(totalMonthly)}/month = ${fmtF(dailyImpact)}/day</span></div>`:''}
+    </div>
+    ${paidLoans.length>0?`<div class="card">
+      <div class="card-title" style="margin-bottom:8px">Paid off</div>
+      ${paidLoans.map(l=>`<div class="loan-row"><div style="flex:1"><div style="font-size:13px;color:var(--txt3);text-decoration:line-through">${l.name}</div><div style="font-size:11px;color:var(--txt3)">${l.total?fmtF(l.total):''} · Paid off ${l.paidAt?new Date(l.paidAt).toLocaleDateString():''}</div></div><button class="btn-xs" onclick="reactivateLoan('${l.id}');renderLoansInto('${containerId}')">Reactivate</button></div>`).join('')}
+    </div>`:''}`;
+}
+
 function renderLoans() {
-  const cur = document.getElementById('cur')?.value || 'LKR';
+  const cur = getBizCur(currentBizId);
   const activeLoans = loans.filter(l=>!l.paidOff);
   const paidLoans   = loans.filter(l=>l.paidOff);
 
@@ -2239,17 +3355,26 @@ async function loadLoansFromSheet(token, ssId, bizId) {
 }
 
 function renderManageBiz(){
-  document.getElementById('manage-biz-list').innerHTML = businesses.map(b=>`
+  document.getElementById('manage-biz-list').innerHTML = businesses.map(b=>{
+    const type = b.type || 'business';
+    const meta = PORT_TYPE_META[type] || PORT_TYPE_META.business;
+    const typeColor = meta.color;
+    const switchTarget = type==='business' ? `sw('live',document.getElementById('nav-live'))` : `sw('portfolio',document.getElementById('nav-portfolio'))`;
+    return `
     <div class="biz-manage-row">
       <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
         <div style="width:30px;height:30px;border-radius:7px;background:${b.color};display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${b.icon}</div>
         <div style="min-width:0">
           <div style="font-size:12px;font-weight:500;color:var(--txt)">${b.name}</div>
-          <div style="font-size:10px;color:var(--txt3)">${b.id===currentBizId?'● Active':'Click to switch'}</div>
+          <div style="display:flex;align-items:center;gap:5px;margin-top:2px">
+            <span style="font-size:9px;padding:1px 6px;border-radius:8px;background:${typeColor}22;color:${typeColor};font-weight:500">${meta.label}</span>
+            <span style="font-size:10px;color:var(--txt3)">${b.id===currentBizId?'● Active':''}</span>
+          </div>
         </div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
-        ${b.id!==currentBizId?`<button class="btn-xs" onclick="switchBiz('${b.id}');sw('live',document.querySelector('.ntab'))">${t('switchBtn')}</button>`:''}
+        ${b.id!==currentBizId?`<button class="btn-xs" onclick="switchBiz('${b.id}');${switchTarget}">${t('switchBtn')}</button>`:''}
+        ${type!=='business'?`<button class="btn-xs" onclick="openEditSource('${b.id}')" style="color:var(--blue)">Edit</button>`:''}
         <button class="btn-xs" onclick="startRenameBiz('${b.id}')" id="rename-btn-${b.id}">✏️</button>
         ${businesses.length>1?`<button class="btn-danger" onclick="deleteBiz('${b.id}')">${t('deleteBtn')}</button>`:''}
       </div>
@@ -2263,7 +3388,8 @@ function renderManageBiz(){
         onclick="openEmojiPicker('rename-icon-${b.id}',this)" readonly>
       <button class="btn-primary" onclick="saveRenameBiz('${b.id}')" style="height:32px;padding:0 12px;font-size:12px">Save</button>
       <button class="btn-sm" onclick="cancelRenameBiz('${b.id}')" style="height:32px">✕</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   // Render share business picker
   const picker = document.getElementById('share-biz-picker');
@@ -2746,11 +3872,24 @@ function avgDailyIncome(){ if(!incomeLog.length)return 0; const s=[...incomeLog]
 // ═══════════════════════════════
 // FORMAT
 // ═══════════════════════════════
-const SYMS={LKR:'රු',USD:'$',EUR:'€',GBP:'£'};
-function sym(){ return SYMS[document.getElementById('cur').value]||'රු'; }
-function fmt(n){ const v=Math.round(n); if(v>=1000000)return sym()+(v/1000000).toFixed(2)+'M'; if(v>=1000)return sym()+(v/1000).toFixed(1)+'K'; return sym()+v.toLocaleString(); }
-function fmtF(n){ return sym()+Math.round(n).toLocaleString(); }
-function fmtDec(n,d=2){ return sym()+n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+const SYMS={
+  LKR:'රු', USD:'$', EUR:'€', GBP:'£', AUD:'A$', CAD:'C$',
+  SGD:'S$', JPY:'¥', CNY:'¥', INR:'₹', AED:'د.إ', SAR:'ر.س',
+  MYR:'RM', THB:'฿', KRW:'₩', QAR:'ر.ق', KWD:'د.ك'
+};
+function getBizCur(bizId) {
+  const stored = localStorage.getItem(lsKey(bizId||currentBizId,'cur'));
+  if(stored) return stored;
+  const biz = businesses.find(b=>b.id===(bizId||currentBizId));
+  return biz?.portData?.currency || biz?.currency || document.getElementById('cur')?.value || 'LKR';
+}
+function sym(bizId) {
+  const cur = getBizCur(bizId);
+  return SYMS[cur] || cur || 'රු';
+}
+function fmt(n, bizId){ const v=Math.round(n); if(v>=1000000)return sym(bizId)+(v/1000000).toFixed(2)+'M'; if(v>=1000)return sym(bizId)+(v/1000).toFixed(1)+'K'; return sym(bizId)+v.toLocaleString(); }
+function fmtF(n, bizId){ return sym(bizId)+Math.round(n).toLocaleString(); }
+function fmtDec(n,d=2,bizId){ return sym(bizId)+n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}); }
 function fmtDate(s){ const d=new Date(s); return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
 function getWeek(s){ const d=new Date(s),jan=new Date(d.getFullYear(),0,1); return Math.ceil(((d-jan)/86400000+jan.getDay()+1)/7); }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
@@ -3304,6 +4443,839 @@ Be honest and direct. Use ${cur} for amounts. Solutions must be concrete and imm
 }
 
 // ═══════════════════════════════════════════════════
+// JOB ATTENDANCE CALENDAR
+// ═══════════════════════════════════════════════════
+let attYear  = new Date().getFullYear();
+let attMonth = new Date().getMonth(); // 0-indexed
+let attSelectedDate = null; // 'YYYY-MM-DD'
+let attSelectedStatus = null;
+
+function lsAttKey(bizId) { return 'smt_'+bizId+'_attendance'; }
+function loadAttData() {
+  return JSON.parse(localStorage.getItem(lsAttKey(currentBizId)) || '{}');
+}
+function saveAttData(data) {
+  localStorage.setItem(lsAttKey(currentBizId), JSON.stringify(data));
+}
+
+function attChangeMonth(delta) {
+  attMonth += delta;
+  if(attMonth > 11) { attMonth = 0; attYear++; }
+  if(attMonth < 0)  { attMonth = 11; attYear--; }
+  closeAttDayPanel();
+  renderAttendanceCal();
+}
+
+function renderAttendanceCal() {
+  const data    = loadAttData();
+  const biz     = businesses.find(b=>b.id===currentBizId)||{};
+  const p       = JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null') || biz.portData || {};
+  const stdHours= p.workHours || 8;
+  const salary  = (p.salary||0) - (p.jobExpenses||0); // net
+  const workDays= p.workDays || 5; // days per week
+  const workSecsPerMonth = workDays * stdHours * 3600 * (30.44/7);
+  const hourlyRate = workSecsPerMonth > 0 ? salary / (workSecsPerMonth/3600) : 0;
+  const sym = SYMS[getBizCur(currentBizId)] || getBizCur(currentBizId);
+
+  // Month label
+  const monthName = new Date(attYear, attMonth, 1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  setText('att-month-label', monthName);
+  setText('att-stat-rate', sym+' '+Math.round(hourlyRate).toLocaleString()+'/hr');
+
+  // Build calendar grid
+  const firstDay = new Date(attYear, attMonth, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(attYear, attMonth+1, 0).getDate();
+  const today = new Date().toISOString().slice(0,10);
+  const offset = firstDay === 0 ? 6 : firstDay - 1; // Mon=0 offset
+
+  // Calc month stats
+  let totalDays=0, totalHours=0, totalEarned=0;
+
+  const cells = [];
+  for(let i=0; i<offset; i++) cells.push('<div></div>');
+
+  for(let d=1; d<=daysInMonth; d++) {
+    const dateStr = `${attYear}-${String(attMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dow     = new Date(attYear, attMonth, d).getDay();
+    const isWeekend = dow===0 || dow===6;
+    const isFuture  = dateStr > today;
+    const rec       = data[dateStr];
+    const status    = rec?.status || (isWeekend ? 'weekend' : 'none');
+    const hours     = rec?.hours || (status==='worked' ? stdHours : status==='half' ? stdHours/2 : 0);
+    const earned    = hours * hourlyRate;
+
+    if(status==='worked'||status==='half'||status==='custom') {
+      totalDays  += status==='half' ? 0.5 : 1;
+      totalHours += hours;
+      totalEarned+= earned;
+    }
+
+    const bg = status==='worked' ? '#EAF3DE' : status==='half' ? '#FAEEDA'
+              : status==='custom' ? '#E6F1FB' : status==='absent' ? '#FCEBEB'
+              : isWeekend ? 'var(--bg2)' : 'var(--bg1)';
+    const col = status==='worked' ? '#27500A' : status==='half' ? '#633806'
+               : status==='custom' ? '#0C447C' : status==='absent' ? '#791F1F'
+               : 'var(--txt3)';
+    const border = dateStr===today ? '1.5px solid var(--blue)' : '1px solid var(--brd)';
+    const dot    = status==='worked' ? '●' : status==='half' ? '◐' : status==='custom' ? '◉' : status==='absent' ? '✕' : '';
+    const hrsTxt = hours>0 ? `<div style="font-size:8px;margin-top:1px;opacity:.8">${hours}h</div>` : '';
+
+    cells.push(`
+      <div onclick="${!isWeekend&&!isFuture?`openAttDay('${dateStr}')`:''}"
+        style="aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+               border-radius:8px;background:${bg};color:${col};font-size:11px;font-weight:500;
+               border:${border};cursor:${!isWeekend&&!isFuture?'pointer':'default'};transition:all .1s">
+        <div>${d}</div>
+        ${dot?`<div style="font-size:8px;margin-top:1px">${dot}</div>`:''}
+        ${hrsTxt}
+      </div>`);
+  }
+
+  const cal = document.getElementById('job-attendance-cal');
+  if(cal) cal.innerHTML = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">${cells.join('')}</div>`;
+
+  // Update stats
+  setText('att-stat-days',   totalDays % 1 === 0 ? totalDays : totalDays.toFixed(1));
+  setText('att-stat-hours',  totalHours.toFixed(1));
+  setText('att-stat-earned', sym+' '+Math.round(totalEarned).toLocaleString());
+  setText('att-month-summary', `${totalDays} days · ${totalHours.toFixed(0)}h · ${sym} ${Math.round(totalEarned).toLocaleString()} earned`);
+
+  // Update live earnings ticker with real hours this month
+  updateJobLiveTicker(totalHours, salary, hourlyRate);
+}
+
+function openAttDay(dateStr) {
+  attSelectedDate = dateStr;
+  const data = loadAttData();
+  const rec  = data[dateStr] || {};
+  const biz  = businesses.find(b=>b.id===currentBizId)||{};
+  const p    = JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null') || biz.portData || {};
+  const stdHours = p.workHours || 8;
+
+  const d = new Date(dateStr);
+  const weekdayName = d.toLocaleDateString('en-GB',{weekday:'long'});
+  const monthName   = d.toLocaleDateString('en-GB',{month:'long'});
+
+  setText('att-day-title',       d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}));
+  setText('att-weekday-name',    weekdayName);
+  setText('att-bulk-day-label',  weekdayName);
+  setText('att-bulk-month-label', monthName);
+
+  // Count how many of this weekday remain in the month (not already logged)
+  const dow = d.getDay();
+  const daysInMonth = new Date(attYear, attMonth+1, 0).getDate();
+  const today = new Date().toISOString().slice(0,10);
+  let count = 0;
+  for(let day=1; day<=daysInMonth; day++) {
+    const ds = `${attYear}-${String(attMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    if(new Date(attYear, attMonth, day).getDay()===dow && ds<=today) count++;
+  }
+  setText('att-bulk-preview', `Will fill ${count} ${weekdayName}${count!==1?'s':''} in ${monthName} (past + today only)`);
+
+  // Set status
+  attSelectedStatus = rec.status || 'worked';
+  highlightAttStatus(attSelectedStatus);
+
+  // Fill time fields
+  const startTime = rec.startTime || (p.startTime||'08:00');
+  const endTime   = rec.endTime   || '';
+  const brk       = rec.break     || 30;
+  const el_start  = document.getElementById('att-time-start');
+  const el_end    = document.getElementById('att-time-end');
+  const el_break  = document.getElementById('att-break');
+  const el_note   = document.getElementById('att-note');
+
+  if(el_start) el_start.value = startTime;
+  if(el_end)   el_end.value   = endTime || calcEndTime(startTime, stdHours, brk);
+  if(el_break) el_break.value = brk;
+  if(el_note)  el_note.value  = rec.note || '';
+
+  const panel = document.getElementById('att-day-panel');
+  if(panel) panel.style.display = 'block';
+  highlightRepeatBtn(dateStr);
+  panel?.scrollIntoView({behavior:'smooth', block:'nearest'});
+
+  showAttTimeFields(attSelectedStatus);
+  attCalcHours();
+}
+
+function applyToAllWeekday() {
+  if(!attSelectedDate) return;
+  const d   = new Date(attSelectedDate);
+  const dow = d.getDay(); // 0=Sun
+  const daysInMonth = new Date(attYear, attMonth+1, 0).getDate();
+  const today = new Date().toISOString().slice(0,10);
+  const data  = loadAttData();
+  const biz   = businesses.find(b=>b.id===currentBizId)||{};
+  const p     = JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null') || biz.portData || {};
+  const stdHrs = p.workHours || 8;
+
+  // Build the record from current panel state
+  const start = document.getElementById('att-time-start')?.value || '';
+  const end   = document.getElementById('att-time-end')?.value   || '';
+  const brk   = parseInt(document.getElementById('att-break')?.value)||0;
+  const note  = document.getElementById('att-note')?.value.trim() || '';
+
+  let hours = 0;
+  if(attSelectedStatus==='worked') hours = stdHrs;
+  else if(attSelectedStatus==='half') hours = stdHrs/2;
+  else if(attSelectedStatus==='custom' && start && end) {
+    const [sh,sm] = start.split(':').map(Number);
+    const [eh,em] = end.split(':').map(Number);
+    let netMins = (eh*60+em)-(sh*60+sm)-brk;
+    if(netMins<0) netMins+=24*60;
+    hours = Math.max(0, netMins/60);
+  }
+
+  let filled = 0;
+  for(let day=1; day<=daysInMonth; day++) {
+    const ds = `${attYear}-${String(attMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    if(new Date(attYear, attMonth, day).getDay() === dow && ds <= today) {
+      data[ds] = { status:attSelectedStatus, hours, startTime:start, endTime:end, break:brk, note };
+      filled++;
+    }
+  }
+
+  saveAttData(data);
+
+  // Show confirmation
+  const weekdayName = d.toLocaleDateString('en-GB',{weekday:'long'});
+  const preview = document.getElementById('att-bulk-preview');
+  if(preview) {
+    preview.style.color = 'var(--green-txt)';
+    preview.textContent = `✓ Applied to ${filled} ${weekdayName}${filled!==1?'s':''} this month`;
+    setTimeout(()=>{ if(preview) { preview.style.color=''; preview.textContent=`Will fill ${filled} ${weekdayName}s (past + today only)`; } }, 3000);
+  }
+
+  closeAttDayPanel();
+  renderAttendanceCal();
+}
+
+function calcEndTime(startTime, hours, breakMins) {
+  if(!startTime) return '';
+  const [h,m]  = startTime.split(':').map(Number);
+  const totalMins = h*60 + m + hours*60 + (breakMins||0);
+  return `${String(Math.floor(totalMins/60)%24).padStart(2,'0')}:${String(totalMins%60).padStart(2,'0')}`;
+}
+
+function closeAttDayPanel() {
+  attSelectedDate = null;
+  const panel = document.getElementById('att-day-panel');
+  if(panel) panel.style.display = 'none';
+}
+
+function setAttStatus(status) {
+  attSelectedStatus = status;
+  highlightAttStatus(status);
+  showAttTimeFields(status);
+  attCalcHours();
+}
+
+function highlightAttStatus(status) {
+  ['worked','half','custom','absent'].forEach(s=>{
+    const btn = document.getElementById('att-btn-'+s);
+    if(!btn) return;
+    const isActive = s===status;
+    btn.style.background   = isActive ? (s==='worked'?'var(--green-bg)':s==='half'?'var(--amber-bg)':s==='custom'?'var(--blue-bg)':'var(--red-bg)') : 'var(--bg1)';
+    btn.style.borderColor  = isActive ? (s==='worked'?'var(--green)':s==='half'?'var(--amber)':s==='custom'?'var(--blue)':'var(--red)') : 'var(--brd)';
+    btn.style.color        = isActive ? (s==='worked'?'var(--green-txt)':s==='half'?'var(--amber-txt)':s==='custom'?'var(--blue-txt)':'var(--red-txt)') : 'var(--txt3)';
+    btn.style.fontWeight   = isActive ? '600' : '400';
+  });
+}
+
+function showAttTimeFields(status) {
+  const fields = document.getElementById('att-time-fields');
+  if(!fields) return;
+  fields.style.display = (status==='worked'||status==='custom') ? 'block' : 'none';
+  // For half day — set end time to half of standard hours
+  if(status==='half') {
+    const biz = businesses.find(b=>b.id===currentBizId)||{};
+    const p   = JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null') || biz.portData || {};
+    fields.style.display = 'block'; // still show for half day
+  }
+}
+
+function attCalcHours() {
+  const start = document.getElementById('att-time-start')?.value;
+  const end   = document.getElementById('att-time-end')?.value;
+  const brk   = parseInt(document.getElementById('att-break')?.value)||0;
+  const biz   = businesses.find(b=>b.id===currentBizId)||{};
+  const p     = JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null') || biz.portData || {};
+  const salary= (p.salary||0) - (p.jobExpenses||0);
+  const workDays = p.workDays||5;
+  const stdHrs   = p.workHours||8;
+  const workSecsPerMonth = workDays * stdHrs * 3600 * (30.44/7);
+  const hourlyRate = workSecsPerMonth > 0 ? salary / (workSecsPerMonth/3600) : 0;
+  const sym = SYMS[getBizCur(currentBizId)] || getBizCur(currentBizId);
+
+  if(start && end) {
+    const [sh,sm] = start.split(':').map(Number);
+    const [eh,em] = end.split(':').map(Number);
+    let netMins = (eh*60+em) - (sh*60+sm) - brk;
+    if(netMins < 0) netMins += 24*60; // overnight
+    const netHrs = Math.max(0, netMins/60);
+    const earned = netHrs * hourlyRate;
+    setText('att-net-hours', netHrs.toFixed(1)+' hrs');
+    setText('att-day-earned', sym+' '+Math.round(earned).toLocaleString());
+  } else {
+    setText('att-net-hours', '—');
+    setText('att-day-earned', '—');
+  }
+}
+
+function saveAttDay() {
+  if(!attSelectedDate) return;
+  const data   = loadAttData();
+  const start  = document.getElementById('att-time-start')?.value || '';
+  const end    = document.getElementById('att-time-end')?.value   || '';
+  const brk    = parseInt(document.getElementById('att-break')?.value)||0;
+  const note   = document.getElementById('att-note')?.value.trim() || '';
+  const biz    = businesses.find(b=>b.id===currentBizId)||{};
+  const p      = JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null') || biz.portData || {};
+  const stdHrs = p.workHours || 8;
+
+  let hours = 0;
+  if(attSelectedStatus==='worked') hours = stdHrs;
+  else if(attSelectedStatus==='half') hours = stdHrs/2;
+  else if(attSelectedStatus==='custom' && start && end) {
+    const [sh,sm] = start.split(':').map(Number);
+    const [eh,em] = end.split(':').map(Number);
+    let netMins = (eh*60+em) - (sh*60+sm) - brk;
+    if(netMins < 0) netMins += 24*60;
+    hours = Math.max(0, netMins/60);
+  } else if(attSelectedStatus==='absent') hours = 0;
+
+  if(attSelectedStatus === 'none' || !attSelectedStatus) {
+    delete data[attSelectedDate];
+  } else {
+    data[attSelectedDate] = { status:attSelectedStatus, hours, startTime:start, endTime:end, break:brk, note };
+  }
+
+  saveAttData(data);
+  closeAttDayPanel();
+  renderAttendanceCal();
+  // Update the job live ticker
+  updateJobFromAttendance();
+}
+
+function updateJobFromAttendance() {
+  // Recalculate this month's actual earnings from attendance data
+  const data  = loadAttData();
+  const biz   = businesses.find(b=>b.id===currentBizId)||{};
+  const p     = JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null') || biz.portData || {};
+  const salary= (p.salary||0)-(p.jobExpenses||0);
+  const stdHrs= p.workHours||8;
+  const workDays = p.workDays||5;
+  const workSecsPerMonth = workDays * stdHrs * 3600 * (30.44/7);
+  const hourlyRate = workSecsPerMonth > 0 ? salary/(workSecsPerMonth/3600) : 0;
+
+  const now = new Date();
+  const prefix = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  let totalHours = 0;
+  Object.entries(data).forEach(([date, rec])=>{
+    if(date.startsWith(prefix) && rec.hours) totalHours += rec.hours;
+  });
+
+  updateJobLiveTicker(totalHours, salary, hourlyRate);
+}
+
+// ── Highlight the weekday button matching the selected date ──
+function highlightRepeatBtn(dateStr) {
+  if(!dateStr) return;
+  const dow = new Date(dateStr).getDay(); // 0=Sun,1=Mon...
+  const days = [0,1,2,3,4,5,6]; // Sun,Mon,...,Sat
+  const btns = document.querySelectorAll('.att-repeat-day');
+  btns.forEach((btn, i) => {
+    // btns order: Mon=0,Tue=1,Wed=2,Thu=3,Fri=4,Sat=5,Sun=6
+    const btnDow = i === 6 ? 0 : i + 1; // convert btn index to JS day-of-week
+    const isMatch = btnDow === dow;
+    btn.style.background   = isMatch ? 'var(--blue-bg)'  : 'var(--bg1)';
+    btn.style.borderColor  = isMatch ? 'var(--blue)'     : 'var(--brd)';
+    btn.style.color        = isMatch ? 'var(--blue-txt)' : 'var(--txt3)';
+    btn.style.fontWeight   = isMatch ? '600'             : '400';
+  });
+}
+
+// ── Build an attendance record from current panel state ──
+function buildAttRecord() {
+  const status = attSelectedStatus || 'worked';
+  const start  = document.getElementById('att-time-start')?.value || '';
+  const end    = document.getElementById('att-time-end')?.value   || '';
+  const brk    = parseInt(document.getElementById('att-break')?.value)||0;
+  const note   = document.getElementById('att-note')?.value.trim() || '';
+  const biz    = businesses.find(b=>b.id===currentBizId)||{};
+  const p      = JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null') || biz.portData || {};
+  const stdHrs = p.workHours||8;
+
+  let hours = 0;
+  if(status==='worked') hours = stdHrs;
+  else if(status==='half') hours = stdHrs/2;
+  else if(status==='custom' && start && end) {
+    const [sh,sm] = start.split(':').map(Number);
+    const [eh,em] = end.split(':').map(Number);
+    let netMins = (eh*60+em)-(sh*60+sm)-brk;
+    if(netMins<0) netMins+=24*60;
+    hours = Math.max(0,netMins/60);
+  }
+  return { status, hours, startTime:start, endTime:end, break:brk, note };
+}
+
+// ── Repeat for all occurrences of a given weekday in the current month ──
+function repeatAttForDay(targetDow) { // 0=Sun,1=Mon,...,6=Sat
+  if(!attSelectedDate) return;
+  const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const daysInMonth = new Date(attYear, attMonth+1, 0).getDate();
+  const today   = new Date().toISOString().slice(0,10);
+  const rec     = buildAttRecord();
+  const data    = loadAttData();
+  let count = 0;
+
+  for(let d=1; d<=daysInMonth; d++) {
+    const dateStr = `${attYear}-${String(attMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dow     = new Date(attYear, attMonth, d).getDay();
+    if(dow === targetDow && dateStr <= today) {
+      data[dateStr] = {...rec};
+      count++;
+    }
+  }
+
+  saveAttData(data);
+  closeAttDayPanel();
+  renderAttendanceCal();
+
+  // Brief confirmation
+  const msg = `✓ Applied to all ${dayNames[targetDow]}s this month (${count} days)`;
+  setSyncStatus('ok', msg);
+  setTimeout(()=>setSyncStatus('ok',''), 3000);
+}
+
+// ── Repeat for all weekdays (Mon–Fri by default, or based on work days setting) ──
+function repeatAttForAll() {
+  if(!attSelectedDate) return;
+  const biz  = businesses.find(b=>b.id===currentBizId)||{};
+  const p    = JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null') || biz.portData || {};
+  const workDays = p.workDays || 5; // e.g. 5 = Mon-Fri
+  // Work days: assume Mon=1 through workDays (Mon=1,Tue=2,...,Fri=5,Sat=6)
+  const workDowSet = new Set();
+  for(let i=1; i<=workDays; i++) workDowSet.add(i>6?0:i);
+
+  const daysInMonth = new Date(attYear, attMonth+1, 0).getDate();
+  const today = new Date().toISOString().slice(0,10);
+  const rec   = buildAttRecord();
+  const data  = loadAttData();
+  let count   = 0;
+
+  for(let d=1; d<=daysInMonth; d++) {
+    const dateStr = `${attYear}-${String(attMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dow     = new Date(attYear, attMonth, d).getDay();
+    if(workDowSet.has(dow) && dateStr <= today) {
+      data[dateStr] = {...rec};
+      count++;
+    }
+  }
+
+  saveAttData(data);
+  closeAttDayPanel();
+  renderAttendanceCal();
+  setSyncStatus('ok', `✓ Applied to all ${count} working days this month`);
+  setTimeout(()=>setSyncStatus('ok',''), 3000);
+}
+
+// ── Clear all attendance for current month ──
+function clearAttMonth() {
+  if(!confirm('Clear all attendance records for this month?')) return;
+  const data   = loadAttData();
+  const prefix = `${attYear}-${String(attMonth+1).padStart(2,'0')}`;
+  Object.keys(data).forEach(k=>{ if(k.startsWith(prefix)) delete data[k]; });
+  saveAttData(data);
+  closeAttDayPanel();
+  renderAttendanceCal();
+}
+
+function updateJobLiveTicker(totalHoursThisMonth, netMonthly, hourlyRate) {
+  const sym = SYMS[getBizCur(currentBizId)] || getBizCur(currentBizId);
+  const fmt  = n => sym+' '+Math.round(n).toLocaleString();
+  setText('job-live-hr', fmt(hourlyRate));
+  setText('job-live-day', fmt(hourlyRate * (parseInt(document.getElementById('att-net-hours')?.textContent)||8)));
+}
+
+// ═══════════════════════════════════════════════════
+// TYPE-AWARE NAV SYSTEM
+// ═══════════════════════════════════════════════════
+
+const TYPE_TABS = {
+  business: [
+    { id:'live',    label:'Live target' },
+    { id:'charts',  label:'Charts' },
+    { id:'hours',   label:'Hours' },
+    { id:'expenses',label:'Expenses' },
+    { id:'income',  label:'Income' },
+    { id:'loans',   label:'💳 Loans' },
+    { id:'ops',     label:'Daily log' },
+    { id:'report',  label:'Report' },
+  ],
+  job: [
+    { id:'job-live',       label:'Live earnings' },
+    { id:'job-salary',     label:'Salary log' },
+    { id:'job-attendance', label:'Attendance' },
+    { id:'job-expenses',   label:'Job expenses' },
+    { id:'job-leave',      label:'Leave' },
+    { id:'job-charts',     label:'Charts' },
+    { id:'job-payslips',   label:'Payslips' },
+  ],
+  rental: [
+    { id:'rental-live',        label:'Live earnings' },
+    { id:'rental-payments',    label:'Payments' },
+    { id:'rental-tenants',     label:'Tenants' },
+    { id:'rental-maintenance', label:'Maintenance' },
+    { id:'rental-loans',       label:'💳 Loans' },
+    { id:'rental-charts',      label:'Charts' },
+    { id:'rental-report',      label:'Report' },
+  ],
+  fd: [
+    { id:'fd-live',     label:'Live interest' },
+    { id:'fd-interest', label:'Interest log' },
+    { id:'fd-maturity', label:'Maturity' },
+    { id:'fd-renewals', label:'Renewals' },
+    { id:'fd-loans',    label:'💳 Loans' },
+    { id:'fd-charts',   label:'Charts' },
+  ],
+  investment: [
+    { id:'inv-live',         label:'Live value' },
+    { id:'inv-holdings',     label:'Holdings' },
+    { id:'inv-transactions', label:'Transactions' },
+    { id:'inv-dividends',    label:'Dividends' },
+    { id:'inv-loans',        label:'💳 Loans' },
+    { id:'inv-charts',       label:'Charts' },
+    { id:'inv-report',       label:'Report' },
+  ],
+  farming: [
+    { id:'farming-live',    label:'Live accrual' },
+    { id:'farming-seasons', label:'Seasons' },
+    { id:'farming-costs',   label:'Costs' },
+    { id:'farming-harvest', label:'Harvest log' },
+    { id:'farming-sales',   label:'Sales' },
+    { id:'farming-loans',   label:'💳 Loans' },
+    { id:'farming-charts',  label:'Charts' },
+    { id:'farming-report',  label:'Report' },
+  ],
+  other: [
+    { id:'other-live',     label:'Live earnings' },
+    { id:'other-income',   label:'Income log' },
+    { id:'other-expenses', label:'Expenses' },
+    { id:'other-trends',   label:'Trends' },
+  ],
+};
+
+function renderNavForType(type) {
+  const tabs   = TYPE_TABS[type] || TYPE_TABS.business;
+  const nav    = document.getElementById('main-nav');
+  const meta   = PORT_TYPE_META[type] || PORT_TYPE_META.business;
+
+  // Rebuild nav — keep portfolio tab + manage tab, replace middle tabs
+  nav.innerHTML = `
+    <button class="ntab" onclick="sw('portfolio',this)" id="nav-portfolio" style="border-radius:20px;padding:0 10px">⌂</button>
+    ${tabs.map(t=>`<button class="ntab" onclick="sw('${t.id}',this)" id="nav-${t.id}">${t.label}</button>`).join('')}
+    <button class="ntab" onclick="sw('manage',this)" style="margin-left:auto" id="nav-manage">⚙</button>
+  `;
+
+  // Update nav translation map
+  updateNavTranslations();
+}
+
+function updateNavTranslations() {
+  const type = (businesses.find(b=>b.id===currentBizId)||{}).type || 'business';
+  const tabs  = TYPE_TABS[type] || TYPE_TABS.business;
+  tabs.forEach(t=>{
+    const el = document.getElementById('nav-'+t.id);
+    if(el) el.textContent = t.label;
+  });
+}
+
+// ── Live tickers for each type ──
+let _typeLiveTimer = null;
+let _typeLiveElapsed = 0;
+
+function startTypeLiveTicker(type, portData) {
+  stopTypeLiveTicker();
+  _typeLiveElapsed = 0;
+  const biz = businesses.find(b=>b.id===currentBizId)||{};
+  const sym = SYMS[getBizCur(currentBizId)] || getBizCur(currentBizId);
+  const p   = portData || {};
+
+  const fmt  = n => sym+' '+Math.round(n).toLocaleString();
+  const fmt4 = n => sym+' '+n.toFixed(4);
+
+  let ratePerSec = 0;
+  let todayBase  = 0;
+
+  if(type === 'job') {
+    const netMonthly = (p.salary||0) - ((p.jobExpenses||0));
+    const workSecsPerMonth = (p.workDays||22) * (p.workHours||8) * 3600;
+    ratePerSec = netMonthly / workSecsPerMonth;
+    todayBase  = netMonthly / 30.44;
+    const hrRate = ratePerSec * 3600;
+    setText('job-live-status', `${sym} ${Math.round(hrRate).toLocaleString()}/hour net · ${p.workDays||5} days/week`);
+    setText('job-live-hr',    fmt(hrRate));
+    setText('job-live-month', fmt(netMonthly));
+    // Add edit button to live tabs
+    ['job','rental','fd','investment','farming','other'].forEach(t=>{
+      const editBtn = document.getElementById(t+'-edit-btn');
+      if(editBtn) editBtn.onclick = ()=>openEditSource(currentBizId);
+    });
+    setText('job-summary-body', `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+        <div><div style="font-size:10px;color:var(--txt3)">Gross salary</div><div style="font-size:14px;font-weight:500">${fmt(p.salary||0)}/mo</div></div>
+        <div><div style="font-size:10px;color:var(--txt3)">Job expenses</div><div style="font-size:14px;font-weight:500;color:var(--red)">${fmt(p.jobExpenses||0)}/mo</div></div>
+        <div><div style="font-size:10px;color:var(--txt3)">Net take-home</div><div style="font-size:14px;font-weight:500;color:var(--green)">${fmt((p.salary||0)-(p.jobExpenses||0))}/mo</div></div>
+        <div><div style="font-size:10px;color:var(--txt3)">Pay day</div><div style="font-size:14px;font-weight:500">${p.payDay||25}th of month</div></div>
+      </div>`);
+
+  } else if(type === 'rental') {
+    ratePerSec = (p.rent||0) / (30.44*24*3600);
+    todayBase  = (p.rent||0) / 30.44;
+    const dueDate = p.dueDay||1;
+    const today   = new Date().getDate();
+    const daysLeft = dueDate >= today ? dueDate - today : (30 - today + dueDate);
+    setText('rental-live-sub', `${sym} ${Math.round((p.rent||0)/30.44).toLocaleString()}/day · Tenant: ${p.tenant||'Not set'}`);
+    setText('rental-live-day',   fmt((p.rent||0)/30.44));
+    setText('rental-live-month', fmt(p.rent||0));
+    setText('rental-live-due',   daysLeft+' days');
+    setText('rental-summary-body', `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+        <div><div style="font-size:10px;color:var(--txt3)">Monthly rent</div><div style="font-size:14px;font-weight:500">${fmt(p.rent||0)}</div></div>
+        <div><div style="font-size:10px;color:var(--txt3)">Due date</div><div style="font-size:14px;font-weight:500">${p.dueDay||1}st of month</div></div>
+        <div><div style="font-size:10px;color:var(--txt3)">Tenant</div><div style="font-size:14px;font-weight:500">${p.tenant||'—'}</div></div>
+        <div><div style="font-size:10px;color:var(--txt3)">Annual income</div><div style="font-size:14px;font-weight:500;color:var(--green)">${fmt((p.rent||0)*12)}</div></div>
+      </div>`);
+
+  } else if(type === 'fd') {
+    const annualInterest = (p.principal||0) * ((p.rate||0)/100);
+    ratePerSec = annualInterest / (365*24*3600);
+    todayBase  = annualInterest / 365;
+    const endDate  = p.endDate ? new Date(p.endDate) : null;
+    const daysLeft = endDate ? Math.max(0,Math.ceil((endDate-new Date())/(1000*60*60*24))) : '—';
+    setText('fd-live-sub', `${sym} ${Math.round(annualInterest/12).toLocaleString()}/month · ${p.rate||0}% p.a.`);
+    setText('fd-live-day',     fmt(annualInterest/365));
+    setText('fd-live-month',   fmt(annualInterest/12));
+    setText('fd-live-matures', typeof daysLeft==='number'?daysLeft+' days':'—');
+    setText('fd-summary-body', `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+        <div><div style="font-size:10px;color:var(--txt3)">Principal</div><div style="font-size:14px;font-weight:500">${fmt(p.principal||0)}</div></div>
+        <div><div style="font-size:10px;color:var(--txt3)">Rate</div><div style="font-size:14px;font-weight:500">${p.rate||0}% p.a.</div></div>
+        <div><div style="font-size:10px;color:var(--txt3)">Annual interest</div><div style="font-size:14px;font-weight:500;color:var(--amber)">${fmt(annualInterest)}</div></div>
+        <div><div style="font-size:10px;color:var(--txt3)">Maturity</div><div style="font-size:14px;font-weight:500">${p.endDate||'—'}</div></div>
+      </div>`);
+
+  } else if(type === 'investment') {
+    const gain = (p.currentValue||0) - (p.invested||0);
+    const returnPct = p.invested>0 ? ((gain/p.invested)*100).toFixed(1) : '0';
+    ratePerSec = Math.max(0,gain) / (365*24*3600);
+    setText('inv-live-value',    fmt(p.currentValue||0));
+    setText('inv-live-return',   `${gain>=0?'+':''}${fmt(gain)} total return`);
+    setText('inv-live-invested', fmt(p.invested||0));
+    setText('inv-live-gain',     (gain>=0?'+':'')+fmt(gain));
+    setText('inv-live-pct',      (returnPct>=0?'+':'')+returnPct+'%');
+
+  } else if(type === 'farming') {
+    const seasonDays = p.seasonDays || 120;
+    ratePerSec = (p.harvestValue||0) / (seasonDays*24*3600);
+    const elapsed  = p.seasonStart ? Math.ceil((new Date()-new Date(p.seasonStart))/(1000*60*60*24)) : 0;
+    const accrued  = Math.min(p.harvestValue||0, ratePerSec*elapsed*86400);
+    const daysLeft = Math.max(0, seasonDays - elapsed);
+    setText('farm-live-sub',     `${p.seasonDays||120}-day season · ${elapsed} days elapsed`);
+    setText('farm-live-total',   fmt(p.harvestValue||0));
+    setText('farm-live-accrued', fmt(accrued));
+    setText('farm-live-harvest', daysLeft+' days');
+
+  } else if(type === 'other') {
+    ratePerSec = (p.income||0) / (30.44*24*3600);
+    todayBase  = (p.income||0) / 30.44;
+    setText('other-live-sub',   `${sym} ${Math.round((p.income||0)/30.44).toLocaleString()}/day · ${p.freq||'monthly'}`);
+    setText('other-live-day',   fmt((p.income||0)/30.44));
+    setText('other-live-month', fmt(p.income||0));
+    setText('other-live-year',  fmt((p.income||0)*12));
+  }
+
+  // ── Pre-calculate worked seconds so far this month ──
+  const now          = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const secsElapsedThisMonth = Math.floor((now - startOfMonth) / 1000);
+
+  // ── For JOB: calculate actual worked seconds this month from attendance ──
+  function calcJobWorkedSecsThisMonth() {
+    const attData  = JSON.parse(localStorage.getItem(lsAttKey(currentBizId)) || '{}');
+    const prefix   = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    const stdHrs   = p.workHours || 8;
+    const workDays = p.workDays  || 5;
+    const netSalary= (p.salary||0) - (p.jobExpenses||0);
+    const workSecsPerMonth = workDays * stdHrs * 3600 * (30.44/7);
+    const hourlyRate = workSecsPerMonth > 0 ? netSalary / (workSecsPerMonth/3600) : 0;
+
+    let totalWorkedSecs = 0;
+    let totalEarned = 0;
+
+    // Sum up all logged days this month
+    Object.entries(attData).forEach(([date, rec]) => {
+      if(!date.startsWith(prefix) || !rec.hours) return;
+      totalWorkedSecs += rec.hours * 3600;
+      totalEarned     += rec.hours * hourlyRate;
+    });
+
+    // Add today's in-progress hours if currently in a work window
+    const todayStr   = now.toISOString().slice(0,10);
+    const todayRec   = attData[todayStr];
+    const isWorkDay  = now.getDay() !== 0 && now.getDay() !== 6; // not weekend
+
+    if(isWorkDay) {
+      const startTime = p.startTime || '08:00';
+      const [sh, sm]  = startTime.split(':').map(Number);
+      const workStart = new Date(now); workStart.setHours(sh, sm, 0, 0);
+      const workEnd   = new Date(workStart); workEnd.setHours(sh + (p.workHours||8), sm, 0, 0);
+      const isInWork  = now >= workStart && now < workEnd;
+
+      if(isInWork && !todayRec) {
+        // Currently at work, not yet logged — count live progress
+        const liveSecs = Math.floor((now - workStart) / 1000);
+        totalWorkedSecs += liveSecs;
+        totalEarned     += (liveSecs / 3600) * hourlyRate;
+      }
+    }
+    return { totalWorkedSecs, totalEarned, hourlyRate };
+  }
+
+  // ── For FARMING: calculate accrued seconds in active season ──
+  function calcFarmingAccruedSecs() {
+    const seasonDays  = p.seasonDays  || 120;
+    const seasonStart = p.seasonStart ? new Date(p.seasonStart) : new Date(now.getFullYear(), now.getMonth(), 1);
+    const seasonEnd   = new Date(seasonStart); seasonEnd.setDate(seasonEnd.getDate() + seasonDays);
+    const isInSeason  = now >= seasonStart && now < seasonEnd;
+    const accrualStart= seasonStart > startOfMonth ? seasonStart : startOfMonth;
+    const accrualEnd  = isInSeason ? now : (seasonEnd < now ? seasonEnd : now);
+    const accrualSecs = Math.max(0, Math.floor((accrualEnd - accrualStart) / 1000));
+    return { accrualSecs, isInSeason, seasonEnd, seasonStart };
+  }
+
+  // ── Job: pre-compute base at start ──
+  let jobBase = 0, jobHourlyRate = 0, jobCurrentlyWorking = false;
+  if(type === 'job') {
+    const jd = calcJobWorkedSecsThisMonth();
+    jobBase        = jd.totalEarned;
+    jobHourlyRate  = jd.hourlyRate;
+    // Check if currently in working hours right now
+    const isWorkDay    = now.getDay() !== 0 && now.getDay() !== 6;
+    const startTime    = p.startTime || '08:00';
+    const [sh, sm]     = startTime.split(':').map(Number);
+    const workStart    = new Date(now); workStart.setHours(sh, sm, 0, 0);
+    const workEnd      = new Date(workStart); workEnd.setHours(sh + (p.workHours||8), sm, 0, 0);
+    jobCurrentlyWorking = isWorkDay && now >= workStart && now < workEnd;
+    // Check attendance for today
+    const attData   = JSON.parse(localStorage.getItem(lsAttKey(currentBizId)) || '{}');
+    const todayRec  = attData[now.toISOString().slice(0,10)];
+    if(todayRec && todayRec.status === 'absent') jobCurrentlyWorking = false;
+    // Update status indicator
+    setText('job-live-status', jobCurrentlyWorking
+      ? `⏱ On shift · ${sym} ${Math.round(jobHourlyRate).toLocaleString()}/hr`
+      : `⏸ Off shift · ${sym} ${Math.round(jobHourlyRate).toLocaleString()}/hr`);
+    const perSecWhenWorking = jobHourlyRate / 3600;
+    if(perSecEl) perSecEl.textContent = jobCurrentlyWorking
+      ? `+${fmt4(perSecWhenWorking)} per second (on shift)`
+      : `Paused — not on shift`;
+  }
+
+  // ── Farming: pre-compute ──
+  let farmBase = 0, farmRatePerSec = 0, farmInSeason = false;
+  if(type === 'farming') {
+    const fd = calcFarmingAccruedSecs();
+    farmInSeason  = fd.isInSeason;
+    farmRatePerSec= ratePerSec;
+    farmBase      = farmRatePerSec * fd.accrualSecs;
+    const daysLeft= fd.isInSeason ? Math.max(0, Math.ceil((fd.seasonEnd - now) / (1000*60*60*24))) : 0;
+    setText('farm-live-sub', fd.isInSeason
+      ? `🌱 Season active · ${daysLeft} days to harvest`
+      : `⏸ Season not active`);
+    const perSecEl2 = document.getElementById('farming-live-per-sec');
+    if(perSecEl2) perSecEl2.textContent = fd.isInSeason
+      ? `+${fmt4(farmRatePerSec)} per second (growing)`
+      : 'Season not active — not accruing';
+    setText('farm-live-total',   fmt(p.harvestValue||0));
+    setText('farm-live-accrued', fmt(farmBase));
+  }
+
+  // Start live ticker — big number = monthly cumulative to this second
+  _typeLiveTimer = setInterval(()=>{
+    _typeLiveElapsed++;
+
+    if(type === 'investment') {
+      const gain     = (p.currentValue||0) - (p.invested||0);
+      const gainRate = Math.max(0,gain) / (365*24*3600);
+      setText('inv-live-value', fmt((p.currentValue||0) + gainRate*_typeLiveElapsed));
+      return;
+    }
+
+    // ── JOB: only tick during work hours ──
+    if(type === 'job') {
+      const nowTick   = new Date();
+      const isWD      = nowTick.getDay() !== 0 && nowTick.getDay() !== 6;
+      const [sh2,sm2] = (p.startTime||'08:00').split(':').map(Number);
+      const wStart    = new Date(nowTick); wStart.setHours(sh2, sm2, 0, 0);
+      const wEnd      = new Date(wStart); wEnd.setHours(sh2 + (p.workHours||8), sm2, 0, 0);
+      const onShift   = isWD && nowTick >= wStart && nowTick < wEnd;
+      // Check attendance
+      const attData2  = JSON.parse(localStorage.getItem(lsAttKey(currentBizId)) || '{}');
+      const todayRec2 = attData2[nowTick.toISOString().slice(0,10)];
+      const isAbsent  = todayRec2?.status === 'absent';
+      const ticking   = onShift && !isAbsent;
+
+      const perSecEl3 = document.getElementById('job-live-per-sec');
+      if(ticking) {
+        jobBase += jobHourlyRate / 3600;
+        setText('job-live-sec', fmt4(jobBase));
+        if(perSecEl3) perSecEl3.textContent = `+${fmt4(jobHourlyRate/3600)} per second (on shift)`;
+        setText('job-live-status', `⏱ On shift · ${sym} ${Math.round(jobHourlyRate).toLocaleString()}/hr`);
+      } else {
+        setText('job-live-sec', fmt4(jobBase)); // freeze — no ticking
+        if(perSecEl3) perSecEl3.textContent = isAbsent ? '🔴 Absent today' : (onShift ? 'Paused' : '⏸ Off shift');
+        setText('job-live-status', isAbsent ? `🔴 Absent today · ${sym} ${Math.round(jobHourlyRate).toLocaleString()}/hr` : `⏸ Off shift · ${sym} ${Math.round(jobHourlyRate).toLocaleString()}/hr`);
+      }
+      setText('job-live-month', fmt4(jobBase));
+      setText('job-live-day',   fmt(ticking ? jobHourlyRate * Math.floor((new Date()-wStart)/3600000) : 0));
+      return;
+    }
+
+    // ── FARMING: only tick during active season ──
+    if(type === 'farming') {
+      const fd2 = calcFarmingAccruedSecs();
+      if(fd2.isInSeason) {
+        farmBase += farmRatePerSec;
+        const perSecEl4 = document.getElementById('farming-live-per-sec');
+        if(perSecEl4) perSecEl4.textContent = `+${fmt4(farmRatePerSec)} per second (growing)`;
+      }
+      setText('farm-live-sec',     fmt4(farmBase));
+      setText('farm-live-accrued', fmt4(farmBase));
+      return;
+    }
+
+    // ── All other types: tick continuously ──
+    const secsIntoMonth = secsElapsedThisMonth + _typeLiveElapsed;
+    const monthlyEarned = ratePerSec * secsIntoMonth;
+    setText(type+'-live-sec', fmt4(monthlyEarned));
+
+    const perSecEl = document.getElementById(type+'-live-per-sec');
+    if(perSecEl) perSecEl.textContent = '+'+fmt4(ratePerSec)+' per second';
+
+    if(type==='rental')  { setText('rental-live-month', fmt(monthlyEarned)); setText('rental-live-day', fmt(ratePerSec * 86400)); }
+    if(type==='fd')      { setText('fd-live-month',     fmt(monthlyEarned)); setText('fd-live-day',   fmt(ratePerSec * 86400)); }
+    if(type==='other')   { setText('other-live-month',  fmt(monthlyEarned)); setText('other-live-day', fmt(ratePerSec * 86400)); }
+
+  }, 1000);
+}
+
+function stopTypeLiveTicker() {
+  if(_typeLiveTimer) { clearInterval(_typeLiveTimer); _typeLiveTimer=null; }
+}
+
+// ═══════════════════════════════════════════════════
 // PORTFOLIO DASHBOARD
 // ═══════════════════════════════════════════════════
 let portTimer       = null;
@@ -3322,7 +5294,7 @@ const PORT_TYPE_META = {
 };
 
 function calcPortSources() {
-  const cur = document.getElementById('cur')?.value || 'LKR';
+  const cur = getBizCur(currentBizId);
   const sources = [];
 
   businesses.forEach(biz => {
@@ -3373,101 +5345,151 @@ function calcPortSources() {
 function renderPortfolio() {
   portSources = calcPortSources();
 
-  const totalRatePerSec  = portSources.reduce((a,s) => a+s.ratePerSec, 0);
-  const totalMonthly     = portSources.reduce((a,s) => a+s.monthlyIncome, 0);
-  const sym = document.getElementById('cur')?.value || 'LKR';
+  const totalRatePerSec = portSources.reduce((a,s) => a+s.ratePerSec, 0);
+  const totalMonthly    = portSources.reduce((a,s) => a+s.monthlyIncome, 0);
 
-  // Update hero labels
+  // Group sources by currency for hero display
+  const byCur = {};
+  portSources.forEach(s => {
+    const cur = getBizCur(s.id);
+    const curSym = SYMS[cur] || cur;
+    if(!byCur[cur]) byCur[cur] = { sym:curSym, monthly:0, ratePerSec:0 };
+    byCur[cur].monthly    += s.monthlyIncome;
+    byCur[cur].ratePerSec += s.ratePerSec;
+  });
+
+  // Hero: show multi-currency breakdown or single if only one
+  const curKeys = Object.keys(byCur);
   const viewMult = portView==='today' ? 1/30.44 : portView==='year' ? 12 : 1;
-  const viewTotal = totalMonthly * viewMult;
-  const heroLbls  = {today:'Total portfolio income today', month:'Total portfolio income this month', year:'Total portfolio income this year'};
-  setText('port-hero-lbl', heroLbls[portView]);
-  setText('port-hero-total', sym+' '+Math.round(viewTotal).toLocaleString());
-  setText('port-hero-sub', portSources.length+' income source'+(portSources.length!==1?'s':''));
-  setText('port-per-sec', (totalRatePerSec).toFixed(4));
-  setText('port-per-min', sym+' '+(totalRatePerSec*60).toFixed(2));
-  setText('port-per-hr',  sym+' '+Math.round(totalRatePerSec*3600).toLocaleString());
-  setText('port-per-day', sym+' '+Math.round(totalRatePerSec*86400).toLocaleString());
-  setText('port-bk-total', sym+' '+Math.round(viewTotal).toLocaleString());
 
-  // Render source cards
+  const heroLbls = {today:'Total portfolio income today', month:'This month', year:'This year'};
+  setText('port-hero-lbl', heroLbls[portView]);
+  setText('port-hero-sub', portSources.length+' income source'+(portSources.length!==1?'s':'')+(curKeys.length>1?' · '+curKeys.length+' currencies':''));
+
+  if(curKeys.length === 1) {
+    // Single currency — show simple total
+    const c = byCur[curKeys[0]];
+    setText('port-hero-total', c.sym+' '+Math.round(c.monthly*viewMult).toLocaleString());
+    setText('port-per-sec',  '+'+c.sym+' '+(c.ratePerSec).toFixed(4));
+    setText('port-per-min',  c.sym+' '+(c.ratePerSec*60).toFixed(2));
+    setText('port-per-hr',   c.sym+' '+Math.round(c.ratePerSec*3600).toLocaleString());
+    setText('port-per-day',  c.sym+' '+Math.round(c.ratePerSec*86400).toLocaleString());
+  } else {
+    // Multi-currency — show each on its own line in hero
+    const lines = curKeys.map(cur => {
+      const c = byCur[cur];
+      return `${c.sym} ${Math.round(c.monthly*viewMult).toLocaleString()}`;
+    });
+    setText('port-hero-total', lines.join('  +  '));
+    // Per-second: show all currencies
+    const secLines = curKeys.map(cur => `${byCur[cur].sym} ${byCur[cur].ratePerSec.toFixed(4)}`);
+    setText('port-per-sec', secLines.join(' + '));
+    setText('port-per-min', curKeys.map(cur=>`${byCur[cur].sym} ${(byCur[cur].ratePerSec*60).toFixed(2)}`).join(' + '));
+    setText('port-per-hr',  curKeys.map(cur=>`${byCur[cur].sym} ${Math.round(byCur[cur].ratePerSec*3600).toLocaleString()}`).join(' + '));
+    setText('port-per-day', curKeys.map(cur=>`${byCur[cur].sym} ${Math.round(byCur[cur].ratePerSec*86400).toLocaleString()}`).join(' + '));
+  }
+  setText('port-bk-total', curKeys.map(cur=>`${byCur[cur].sym} ${Math.round(byCur[cur].monthly*viewMult).toLocaleString()}`).join(' + '));
+
+  // Render source cards — each in its own currency
   const list = document.getElementById('port-sources');
   if(!list) return;
   list.innerHTML = portSources.length === 0
     ? `<div style="text-align:center;padding:20px;color:var(--txt3);font-size:12px">No income sources yet — add businesses or income sources in ⚙</div>`
     : portSources.map(s => {
-      const pct = totalMonthly > 0 ? Math.round(s.monthlyIncome/totalMonthly*100) : 0;
+      const pct    = totalMonthly > 0 ? Math.round(s.monthlyIncome/totalMonthly*100) : 0;
+      const srcCur = getBizCur(s.id);
+      const srcSym = SYMS[srcCur] || srcCur;
+      const viewMult2 = portView==='today' ? 1/30.44 : portView==='year' ? 12 : 1;
+      const switchTarget = (s.type||'business')==='business' ? `sw('live',document.getElementById('nav-live'))` : `sw('${(TYPE_TABS[s.type]||TYPE_TABS.business)[0].id}',document.getElementById('nav-${(TYPE_TABS[s.type]||TYPE_TABS.business)[0].id}'))`;
       return `
-      <div class="port-src" onclick="switchBiz('${s.id}');sw('live',document.getElementById('nav-live'))">
+      <div class="port-src" onclick="switchBiz('${s.id}');${switchTarget}">
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:20px">${s.icon}</span>
           <div style="flex:1;min-width:0">
             <div style="font-size:12px;font-weight:500">${s.name}</div>
             <div style="display:flex;align-items:center;gap:5px;margin-top:2px">
               <div style="width:5px;height:5px;border-radius:50%;background:${s.color};animation:port-pulse 1.5s ease-in-out infinite"></div>
-              <span style="font-size:10px;color:var(--txt3)">${s.meta.label} · ${s.meta.mode}</span>
+              <span style="font-size:10px;color:var(--txt3)">${s.meta.label} · ${srcSym} · ${s.meta.mode}</span>
             </div>
           </div>
           <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:10px;color:var(--txt3);font-family:'DM Mono',monospace" id="psec-${s.id}">+${s.ratePerSec.toFixed(4)}/s</div>
-            <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${s.color}" id="ptot-${s.id}">${sym} ${Math.round(s.monthlyIncome/30.44).toLocaleString()}</div>
+            <div style="font-size:10px;color:var(--txt3);font-family:'DM Mono',monospace" id="psec-${s.id}">+${srcSym}${s.ratePerSec.toFixed(4)}/s</div>
+            <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${s.color}" id="ptot-${s.id}">${srcSym} ${Math.round(s.monthlyIncome*viewMult2).toLocaleString()}</div>
           </div>
         </div>
         <div class="port-src-bar"><div class="port-src-bar-fill" id="pbar-${s.id}" style="width:${pct}%;background:${s.color}"></div></div>
       </div>`;
     }).join('');
 
-  // Render breakdown
+  // Render breakdown — each in own currency
   const bk = document.getElementById('port-breakdown');
   if(bk) {
     bk.innerHTML = portSources.map(s => {
-      const pct = totalMonthly > 0 ? Math.round(s.monthlyIncome/totalMonthly*100) : 0;
+      const pct    = totalMonthly > 0 ? Math.round(s.monthlyIncome/totalMonthly*100) : 0;
+      const srcCur = getBizCur(s.id);
+      const srcSym = SYMS[srcCur] || srcCur;
+      const viewMult3 = portView==='today' ? 1/30.44 : portView==='year' ? 12 : 1;
       return `
       <div class="port-bk-row">
         <span style="font-size:14px;width:22px">${s.icon}</span>
         <span style="font-size:11px;flex:1;color:var(--txt2)">${s.name}</span>
         <div class="port-bk-bar-wrap"><div class="port-bk-bar" id="pbkbar-${s.id}" style="width:${pct}%;background:${s.color}"></div></div>
         <span style="font-size:10px;font-family:'DM Mono',monospace;width:30px;text-align:right;color:var(--txt3)">${pct}%</span>
-        <span style="font-size:11px;font-family:'DM Mono',monospace;width:90px;text-align:right;font-weight:500" id="pbkamt-${s.id}">${sym} ${Math.round(s.monthlyIncome/30.44).toLocaleString()}</span>
+        <span style="font-size:11px;font-family:'DM Mono',monospace;width:90px;text-align:right;font-weight:500" id="pbkamt-${s.id}">${srcSym} ${Math.round(s.monthlyIncome*viewMult3).toLocaleString()}</span>
       </div>`;
     }).join('') || `<div style="font-size:12px;color:var(--txt3);text-align:center;padding:10px 0">No data yet</div>`;
   }
 
   // Start ticker
-  startPortTicker(totalRatePerSec);
+  startPortTicker(portSources);
 }
 
-function startPortTicker(ratePerSec) {
+function startPortTicker(sources) {
   if(portTimer) clearInterval(portTimer);
   portElapsed = 0;
-  const sym = document.getElementById('cur')?.value || 'LKR';
 
   portTimer = setInterval(() => {
     portElapsed++;
-    const earned = ratePerSec * portElapsed;
-    const tick   = ratePerSec;
 
-    setText('port-sec-ticker', '+'+sym+' '+tick.toFixed(4));
-
-    // Update per-source today totals
+    // Per-source ticker updates
     if(portView === 'today') {
-      const todayBase = portSources.reduce((a,s) => a+s.monthlyIncome/30.44, 0);
-      setText('port-hero-total', sym+' '+Math.round(todayBase + earned).toLocaleString());
-
+      // Group by currency for hero
+      const byCur = {};
       portSources.forEach(s => {
-        const base = s.monthlyIncome / 30.44;
-        const srcEarned = s.ratePerSec * portElapsed;
-        const total = base + srcEarned;
-        setText('ptot-'+s.id, sym+' '+Math.round(total).toLocaleString());
-        // Update breakdown amounts
-        const grandTotal = portSources.reduce((a,ss)=>a+ss.monthlyIncome/30.44,0)+earned;
+        const cur    = getBizCur(s.id);
+        const srcSym = SYMS[cur] || cur;
+        const base   = s.monthlyIncome / 30.44;
+        const total  = base + s.ratePerSec * portElapsed;
+        if(!byCur[cur]) byCur[cur] = { sym:srcSym, total:0 };
+        byCur[cur].total += total;
+
+        // Update card
+        setText('ptot-'+s.id, srcSym+' '+Math.round(total).toLocaleString());
+        // Update breakdown
+        const grandBase = portSources.reduce((a,ss)=>a+ss.monthlyIncome/30.44,0);
+        const grandEarned = portSources.reduce((a,ss)=>a+ss.ratePerSec*portElapsed,0);
+        const grandTotal  = grandBase + grandEarned;
         const pct = grandTotal>0?Math.round(total/grandTotal*100):0;
-        setText('pbkamt-'+s.id, sym+' '+Math.round(total).toLocaleString());
+        setText('pbkamt-'+s.id, srcSym+' '+Math.round(total).toLocaleString());
         const bar = document.getElementById('pbkbar-'+s.id);
         if(bar) bar.style.width = pct+'%';
         const srcBar = document.getElementById('pbar-'+s.id);
         if(srcBar) srcBar.style.width = pct+'%';
       });
+
+      // Update hero total — multi or single currency
+      const curKeys = Object.keys(byCur);
+      if(curKeys.length === 1) {
+        const c = byCur[curKeys[0]];
+        setText('port-hero-total', c.sym+' '+Math.round(c.total).toLocaleString());
+        setText('port-sec-ticker', '+'+c.sym+' '+(portSources.reduce((a,s)=>a+s.ratePerSec,0)).toFixed(4));
+      } else {
+        setText('port-hero-total', curKeys.map(cur=>`${byCur[cur].sym} ${Math.round(byCur[cur].total).toLocaleString()}`).join('  +  '));
+        setText('port-sec-ticker', curKeys.map(cur=>{
+          const r = portSources.filter(s=>getBizCur(s.id)===cur).reduce((a,s)=>a+s.ratePerSec,0);
+          return `+${byCur[cur].sym}${r.toFixed(4)}`;
+        }).join(' '));
+      }
     }
   }, 1000);
 }
@@ -3570,7 +5592,7 @@ function applyStaticTranslations(){
   });
   // Update biz bar meta
   if(currentBizId){
-    setText('biz-meta-bar', openDaysPerWeek()+' '+t('openDaysWeek')+' · '+document.getElementById('cur').value);
+    setText('biz-meta-bar', openDaysPerWeek()+' '+t('openDaysWeek')+' · '+getBizCur(currentBizId));
   }
 }
 
@@ -3910,8 +5932,14 @@ function sw(name,el){
   if(name==='charts')setTimeout(renderCharts,60);
   if(name==='manage'){renderManageBiz();checkGeminiStatus();}
   if(name==='loans')renderLoans();
-  if(name==='portfolio')renderPortfolio();
+  if(name==='portfolio'){stopTypeLiveTicker();renderPortfolio();}
   if(name!=='portfolio')stopPortTicker();
+  if(name==='job-attendance') { attYear=new Date().getFullYear(); attMonth=new Date().getMonth(); renderAttendanceCal(); }
+  if(name==='farming-loans') { renderLoansInto('farming-loans-content'); }
+  if(name==='fd-loans')      { renderLoansInto('fd-loans-content'); }
+  if(name==='inv-loans')     { renderLoansInto('inv-loans-content'); }
+  if(name==='fd-loans')      { renderLoansInto('fd-loans-content'); }
+  if(name==='inv-loans')     { renderLoansInto('inv-loans-content'); }
 }
 function renderAll(){
   renderSummary();
@@ -3976,9 +6004,12 @@ function initApp(){
   setText('biz-name-bar', biz.name);
   setText('app-logo', biz.icon||'🏪');
   document.getElementById('app-logo').style.background=biz.color||'#E6F1FB';
-  setText('biz-meta-bar', openDaysPerWeek()+' '+t('openDaysWeek')+' · '+document.getElementById('cur').value);
+  setText('biz-meta-bar', openDaysPerWeek()+' '+t('openDaysWeek')+' · '+getBizCur(currentBizId));
   renderAll();renderExpenses();renderIncome();renderWeekSchedule();
   startClock();
+  // Render type-aware nav for current biz
+  const initBiz = businesses.find(b=>b.id===currentBizId)||{};
+  renderNavForType(initBiz.type || 'business');
   setTimeout(()=>{ sw('portfolio', document.getElementById('nav-portfolio')); renderPortfolio(); }, 200);
   document.getElementById('today-sales').addEventListener('input',renderSalesResult);
   // Auto sync if connected
@@ -4425,7 +6456,7 @@ function obSignIn() {
     scope: [
       'https://www.googleapis.com/auth/spreadsheets',
       'https://www.googleapis.com/auth/drive.file',
-      'https://www.googleapis.com/auth/drive.metadata.readonly',
+      'https://www.googleapis.com/auth/drive',
       'https://www.googleapis.com/auth/userinfo.email',
       'https://www.googleapis.com/auth/userinfo.profile',
     ].join(' '),
@@ -4769,7 +6800,7 @@ function getTokenClient() {
     scope: [
       'https://www.googleapis.com/auth/spreadsheets',
       'https://www.googleapis.com/auth/drive.file',
-      'https://www.googleapis.com/auth/drive.metadata.readonly',
+      'https://www.googleapis.com/auth/drive',
       'https://www.googleapis.com/auth/userinfo.email',
       'https://www.googleapis.com/auth/userinfo.profile',
     ].join(' '),
