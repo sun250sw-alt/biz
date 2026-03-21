@@ -68,6 +68,16 @@ body.si .mono{font-family:'DM Mono',monospace}
 .sync-status-mini{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--txt3)}
 .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--txt3)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes port-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+.port-src{background:var(--bg2);border:1px solid var(--brd);border-radius:12px;padding:10px 12px;cursor:pointer;transition:border-color .15s}
+.port-src:hover{border-color:var(--blue)}
+.port-src-bar{height:3px;border-radius:2px;background:var(--bg3);margin-top:8px;overflow:hidden}
+.port-src-bar-fill{height:100%;border-radius:2px;transition:width .6s}
+.port-bk-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--bg2);font-size:12px}
+.port-bk-row:last-child{border-bottom:none}
+.port-bk-bar-wrap{flex:1;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden}
+.port-bk-bar{height:100%;border-radius:2px;transition:width .6s}
+.active-view{background:var(--blue-bg)!important;border-color:var(--blue)!important;color:var(--blue-txt)!important;font-weight:500!important}
 .dot-live{background:var(--green);animation:pulse 1.4s infinite}
 .dot-err{background:var(--red)}
 
@@ -870,7 +880,8 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
   <div class="summary" id="summary"></div>
 
   <div class="nav" id="main-nav">
-    <button class="ntab active" onclick="sw('live',this)" id="nav-live">Live target</button>
+    <button class="ntab active" onclick="sw('portfolio',this)" id="nav-portfolio">Portfolio</button>
+    <button class="ntab" onclick="sw('live',this)" id="nav-live">Live target</button>
     <button class="ntab" onclick="sw('charts',this)" id="nav-charts">Charts</button>
     <button class="ntab" onclick="sw('hours',this)" id="nav-hours">Hours</button>
     <button class="ntab" onclick="sw('expenses',this)" id="nav-expenses">Expenses</button>
@@ -881,8 +892,72 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
     <button class="ntab" onclick="sw('manage',this)" style="margin-left:auto" id="nav-manage">⚙</button>
   </div>
 
+  <!-- PORTFOLIO DASHBOARD -->
+  <div class="tc active" id="tab-portfolio">
+
+    <!-- View toggle -->
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <button class="btn-sm port-view-btn active-view" onclick="setPortView('today',this)" style="border-radius:20px;flex:1">Today</button>
+      <button class="btn-sm port-view-btn" onclick="setPortView('month',this)" style="border-radius:20px;flex:1">This month</button>
+      <button class="btn-sm port-view-btn" onclick="setPortView('year',this)" style="border-radius:20px;flex:1">This year</button>
+    </div>
+
+    <!-- Hero total -->
+    <div style="background:var(--bg2);border:1px solid var(--brd);border-radius:16px;padding:18px 16px;margin-bottom:10px;text-align:center">
+      <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px" id="port-hero-lbl">Total portfolio income today</div>
+      <div style="font-size:40px;font-weight:500;font-family:'DM Mono',monospace;letter-spacing:-2px;color:var(--green);line-height:1;margin-bottom:4px" id="port-hero-total">—</div>
+      <div style="font-size:11px;color:var(--txt3);margin-bottom:14px" id="port-hero-sub">across all income sources</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+        <div style="background:var(--bg1);border-radius:8px;padding:8px 4px;border:1px solid var(--brd)">
+          <div style="font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Per sec</div>
+          <div style="font-size:12px;font-weight:500;font-family:'DM Mono',monospace;color:var(--green)" id="port-per-sec">—</div>
+        </div>
+        <div style="background:var(--bg1);border-radius:8px;padding:8px 4px;border:1px solid var(--brd)">
+          <div style="font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Per min</div>
+          <div style="font-size:12px;font-weight:500;font-family:'DM Mono',monospace" id="port-per-min">—</div>
+        </div>
+        <div style="background:var(--bg1);border-radius:8px;padding:8px 4px;border:1px solid var(--brd)">
+          <div style="font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Per hour</div>
+          <div style="font-size:12px;font-weight:500;font-family:'DM Mono',monospace" id="port-per-hr">—</div>
+        </div>
+        <div style="background:var(--bg1);border-radius:8px;padding:8px 4px;border:1px solid var(--brd)">
+          <div style="font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Per day</div>
+          <div style="font-size:12px;font-weight:500;font-family:'DM Mono',monospace" id="port-per-day">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live per-second ticker -->
+    <div style="display:flex;align-items:center;justify-content:center;gap:8px;background:var(--green-bg);border:1px solid #9FE1CB;border-radius:10px;padding:10px 14px;margin-bottom:10px">
+      <div style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;animation:spin .8s linear infinite" id="port-live-dot"></div>
+      <div style="font-size:20px;font-weight:500;font-family:'DM Mono',monospace;color:var(--green)" id="port-sec-ticker">+0.0000</div>
+      <div style="font-size:11px;color:var(--green-txt)">earned this second</div>
+    </div>
+
+    <!-- Source cards -->
+    <div style="font-size:10px;font-weight:500;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Income sources</div>
+    <div id="port-sources" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
+
+    <!-- Breakdown -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:12px;font-weight:500">Breakdown</span>
+        <span style="font-size:11px;color:var(--txt3)" id="port-bk-total">—</span>
+      </div>
+      <div id="port-breakdown"></div>
+    </div>
+
+    <!-- Add income source CTA -->
+    <div style="background:var(--bg2);border:1px dashed var(--brd);border-radius:12px;padding:14px;text-align:center;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:500;margin-bottom:4px">Add more income sources</div>
+      <div style="font-size:11px;color:var(--txt3);margin-bottom:10px">Rental, job, fixed deposit, investment, farming…</div>
+      <button class="btn-primary" onclick="sw('manage',document.getElementById('nav-manage'))">+ Add income source</button>
+    </div>
+
+  </div>
+
   <!-- LIVE TARGET -->
-  <div class="tc active" id="tab-live">
+  <div class="tc" id="tab-live">
     <div class="live-hero">
       <div class="hero-top">
         <div id="status-pill" class="status-pill s-closed"><div class="pulse-dot"></div><span id="status-txt">—</span></div>
@@ -1272,7 +1347,7 @@ let businesses   = [];  // [{id,name,icon,color}]
 let sheetUrl     = '';
 let currentLang  = localStorage.getItem('shopLang') || 'en';
 let chartPeriod  = 14;
-let aT           = 'live';
+let aT           = 'portfolio';
 let clockTimer   = null;
 let bizDropOpen  = false;
 let selectedColor= '#E6F1FB';
@@ -3228,6 +3303,187 @@ Be honest and direct. Use ${cur} for amounts. Solutions must be concrete and imm
   btn.disabled=false; btn.textContent='↻ Refresh';
 }
 
+// ═══════════════════════════════════════════════════
+// PORTFOLIO DASHBOARD
+// ═══════════════════════════════════════════════════
+let portTimer       = null;
+let portElapsed     = 0;
+let portView        = 'today'; // today | month | year
+let portSources     = [];      // computed each render
+
+const PORT_TYPE_META = {
+  business:   { label:'Business',      color:'#378ADD', emoji:'🏪', mode:'work hours' },
+  job:        { label:'Job',            color:'#D4537E', emoji:'💼', mode:'work hours' },
+  rental:     { label:'Rental',        color:'#1D9E75', emoji:'🏠', mode:'24/7 passive' },
+  fd:         { label:'Fixed deposit', color:'#BA7517', emoji:'🏦', mode:'24/7 passive' },
+  investment: { label:'Investment',    color:'#7F77DD', emoji:'📈', mode:'market hours' },
+  farming:    { label:'Farming',       color:'#639922', emoji:'🌾', mode:'seasonal' },
+  other:      { label:'Other income',  color:'#D85A30', emoji:'✦',  mode:'passive' },
+};
+
+function calcPortSources() {
+  const cur = document.getElementById('cur')?.value || 'LKR';
+  const sources = [];
+
+  businesses.forEach(biz => {
+    const type   = biz.type || 'business';
+    const meta   = PORT_TYPE_META[type] || PORT_TYPE_META.business;
+    const stored = JSON.parse(localStorage.getItem(lsKey(biz.id,'portData')) || 'null');
+
+    // Calculate monthly income for this source
+    let monthlyIncome = 0;
+    let ratePerSec    = 0;
+
+    if(type === 'business') {
+      // Use actual income log for this biz
+      const log = JSON.parse(localStorage.getItem(lsKey(biz.id,'income')) || '[]');
+      const now  = new Date();
+      const thisMonth = log.filter(e => {
+        const d = new Date(e.date);
+        return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+      });
+      monthlyIncome = thisMonth.reduce((a,e) => a+Number(e.amt), 0);
+      const od   = JSON.parse(localStorage.getItem(lsKey(biz.id,'hours')) || '[]').filter(h=>h.open).length || 6;
+      const workSecsPerMonth = od * (7/7) * 8 * 3600 * 30.44/7;
+      ratePerSec = workSecsPerMonth > 0 ? monthlyIncome / workSecsPerMonth : 0;
+    } else if(stored) {
+      monthlyIncome = stored.monthlyIncome || 0;
+      // Passive sources tick 24/7
+      const secsPerMonth = (type==='job') ? (stored.workDays||22) * (stored.workHours||8) * 3600 : 30.44*24*3600;
+      ratePerSec = secsPerMonth > 0 ? monthlyIncome / secsPerMonth : 0;
+    }
+
+    if(monthlyIncome > 0 || type === 'business') {
+      sources.push({
+        id:      biz.id,
+        name:    biz.name,
+        icon:    biz.icon || meta.emoji,
+        type,
+        meta,
+        monthlyIncome,
+        ratePerSec,
+        color:   meta.color,
+      });
+    }
+  });
+
+  return sources;
+}
+
+function renderPortfolio() {
+  portSources = calcPortSources();
+
+  const totalRatePerSec  = portSources.reduce((a,s) => a+s.ratePerSec, 0);
+  const totalMonthly     = portSources.reduce((a,s) => a+s.monthlyIncome, 0);
+  const sym = document.getElementById('cur')?.value || 'LKR';
+
+  // Update hero labels
+  const viewMult = portView==='today' ? 1/30.44 : portView==='year' ? 12 : 1;
+  const viewTotal = totalMonthly * viewMult;
+  const heroLbls  = {today:'Total portfolio income today', month:'Total portfolio income this month', year:'Total portfolio income this year'};
+  setText('port-hero-lbl', heroLbls[portView]);
+  setText('port-hero-total', sym+' '+Math.round(viewTotal).toLocaleString());
+  setText('port-hero-sub', portSources.length+' income source'+(portSources.length!==1?'s':''));
+  setText('port-per-sec', (totalRatePerSec).toFixed(4));
+  setText('port-per-min', sym+' '+(totalRatePerSec*60).toFixed(2));
+  setText('port-per-hr',  sym+' '+Math.round(totalRatePerSec*3600).toLocaleString());
+  setText('port-per-day', sym+' '+Math.round(totalRatePerSec*86400).toLocaleString());
+  setText('port-bk-total', sym+' '+Math.round(viewTotal).toLocaleString());
+
+  // Render source cards
+  const list = document.getElementById('port-sources');
+  if(!list) return;
+  list.innerHTML = portSources.length === 0
+    ? `<div style="text-align:center;padding:20px;color:var(--txt3);font-size:12px">No income sources yet — add businesses or income sources in ⚙</div>`
+    : portSources.map(s => {
+      const pct = totalMonthly > 0 ? Math.round(s.monthlyIncome/totalMonthly*100) : 0;
+      return `
+      <div class="port-src" onclick="switchBiz('${s.id}');sw('live',document.getElementById('nav-live'))">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:20px">${s.icon}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:500">${s.name}</div>
+            <div style="display:flex;align-items:center;gap:5px;margin-top:2px">
+              <div style="width:5px;height:5px;border-radius:50%;background:${s.color};animation:port-pulse 1.5s ease-in-out infinite"></div>
+              <span style="font-size:10px;color:var(--txt3)">${s.meta.label} · ${s.meta.mode}</span>
+            </div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:10px;color:var(--txt3);font-family:'DM Mono',monospace" id="psec-${s.id}">+${s.ratePerSec.toFixed(4)}/s</div>
+            <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${s.color}" id="ptot-${s.id}">${sym} ${Math.round(s.monthlyIncome/30.44).toLocaleString()}</div>
+          </div>
+        </div>
+        <div class="port-src-bar"><div class="port-src-bar-fill" id="pbar-${s.id}" style="width:${pct}%;background:${s.color}"></div></div>
+      </div>`;
+    }).join('');
+
+  // Render breakdown
+  const bk = document.getElementById('port-breakdown');
+  if(bk) {
+    bk.innerHTML = portSources.map(s => {
+      const pct = totalMonthly > 0 ? Math.round(s.monthlyIncome/totalMonthly*100) : 0;
+      return `
+      <div class="port-bk-row">
+        <span style="font-size:14px;width:22px">${s.icon}</span>
+        <span style="font-size:11px;flex:1;color:var(--txt2)">${s.name}</span>
+        <div class="port-bk-bar-wrap"><div class="port-bk-bar" id="pbkbar-${s.id}" style="width:${pct}%;background:${s.color}"></div></div>
+        <span style="font-size:10px;font-family:'DM Mono',monospace;width:30px;text-align:right;color:var(--txt3)">${pct}%</span>
+        <span style="font-size:11px;font-family:'DM Mono',monospace;width:90px;text-align:right;font-weight:500" id="pbkamt-${s.id}">${sym} ${Math.round(s.monthlyIncome/30.44).toLocaleString()}</span>
+      </div>`;
+    }).join('') || `<div style="font-size:12px;color:var(--txt3);text-align:center;padding:10px 0">No data yet</div>`;
+  }
+
+  // Start ticker
+  startPortTicker(totalRatePerSec);
+}
+
+function startPortTicker(ratePerSec) {
+  if(portTimer) clearInterval(portTimer);
+  portElapsed = 0;
+  const sym = document.getElementById('cur')?.value || 'LKR';
+
+  portTimer = setInterval(() => {
+    portElapsed++;
+    const earned = ratePerSec * portElapsed;
+    const tick   = ratePerSec;
+
+    setText('port-sec-ticker', '+'+sym+' '+tick.toFixed(4));
+
+    // Update per-source today totals
+    if(portView === 'today') {
+      const todayBase = portSources.reduce((a,s) => a+s.monthlyIncome/30.44, 0);
+      setText('port-hero-total', sym+' '+Math.round(todayBase + earned).toLocaleString());
+
+      portSources.forEach(s => {
+        const base = s.monthlyIncome / 30.44;
+        const srcEarned = s.ratePerSec * portElapsed;
+        const total = base + srcEarned;
+        setText('ptot-'+s.id, sym+' '+Math.round(total).toLocaleString());
+        // Update breakdown amounts
+        const grandTotal = portSources.reduce((a,ss)=>a+ss.monthlyIncome/30.44,0)+earned;
+        const pct = grandTotal>0?Math.round(total/grandTotal*100):0;
+        setText('pbkamt-'+s.id, sym+' '+Math.round(total).toLocaleString());
+        const bar = document.getElementById('pbkbar-'+s.id);
+        if(bar) bar.style.width = pct+'%';
+        const srcBar = document.getElementById('pbar-'+s.id);
+        if(srcBar) srcBar.style.width = pct+'%';
+      });
+    }
+  }, 1000);
+}
+
+function stopPortTicker() {
+  if(portTimer) { clearInterval(portTimer); portTimer = null; }
+}
+
+function setPortView(view, el) {
+  portView = view;
+  document.querySelectorAll('.port-view-btn').forEach(b => b.classList.remove('active-view'));
+  if(el) el.classList.add('active-view');
+  stopPortTicker();
+  renderPortfolio();
+}
+
 // ═══════════════════════════════
 // DARK / LIGHT MODE
 // ═══════════════════════════════
@@ -3297,6 +3553,7 @@ function applyStaticTranslations(){
   ids.forEach(([id,key])=>{ const el=document.getElementById(id); if(el&&key) el.textContent=t(key)||el.textContent; });
   // Nav tabs — use IDs to avoid index mismatch
   const navMap = {
+    'nav-portfolio':['Portfolio',      'ගෙවීම් ලේඛනය'],
     'nav-live':     ['Live target',    'සජීව ඉලක්කය'],
     'nav-charts':   ['Charts',         'ප්‍රස්ථාර'],
     'nav-hours':    ['Trading hours',  'වෙළඳ වේලා'],
@@ -3653,6 +3910,8 @@ function sw(name,el){
   if(name==='charts')setTimeout(renderCharts,60);
   if(name==='manage'){renderManageBiz();checkGeminiStatus();}
   if(name==='loans')renderLoans();
+  if(name==='portfolio')renderPortfolio();
+  if(name!=='portfolio')stopPortTicker();
 }
 function renderAll(){
   renderSummary();
@@ -3720,6 +3979,7 @@ function initApp(){
   setText('biz-meta-bar', openDaysPerWeek()+' '+t('openDaysWeek')+' · '+document.getElementById('cur').value);
   renderAll();renderExpenses();renderIncome();renderWeekSchedule();
   startClock();
+  setTimeout(()=>{ sw('portfolio', document.getElementById('nav-portfolio')); renderPortfolio(); }, 200);
   document.getElementById('today-sales').addEventListener('input',renderSalesResult);
   // Auto sync if connected
   if(sheetUrl){ syncNow(); setInterval(()=>{ if(sheetUrl&&currentBizId) syncNow(); }, 5*60*1000); }
