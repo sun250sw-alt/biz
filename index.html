@@ -117,6 +117,8 @@ body.si .mono{font-family:'DM Mono',monospace}
 /* ── NAV ── */
 .nav{display:flex;gap:3px;background:var(--bg2);padding:3px;border-radius:var(--r8);margin-bottom:12px;flex-wrap:wrap;overflow-x:auto}
 .ntab{padding:6px 12px;font-size:12px;border:none;background:transparent;border-radius:6px;cursor:pointer;color:var(--txt3);font-family:inherit;white-space:nowrap;transition:all .15s}
+.ntab svg{pointer-events:none;transition:color .15s}
+.ntab[id="nav-portfolio"],.ntab[id="nav-manage"]{padding:6px 10px;min-width:36px;display:inline-flex;align-items:center;justify-content:center}
 .ntab.active{background:var(--bg1);color:var(--txt);font-weight:500;box-shadow:var(--shadow)}
 .tc{display:none}.tc.active{display:block}
 
@@ -1041,7 +1043,7 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
   <div class="summary" id="summary"></div>
 
   <div class="nav" id="main-nav">
-    <button class="ntab active" onclick="sw('portfolio',this)" id="nav-portfolio">Portfolio</button>
+    <button class="ntab active" onclick="sw('portfolio',this)" id="nav-portfolio" title="Portfolio — Home"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle"><path d="M8 1.5L1.5 7H3v6.5h4v-4h2v4h4V7h1.5L8 1.5z" fill="currentColor" opacity=".9"/></svg></button>
     <button class="ntab" onclick="sw('live',this)" id="nav-live">Live target</button>
     <button class="ntab" onclick="sw('charts',this)" id="nav-charts">Charts</button>
     <button class="ntab" onclick="sw('hours',this)" id="nav-hours">Hours</button>
@@ -1050,7 +1052,7 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
     <button class="ntab" onclick="sw('loans',this)" id="nav-loans">💳 Loans</button>
     <button class="ntab" onclick="sw('ops',this)" id="nav-ops">Daily log</button>
     <button class="ntab" onclick="sw('report',this)" id="nav-report">Report</button>
-    <button class="ntab" onclick="sw('manage',this)" style="margin-left:auto" id="nav-manage">⚙</button>
+    <button class="ntab" onclick="sw('manage',this)" style="margin-left:auto" id="nav-manage" title="Settings"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle"><circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M2.93 2.93l1.06 1.06M12.01 12.01l1.06 1.06M2.93 13.07l1.06-1.06M12.01 3.99l1.06-1.06" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
   </div>
 
   <!-- PORTFOLIO DASHBOARD -->
@@ -1334,7 +1336,7 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
   <!-- JOB: Live earnings -->
   <div class="tc" id="tab-job-live">
     <div class="card" style="text-align:center;padding:20px 16px;margin-bottom:10px">
-      <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Net salary this month so far</div>
+      <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Earned this month so far</div>
       <div style="font-size:38px;font-weight:500;font-family:'DM Mono',monospace;color:#D4537E;letter-spacing:-1px;line-height:1" id="job-live-sec">—</div>
       <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">earned this month</div>
       <div style="font-size:10px;color:var(--green-txt);margin-bottom:4px;font-family:'DM Mono',monospace" id="job-live-per-sec">—</div>
@@ -1365,38 +1367,93 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
   <!-- JOB: Attendance -->
   <div class="tc" id="tab-job-attendance">
 
-    <!-- Month nav + summary -->
+    <!-- ── BULK SCHEDULER ── -->
     <div class="card" style="margin-bottom:8px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <button onclick="attChangeMonth(-1)" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--txt2);padding:0 6px">‹</button>
+        <div style="font-size:12px;font-weight:500">Bulk add working days</div>
+        <button onclick="toggleBulkScheduler()" id="bulk-toggle"
+          style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--brd);background:var(--bg1);cursor:pointer;color:var(--blue)">
+          Set hours ▾
+        </button>
+      </div>
+
+      <!-- Bulk editor (collapsible) -->
+      <div id="bulk-body" style="display:none">
+        <!-- Time inputs -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+          <div>
+            <label style="font-size:10px;color:var(--txt3);display:block;margin-bottom:3px">Start time</label>
+            <input type="time" id="bulk-start" value="08:00" style="width:100%" onchange="updateBulkPreview()">
+          </div>
+          <div>
+            <label style="font-size:10px;color:var(--txt3);display:block;margin-bottom:3px">End time</label>
+            <input type="time" id="bulk-end" value="17:00" style="width:100%" onchange="updateBulkPreview()">
+          </div>
+          <div>
+            <label style="font-size:10px;color:var(--txt3);display:block;margin-bottom:3px">Break (min)</label>
+            <input type="number" id="bulk-break" value="60" min="0" max="480" style="width:100%" oninput="updateBulkPreview()">
+          </div>
+        </div>
+
+        <!-- Net hours preview -->
+        <div style="background:var(--green-bg);border-radius:8px;padding:8px 12px;margin-bottom:12px;display:flex;justify-content:space-between">
+          <span style="font-size:11px;color:var(--green-txt)">Net hours: <strong id="bulk-net-hrs">8.0 hrs</strong></span>
+          <span style="font-size:11px;color:var(--green-txt)" id="bulk-rate-preview">—</span>
+        </div>
+
+        <!-- Which days -->
+        <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Apply to which day(s) in <span id="bulk-month-label">this month</span></div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:10px">
+          <button onclick="bulkApply(1)" style="padding:7px 2px;font-size:11px;border-radius:6px;border:1.5px solid var(--brd);background:var(--bg1);cursor:pointer;font-weight:500;transition:all .15s" class="bulk-day-btn">Mon</button>
+          <button onclick="bulkApply(2)" style="padding:7px 2px;font-size:11px;border-radius:6px;border:1.5px solid var(--brd);background:var(--bg1);cursor:pointer;font-weight:500;transition:all .15s" class="bulk-day-btn">Tue</button>
+          <button onclick="bulkApply(3)" style="padding:7px 2px;font-size:11px;border-radius:6px;border:1.5px solid var(--brd);background:var(--bg1);cursor:pointer;font-weight:500;transition:all .15s" class="bulk-day-btn">Wed</button>
+          <button onclick="bulkApply(4)" style="padding:7px 2px;font-size:11px;border-radius:6px;border:1.5px solid var(--brd);background:var(--bg1);cursor:pointer;font-weight:500;transition:all .15s" class="bulk-day-btn">Thu</button>
+          <button onclick="bulkApply(5)" style="padding:7px 2px;font-size:11px;border-radius:6px;border:1.5px solid var(--brd);background:var(--bg1);cursor:pointer;font-weight:500;transition:all .15s" class="bulk-day-btn">Fri</button>
+          <button onclick="bulkApply(6)" style="padding:7px 2px;font-size:11px;border-radius:6px;border:1.5px solid var(--brd);background:var(--bg1);cursor:pointer;font-weight:500;transition:all .15s" class="bulk-day-btn">Sat</button>
+          <button onclick="bulkApply(0)" style="padding:7px 2px;font-size:11px;border-radius:6px;border:1.5px solid var(--brd);background:var(--bg1);cursor:pointer;font-weight:500;transition:all .15s" class="bulk-day-btn">Sun</button>
+        </div>
+
+        <!-- Clear -->
+        <button onclick="clearAttMonth(this)"
+          style="width:100%;height:34px;border-radius:var(--r6);border:1px solid var(--red-bg);background:var(--red-bg);cursor:pointer;font-size:12px;font-family:inherit;color:var(--red-txt)">
+          🗑 Clear all entries this month
+        </button>
+      </div>
+
+      <!-- Summary line (always visible) -->
+      <div style="font-size:10px;color:var(--txt3)" id="sched-summary-hrs">Tap "Set hours" to bulk add work days</div>
+    </div>
+
+    <!-- ── Stats ── -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">
+      <div style="background:var(--green-bg);border-radius:8px;padding:8px 4px;text-align:center">
+        <div style="font-size:9px;color:var(--green-txt);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Days</div>
+        <div style="font-size:16px;font-weight:500;color:var(--green-txt)" id="att-stat-days">0</div>
+      </div>
+      <div style="background:var(--blue-bg);border-radius:8px;padding:8px 4px;text-align:center">
+        <div style="font-size:9px;color:var(--blue-txt);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Hours</div>
+        <div style="font-size:16px;font-weight:500;color:var(--blue-txt)" id="att-stat-hours">0</div>
+      </div>
+      <div style="background:var(--amber-bg);border-radius:8px;padding:8px 4px;text-align:center">
+        <div style="font-size:9px;color:var(--amber-txt);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Rate/hr</div>
+        <div style="font-size:13px;font-weight:500;color:var(--amber-txt)" id="att-stat-rate">—</div>
+      </div>
+      <div style="background:var(--bg2);border-radius:8px;padding:8px 4px;text-align:center">
+        <div style="font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Earned</div>
+        <div style="font-size:13px;font-weight:500" id="att-stat-earned">—</div>
+      </div>
+    </div>
+
+    <!-- ── Calendar ── -->
+    <div class="card" style="margin-bottom:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <button onclick="attChangeMonth(-1)" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--txt2);padding:0 6px;line-height:1">&#8249;</button>
         <div style="text-align:center">
           <div style="font-size:13px;font-weight:500" id="att-month-label">—</div>
-          <div style="font-size:11px;color:var(--txt3);margin-top:2px" id="att-month-summary">—</div>
+          <div style="font-size:10px;color:var(--txt3);margin-top:2px" id="sched-month-info">Tap any day to edit</div>
         </div>
-        <button onclick="attChangeMonth(1)" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--txt2);padding:0 6px">›</button>
+        <button onclick="attChangeMonth(1)" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--txt2);padding:0 6px;line-height:1">&#8250;</button>
       </div>
-
-      <!-- Stat cards -->
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px">
-        <div style="background:var(--green-bg);border-radius:8px;padding:8px 4px;text-align:center">
-          <div style="font-size:9px;color:var(--green-txt);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Days worked</div>
-          <div style="font-size:16px;font-weight:500;color:var(--green-txt)" id="att-stat-days">0</div>
-        </div>
-        <div style="background:var(--blue-bg);border-radius:8px;padding:8px 4px;text-align:center">
-          <div style="font-size:9px;color:var(--blue-txt);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Hours</div>
-          <div style="font-size:16px;font-weight:500;color:var(--blue-txt)" id="att-stat-hours">0</div>
-        </div>
-        <div style="background:var(--amber-bg);border-radius:8px;padding:8px 4px;text-align:center">
-          <div style="font-size:9px;color:var(--amber-txt);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Hourly rate</div>
-          <div style="font-size:14px;font-weight:500;color:var(--amber-txt)" id="att-stat-rate">—</div>
-        </div>
-        <div style="background:var(--bg2);border-radius:8px;padding:8px 4px;text-align:center">
-          <div style="font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px">Earned</div>
-          <div style="font-size:14px;font-weight:500" id="att-stat-earned">—</div>
-        </div>
-      </div>
-
-      <!-- Weekday headers -->
       <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:4px">
         <div style="font-size:9px;color:var(--txt3);text-align:center;font-weight:500">Mon</div>
         <div style="font-size:9px;color:var(--txt3);text-align:center;font-weight:500">Tue</div>
@@ -1406,92 +1463,80 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
         <div style="font-size:9px;color:var(--txt3);text-align:center;font-weight:500">Sat</div>
         <div style="font-size:9px;color:var(--txt3);text-align:center;font-weight:500">Sun</div>
       </div>
-      <div id="job-attendance-cal"></div>
-
-      <!-- Legend -->
-      <div style="display:flex;gap:10px;margin-top:10px;font-size:10px;color:var(--txt3);flex-wrap:wrap">
-        <span>🟢 Full day</span><span>🟡 Half day</span><span>🔵 Custom hours</span><span>🔴 Absent</span><span>⬜ Weekend/holiday</span>
+      <div id="sched-calendar"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+        <span style="font-size:10px;color:var(--txt3);display:flex;align-items:center;gap:3px"><span style="width:10px;height:10px;border-radius:3px;background:#E1F5EE;border:1.5px solid #7CD4B0;display:inline-block"></span>Worked</span>
+        <span style="font-size:10px;color:var(--txt3);display:flex;align-items:center;gap:3px"><span style="width:10px;height:10px;border-radius:3px;background:#FAEEDA;border:1.5px solid #F5D08A;display:inline-block"></span>Custom</span>
+        <span style="font-size:10px;color:var(--txt3);display:flex;align-items:center;gap:3px"><span style="width:10px;height:10px;border-radius:3px;background:#FCEBEB;border:1.5px solid #F5ABAB;display:inline-block"></span>Absent</span>
+        <span style="font-size:10px;color:var(--txt3);display:flex;align-items:center;gap:3px"><span style="width:10px;height:10px;border-radius:3px;background:#EEEDFE;border:1.5px solid #AFA9EC;display:inline-block"></span>Holiday</span>
       </div>
     </div>
 
-    <!-- Day detail panel (shows when a day is tapped) -->
+    <!-- ── Day edit panel (shows below calendar when day tapped) ── -->
     <div class="card" id="att-day-panel" style="display:none">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <div style="font-size:13px;font-weight:500" id="att-day-title">—</div>
-        <button onclick="closeAttDayPanel()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--txt3)">×</button>
+        <div>
+          <div style="font-size:13px;font-weight:500" id="att-day-title">—</div>
+          <div style="font-size:10px;color:var(--txt3);margin-top:2px" id="att-day-subtitle">—</div>
+        </div>
+        <button onclick="closeAttDayPanel()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--txt3);line-height:1">&#215;</button>
       </div>
 
       <!-- Status buttons -->
       <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Status</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px">
-        <button class="att-status-btn" id="att-btn-worked"    onclick="setAttStatus('worked')"   style="font-size:11px;padding:7px 4px;border-radius:8px;border:1.5px solid var(--brd);background:var(--bg1);cursor:pointer;transition:all .15s">🟢 Full</button>
-        <button class="att-status-btn" id="att-btn-half"      onclick="setAttStatus('half')"     style="font-size:11px;padding:7px 4px;border-radius:8px;border:1.5px solid var(--brd);background:var(--bg1);cursor:pointer;transition:all .15s">🟡 Half</button>
-        <button class="att-status-btn" id="att-btn-custom"    onclick="setAttStatus('custom')"   style="font-size:11px;padding:7px 4px;border-radius:8px;border:1.5px solid var(--brd);background:var(--bg1);cursor:pointer;transition:all .15s">🔵 Custom</button>
-        <button class="att-status-btn" id="att-btn-absent"    onclick="setAttStatus('absent')"   style="font-size:11px;padding:7px 4px;border-radius:8px;border:1.5px solid var(--brd);background:var(--bg1);cursor:pointer;transition:all .15s">🔴 Absent</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
+        <button class="att-status-btn" id="att-btn-worked" onclick="setAttStatus('worked')"
+          style="padding:10px 6px;border-radius:10px;border:1.5px solid var(--brd);background:var(--bg1);cursor:pointer;transition:all .15s;text-align:center">
+          <div style="font-size:18px;margin-bottom:3px">🟢</div>
+          <div style="font-size:11px;font-weight:500">Worked</div>
+          <div style="font-size:10px;color:var(--txt3)" id="att-btn-worked-sub">default hours</div>
+        </button>
+        <button class="att-status-btn" id="att-btn-custom" onclick="setAttStatus('custom')"
+          style="padding:10px 6px;border-radius:10px;border:1.5px solid var(--brd);background:var(--bg1);cursor:pointer;transition:all .15s;text-align:center">
+          <div style="font-size:18px;margin-bottom:3px">⏰</div>
+          <div style="font-size:11px;font-weight:500">Custom hours</div>
+          <div style="font-size:10px;color:var(--txt3)">set my own times</div>
+        </button>
+        <button class="att-status-btn" id="att-btn-absent" onclick="setAttStatus('absent')"
+          style="padding:10px 6px;border-radius:10px;border:1.5px solid var(--brd);background:var(--bg1);cursor:pointer;transition:all .15s;text-align:center">
+          <div style="font-size:18px;margin-bottom:3px">🔴</div>
+          <div style="font-size:11px;font-weight:500">Absent</div>
+          <div style="font-size:10px;color:var(--txt3)">didn't go</div>
+        </button>
+        <button class="att-status-btn" id="att-btn-holiday" onclick="setAttStatus('holiday')"
+          style="padding:10px 6px;border-radius:10px;border:1.5px solid var(--brd);background:var(--bg1);cursor:pointer;transition:all .15s;text-align:center">
+          <div style="font-size:18px;margin-bottom:3px">🏖</div>
+          <div style="font-size:11px;font-weight:500">Holiday / off</div>
+          <div style="font-size:10px;color:var(--txt3)">day off</div>
+        </button>
       </div>
 
-      <!-- Time entry (shown for worked/custom) -->
+      <!-- Custom hours -->
       <div id="att-time-fields" style="display:none">
-        <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Hours worked</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-          <div>
-            <label style="font-size:10px;color:var(--txt3);display:block;margin-bottom:3px">Start time</label>
-            <input type="time" id="att-time-start" style="width:100%" onchange="attCalcHours()">
+        <div style="background:var(--bg2);border-radius:10px;padding:12px;margin-bottom:10px">
+          <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Custom hours</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+            <div><label style="font-size:10px;color:var(--txt3);display:block;margin-bottom:3px">Start</label><input type="time" id="att-time-start" style="width:100%" onchange="attCalcHours()"></div>
+            <div><label style="font-size:10px;color:var(--txt3);display:block;margin-bottom:3px">End</label><input type="time" id="att-time-end" style="width:100%" onchange="attCalcHours()"></div>
+            <div><label style="font-size:10px;color:var(--txt3);display:block;margin-bottom:3px">Break (min)</label><input type="number" id="att-break" placeholder="30" min="0" style="width:100%" oninput="attCalcHours()"></div>
           </div>
-          <div>
-            <label style="font-size:10px;color:var(--txt3);display:block;margin-bottom:3px">End time</label>
-            <input type="time" id="att-time-end" style="width:100%" onchange="attCalcHours()">
+          <div style="display:flex;justify-content:space-between;align-items:center;background:var(--green-bg);border-radius:8px;padding:8px 12px">
+            <span style="font-size:11px;color:var(--green-txt)">Net: <strong id="att-net-hours">—</strong></span>
+            <span style="font-size:13px;font-weight:500;color:var(--green-txt)" id="att-day-earned">—</span>
           </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-          <div>
-            <label style="font-size:10px;color:var(--txt3);display:block;margin-bottom:3px">Break (mins)</label>
-            <input type="number" id="att-break" placeholder="30" min="0" max="480" style="width:100%" oninput="attCalcHours()">
-          </div>
-          <div style="background:var(--bg2);border-radius:var(--r6);padding:8px 10px">
-            <div style="font-size:10px;color:var(--txt3);margin-bottom:2px">Net hours</div>
-            <div style="font-size:16px;font-weight:500" id="att-net-hours">—</div>
-          </div>
-        </div>
-        <div style="background:var(--green-bg);border-radius:var(--r6);padding:8px 10px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:11px;color:var(--green-txt)">Earned this day</span>
-          <span style="font-size:14px;font-weight:500;color:var(--green-txt)" id="att-day-earned">—</span>
         </div>
       </div>
 
-      <!-- Notes -->
+      <!-- Note -->
       <div style="margin-bottom:12px">
         <label style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px">Note (optional)</label>
-        <input type="text" id="att-note" placeholder="e.g. Left early, worked overtime…" style="width:100%">
+        <input type="text" id="att-note" placeholder="e.g. Working from home, overtime…" style="width:100%">
       </div>
 
-      <button class="btn-primary" onclick="saveAttDay()" style="width:100%;height:38px">Save this day</button>
-
-      <!-- Quick repeat buttons -->
-      <div style="margin-top:8px">
-        <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;text-align:center">Apply same settings to whole month</div>
-        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px" id="att-repeat-btns">
-          <button onclick="repeatAttForDay(1)" class="att-repeat-day" title="All Mondays" style="font-size:10px;padding:5px 2px;border-radius:6px;border:1px solid var(--brd);background:var(--bg1);cursor:pointer;color:var(--txt3)">Mon</button>
-          <button onclick="repeatAttForDay(2)" class="att-repeat-day" title="All Tuesdays" style="font-size:10px;padding:5px 2px;border-radius:6px;border:1px solid var(--brd);background:var(--bg1);cursor:pointer;color:var(--txt3)">Tue</button>
-          <button onclick="repeatAttForDay(3)" class="att-repeat-day" title="All Wednesdays" style="font-size:10px;padding:5px 2px;border-radius:6px;border:1px solid var(--brd);background:var(--bg1);cursor:pointer;color:var(--txt3)">Wed</button>
-          <button onclick="repeatAttForDay(4)" class="att-repeat-day" title="All Thursdays" style="font-size:10px;padding:5px 2px;border-radius:6px;border:1px solid var(--brd);background:var(--bg1);cursor:pointer;color:var(--txt3)">Thu</button>
-          <button onclick="repeatAttForDay(5)" class="att-repeat-day" title="All Fridays" style="font-size:10px;padding:5px 2px;border-radius:6px;border:1px solid var(--brd);background:var(--bg1);cursor:pointer;color:var(--txt3)">Fri</button>
-          <button onclick="repeatAttForDay(6)" class="att-repeat-day" title="All Saturdays" style="font-size:10px;padding:5px 2px;border-radius:6px;border:1px solid var(--brd);background:var(--bg1);cursor:pointer;color:var(--txt3)">Sat</button>
-          <button onclick="repeatAttForDay(0)" class="att-repeat-day" title="All Sundays" style="font-size:10px;padding:5px 2px;border-radius:6px;border:1px solid var(--brd);background:var(--bg1);cursor:pointer;color:var(--txt3)">Sun</button>
-        </div>
-        <div style="margin-top:6px;display:flex;gap:4px">
-          <button onclick="repeatAttForAll()" style="flex:1;font-size:10px;padding:5px;border-radius:6px;border:1px solid var(--brd);background:var(--bg1);cursor:pointer;color:var(--txt3)">All weekdays this month</button>
-          <button onclick="clearAttMonth()" style="flex:1;font-size:10px;padding:5px;border-radius:6px;border:1px solid var(--red-bg);background:var(--red-bg);cursor:pointer;color:var(--red-txt)">Clear month</button>
-        </div>
-      </div>
-
-      <!-- Bulk apply for the whole weekday in this month -->
-      <div style="margin-top:8px;padding-top:10px;border-top:1px solid var(--brd)">
-        <div style="font-size:10px;color:var(--txt3);margin-bottom:6px">Apply same hours to all <span id="att-weekday-name">—</span>s this month</div>
-        <button onclick="applyToAllWeekday()" style="width:100%;height:36px;font-size:12px;background:var(--blue-bg);border:1.5px solid var(--blue);border-radius:var(--r6);color:var(--blue-txt);cursor:pointer;font-family:inherit;font-weight:500" id="att-bulk-btn">
-          Apply to all <span id="att-bulk-day-label">—</span>s in <span id="att-bulk-month-label">—</span>
-        </button>
-        <div style="font-size:10px;color:var(--txt3);margin-top:5px;text-align:center" id="att-bulk-preview">—</div>
+      <!-- Save / Clear -->
+      <div style="display:grid;grid-template-columns:1fr auto;gap:8px">
+        <button class="btn-primary" onclick="saveAttDay()" style="height:40px">Save</button>
+        <button onclick="clearAttDay()" style="height:40px;padding:0 16px;border-radius:var(--r6);border:1px solid var(--brd);background:var(--bg1);cursor:pointer;font-size:12px;color:var(--txt3)">Clear</button>
       </div>
     </div>
 
@@ -4444,462 +4489,461 @@ Be honest and direct. Use ${cur} for amounts. Solutions must be concrete and imm
 
 // ═══════════════════════════════════════════════════
 // JOB ATTENDANCE CALENDAR
-// ═══════════════════════════════════════════════════
+// attData per day: { status:'worked'|'custom'|'absent'|'holiday', hours, startTime, endTime, break, note }
+
 let attYear  = new Date().getFullYear();
-let attMonth = new Date().getMonth(); // 0-indexed
-let attSelectedDate = null; // 'YYYY-MM-DD'
+let attMonth = new Date().getMonth();
+let attSelectedDate   = null;
 let attSelectedStatus = null;
 
-function lsAttKey(bizId) { return 'smt_'+bizId+'_attendance'; }
-function loadAttData() {
-  return JSON.parse(localStorage.getItem(lsAttKey(currentBizId)) || '{}');
+function lsAttKey(bizId)  { return 'smt_'+(bizId||currentBizId)+'_attendance'; }
+function lsSchedKey(bizId){ return 'smt_'+(bizId||currentBizId)+'_schedule'; }
+function loadAttData()    { return JSON.parse(localStorage.getItem(lsAttKey())||'{}'); }
+function saveAttData(d)   { localStorage.setItem(lsAttKey(), JSON.stringify(d)); }
+function loadSchedData()  {
+  return JSON.parse(localStorage.getItem(lsSchedKey())||'null') || {
+    workDays:[1,2,3,4,5], startTime:'08:00', endTime:'17:00', breakMins:60
+  };
 }
-function saveAttData(data) {
-  localStorage.setItem(lsAttKey(currentBizId), JSON.stringify(data));
-}
+function saveSchedData(d) { localStorage.setItem(lsSchedKey(), JSON.stringify(d)); }
 
 function attChangeMonth(delta) {
   attMonth += delta;
-  if(attMonth > 11) { attMonth = 0; attYear++; }
-  if(attMonth < 0)  { attMonth = 11; attYear--; }
+  if(attMonth > 11){ attMonth=0; attYear++; }
+  if(attMonth < 0) { attMonth=11; attYear--; }
   closeAttDayPanel();
-  renderAttendanceCal();
+  renderSchedCalendar();
+  updateBulkMonthLabel();
 }
 
-function renderAttendanceCal() {
-  const data    = loadAttData();
-  const biz     = businesses.find(b=>b.id===currentBizId)||{};
-  const p       = JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null') || biz.portData || {};
-  const stdHours= p.workHours || 8;
-  const salary  = (p.salary||0) - (p.jobExpenses||0); // net
-  const workDays= p.workDays || 5; // days per week
-  const workSecsPerMonth = workDays * stdHours * 3600 * (30.44/7);
-  const hourlyRate = workSecsPerMonth > 0 ? salary / (workSecsPerMonth/3600) : 0;
-  const sym = SYMS[getBizCur(currentBizId)] || getBizCur(currentBizId);
+// ── Bulk scheduler ──
+function toggleBulkScheduler() {
+  const body = document.getElementById('bulk-body');
+  const btn  = document.getElementById('bulk-toggle');
+  if(!body) return;
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  if(btn) btn.innerHTML = open ? 'Set hours ▾' : 'Close ▴';
+  if(!open) { updateBulkPreview(); updateBulkMonthLabel(); }
+}
 
-  // Month label
-  const monthName = new Date(attYear, attMonth, 1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
-  setText('att-month-label', monthName);
-  setText('att-stat-rate', sym+' '+Math.round(hourlyRate).toLocaleString()+'/hr');
+function updateBulkMonthLabel() {
+  const mn = new Date(attYear, attMonth, 1).toLocaleDateString('en-GB',{month:'long', year:'numeric'});
+  setText('bulk-month-label', mn);
+}
 
-  // Build calendar grid
-  const firstDay = new Date(attYear, attMonth, 1).getDay(); // 0=Sun
-  const daysInMonth = new Date(attYear, attMonth+1, 0).getDate();
-  const today = new Date().toISOString().slice(0,10);
-  const offset = firstDay === 0 ? 6 : firstDay - 1; // Mon=0 offset
+function updateBulkPreview() {
+  const s   = document.getElementById('bulk-start')?.value || '08:00';
+  const e   = document.getElementById('bulk-end')?.value   || '17:00';
+  const b   = parseInt(document.getElementById('bulk-break')?.value)||0;
+  const [sh,sm]=s.split(':').map(Number);
+  const [eh,em]=e.split(':').map(Number);
+  const hrs = Math.max(0,((eh*60+em)-(sh*60+sm)-b)/60);
+  setText('bulk-net-hrs', hrs.toFixed(1)+' hrs');
+  // Rate preview
+  const biz = businesses.find(b2=>b2.id===currentBizId)||{};
+  const p   = JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null')||biz.portData||{};
+  const netMo=(p.salary||0)-(p.jobExpenses||0);
+  const sched=loadSchedData();
+  const wdpm=sched.workDays.length*(30.44/7);
+  const defHrs=(()=>{const[sh2,sm2]=sched.startTime.split(':').map(Number);const[eh2,em2]=sched.endTime.split(':').map(Number);return Math.max(0,((eh2*60+em2)-(sh2*60+sm2)-sched.breakMins)/60);})();
+  const hourly=wdpm*defHrs>0?netMo/(wdpm*defHrs):0;
+  const sym_=SYMS[getBizCur(currentBizId)]||getBizCur(currentBizId);
+  setText('bulk-rate-preview', sym_+Math.round(hourly).toLocaleString()+'/hr');
+}
 
-  // Calc month stats
-  let totalDays=0, totalHours=0, totalEarned=0;
+// Apply bulk hours to all occurrences of a weekday in current month
+function bulkApply(targetDow) {
+  const s   = document.getElementById('bulk-start')?.value || '08:00';
+  const e   = document.getElementById('bulk-end')?.value   || '17:00';
+  const b   = parseInt(document.getElementById('bulk-break')?.value)||0;
+  const [sh,sm]=s.split(':').map(Number);
+  const [eh,em]=e.split(':').map(Number);
+  const hrs = Math.max(0,((eh*60+em)-(sh*60+sm)-b)/60);
+  const rec = { status:'worked', hours:hrs, startTime:s, endTime:e, break:b, note:'' };
+  const attData = loadAttData();
+  const daysInMonth = new Date(attYear,attMonth+1,0).getDate();
+  let count=0;
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=`${attYear}-${String(attMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    if(new Date(ds+'T12:00:00').getDay()===targetDow){ attData[ds]={...rec}; count++; }
+  }
+  saveAttData(attData);
+  renderSchedCalendar();
+  const dayNames=['Sundays','Mondays','Tuesdays','Wednesdays','Thursdays','Fridays','Saturdays'];
+  setSyncStatus('ok',`✓ Added ${hrs.toFixed(1)}h to all ${dayNames[targetDow]} (${count} days)`);
+  setTimeout(()=>setSyncStatus('ok',''),2500);
 
-  const cells = [];
-  for(let i=0; i<offset; i++) cells.push('<div></div>');
-
-  for(let d=1; d<=daysInMonth; d++) {
-    const dateStr = `${attYear}-${String(attMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const dow     = new Date(attYear, attMonth, d).getDay();
-    const isWeekend = dow===0 || dow===6;
-    const isFuture  = dateStr > today;
-    const rec       = data[dateStr];
-    const status    = rec?.status || (isWeekend ? 'weekend' : 'none');
-    const hours     = rec?.hours || (status==='worked' ? stdHours : status==='half' ? stdHours/2 : 0);
-    const earned    = hours * hourlyRate;
-
-    if(status==='worked'||status==='half'||status==='custom') {
-      totalDays  += status==='half' ? 0.5 : 1;
-      totalHours += hours;
-      totalEarned+= earned;
+  // Flash the button
+  const btns=document.querySelectorAll('.bulk-day-btn');
+  btns.forEach((btn,i)=>{
+    const btnDow=i===6?0:i+1;
+    if(btnDow===targetDow){
+      btn.style.background='var(--green-bg)'; btn.style.borderColor='var(--green)'; btn.style.color='var(--green-txt)';
+      setTimeout(()=>{ btn.style.background='var(--bg1)'; btn.style.borderColor='var(--brd)'; btn.style.color='var(--txt)'; },1500);
     }
+  });
+}
 
-    const bg = status==='worked' ? '#EAF3DE' : status==='half' ? '#FAEEDA'
-              : status==='custom' ? '#E6F1FB' : status==='absent' ? '#FCEBEB'
-              : isWeekend ? 'var(--bg2)' : 'var(--bg1)';
-    const col = status==='worked' ? '#27500A' : status==='half' ? '#633806'
-               : status==='custom' ? '#0C447C' : status==='absent' ? '#791F1F'
-               : 'var(--txt3)';
-    const border = dateStr===today ? '1.5px solid var(--blue)' : '1px solid var(--brd)';
-    const dot    = status==='worked' ? '●' : status==='half' ? '◐' : status==='custom' ? '◉' : status==='absent' ? '✕' : '';
-    const hrsTxt = hours>0 ? `<div style="font-size:8px;margin-top:1px;opacity:.8">${hours}h</div>` : '';
+function clearAttMonth(btn) {
+  if(!btn) btn = document.querySelector('[onclick^="clearAttMonth"]');
+  // Two-tap confirmation
+  if(btn && btn.dataset.confirming !== 'yes') {
+    btn.dataset.confirming = 'yes';
+    const orig = btn.innerHTML;
+    btn.innerHTML = '⚠ Tap again to confirm';
+    btn.style.borderColor = 'var(--red)';
+    setTimeout(()=>{
+      if(btn.dataset.confirming === 'yes') {
+        btn.dataset.confirming = '';
+        btn.innerHTML = orig;
+        btn.style.borderColor = '';
+      }
+    }, 3000);
+    return;
+  }
+  if(btn) { btn.dataset.confirming=''; btn.innerHTML='🗑 Clear all entries this month'; btn.style.borderColor=''; }
+  const attData = loadAttData();
+  const prefix  = `${attYear}-${String(attMonth+1).padStart(2,'0')}`;
+  let count = 0;
+  Object.keys(attData).forEach(k => { if(k.startsWith(prefix)) { delete attData[k]; count++; } });
+  saveAttData(attData);
+  closeAttDayPanel();
+  renderSchedCalendar();
+  updateJobTickerFromSchedule();
+  setSyncStatus('ok', `✓ Cleared ${count} entries`);
+  setTimeout(()=>setSyncStatus('ok',''), 2000);
+}
 
-    cells.push(`
-      <div onclick="${!isWeekend&&!isFuture?`openAttDay('${dateStr}')`:''}"
-        style="aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-               border-radius:8px;background:${bg};color:${col};font-size:11px;font-weight:500;
-               border:${border};cursor:${!isWeekend&&!isFuture?'pointer':'default'};transition:all .1s">
-        <div>${d}</div>
-        ${dot?`<div style="font-size:8px;margin-top:1px">${dot}</div>`:''}
-        ${hrsTxt}
-      </div>`);
+// ── Calendar render ──
+function renderSchedCalendar() {
+  const cal = document.getElementById('sched-calendar');
+  if(!cal) return;
+  const attData = loadAttData();
+  const sched   = loadSchedData();
+  const today   = new Date().toISOString().slice(0,10);
+  const daysInMonth = new Date(attYear, attMonth+1, 0).getDate();
+  const firstDow    = new Date(attYear, attMonth, 1).getDay();
+  const offset      = firstDow===0 ? 6 : firstDow-1;
+  const monthName   = new Date(attYear, attMonth, 1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  const biz         = businesses.find(b=>b.id===currentBizId)||{};
+  const p           = JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null')||biz.portData||{};
+  const netMo       = (p.salary||0)-(p.jobExpenses||0);
+  const [sh,sm]     = sched.startTime.split(':').map(Number);
+  const [eh,em]     = sched.endTime.split(':').map(Number);
+  const defHrs      = Math.max(0,((eh*60+em)-(sh*60+sm)-sched.breakMins)/60);
+  const wdpm        = sched.workDays.length*(30.44/7);
+  const hourly      = wdpm*defHrs>0?netMo/(wdpm*defHrs):0;
+  const sym_        = SYMS[getBizCur(currentBizId)]||getBizCur(currentBizId);
+
+  setText('att-month-label', monthName);
+  updateBulkMonthLabel();
+
+  let totalDays=0, totalHours=0, totalEarned=0;
+  const cells=[];
+  for(let i=0;i<offset;i++) cells.push('<div></div>');
+
+  for(let d=1;d<=daysInMonth;d++){
+    const dateStr = `${attYear}-${String(attMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const rec     = attData[dateStr];
+    const isToday = dateStr===today;
+    const isPast  = dateStr<=today;
+
+    const status = rec?.status || 'none';
+    const hours  = rec?.hours  || 0;
+
+    if(status==='worked'||status==='custom'){ totalDays++; totalHours+=hours; totalEarned+=hours*hourly; }
+
+    let bg='var(--bg2)', col='var(--txt3)', bdr='1px solid var(--brd)';
+    if(status==='worked')  { bg='#E1F5EE'; col='#085041'; bdr='1.5px solid #7CD4B0'; }
+    if(status==='custom')  { bg='#FAEEDA'; col='#412402'; bdr='1.5px solid #F5D08A'; }
+    if(status==='absent')  { bg='#FCEBEB'; col='#791F1F'; bdr='1.5px solid #F5ABAB'; }
+    if(status==='holiday') { bg='#EEEDFE'; col='#26215C'; bdr='1.5px solid #AFA9EC'; }
+    if(isToday) bdr='2px solid var(--blue)';
+
+    const hrLabel = hours>0?`<div style="font-size:7px;margin-top:1px;opacity:.75">${hours%1===0?hours:hours.toFixed(1)}h</div>`:'';
+
+    cells.push(`<div onclick="openAttDay('${dateStr}')"
+      style="aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+             border-radius:8px;background:${bg};color:${col};font-size:11px;font-weight:500;
+             border:${bdr};cursor:pointer;transition:all .12s;user-select:none">
+      <div>${d}</div>${hrLabel}
+    </div>`);
   }
 
-  const cal = document.getElementById('job-attendance-cal');
-  if(cal) cal.innerHTML = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">${cells.join('')}</div>`;
+  cal.innerHTML=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">${cells.join('')}</div>`;
 
-  // Update stats
-  setText('att-stat-days',   totalDays % 1 === 0 ? totalDays : totalDays.toFixed(1));
+  setText('att-stat-days',   totalDays||0);
   setText('att-stat-hours',  totalHours.toFixed(1));
-  setText('att-stat-earned', sym+' '+Math.round(totalEarned).toLocaleString());
-  setText('att-month-summary', `${totalDays} days · ${totalHours.toFixed(0)}h · ${sym} ${Math.round(totalEarned).toLocaleString()} earned`);
-
-  // Update live earnings ticker with real hours this month
-  updateJobLiveTicker(totalHours, salary, hourlyRate);
+  setText('att-stat-rate',   sym_+Math.round(hourly).toLocaleString());
+  setText('att-stat-earned', sym_+Math.round(totalEarned).toLocaleString());
+  setText('sched-month-info',`${totalDays} days · ${totalHours.toFixed(0)}h · ${sym_}${Math.round(totalEarned).toLocaleString()}`);
+  setText('sched-summary-hrs', totalDays>0?`${totalDays} days logged this month`:'Tap "Set hours ▾" to bulk add work days');
 }
 
+// ── Day panel ──
 function openAttDay(dateStr) {
   attSelectedDate = dateStr;
-  const data = loadAttData();
-  const rec  = data[dateStr] || {};
-  const biz  = businesses.find(b=>b.id===currentBizId)||{};
-  const p    = JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null') || biz.portData || {};
-  const stdHours = p.workHours || 8;
+  const attData = loadAttData();
+  const sched   = loadSchedData();
+  const rec     = attData[dateStr];
+  const today   = new Date().toISOString().slice(0,10);
+  const isFuture= dateStr>today;
 
-  const d = new Date(dateStr);
-  const weekdayName = d.toLocaleDateString('en-GB',{weekday:'long'});
-  const monthName   = d.toLocaleDateString('en-GB',{month:'long'});
+  const d = new Date(dateStr+'T12:00:00');
+  setText('att-day-title', d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}));
+  setText('att-day-subtitle', isFuture?'Scheduled ahead':'Past / today');
 
-  setText('att-day-title',       d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'}));
-  setText('att-weekday-name',    weekdayName);
-  setText('att-bulk-day-label',  weekdayName);
-  setText('att-bulk-month-label', monthName);
-
-  // Count how many of this weekday remain in the month (not already logged)
-  const dow = d.getDay();
-  const daysInMonth = new Date(attYear, attMonth+1, 0).getDate();
-  const today = new Date().toISOString().slice(0,10);
-  let count = 0;
-  for(let day=1; day<=daysInMonth; day++) {
-    const ds = `${attYear}-${String(attMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    if(new Date(attYear, attMonth, day).getDay()===dow && ds<=today) count++;
-  }
-  setText('att-bulk-preview', `Will fill ${count} ${weekdayName}${count!==1?'s':''} in ${monthName} (past + today only)`);
-
-  // Set status
-  attSelectedStatus = rec.status || 'worked';
+  attSelectedStatus = rec?.status || null;
   highlightAttStatus(attSelectedStatus);
-
-  // Fill time fields
-  const startTime = rec.startTime || (p.startTime||'08:00');
-  const endTime   = rec.endTime   || '';
-  const brk       = rec.break     || 30;
-  const el_start  = document.getElementById('att-time-start');
-  const el_end    = document.getElementById('att-time-end');
-  const el_break  = document.getElementById('att-break');
-  const el_note   = document.getElementById('att-note');
-
-  if(el_start) el_start.value = startTime;
-  if(el_end)   el_end.value   = endTime || calcEndTime(startTime, stdHours, brk);
-  if(el_break) el_break.value = brk;
-  if(el_note)  el_note.value  = rec.note || '';
-
-  const panel = document.getElementById('att-day-panel');
-  if(panel) panel.style.display = 'block';
-  highlightRepeatBtn(dateStr);
-  panel?.scrollIntoView({behavior:'smooth', block:'nearest'});
-
   showAttTimeFields(attSelectedStatus);
+
+  // Pre-fill from rec or defaults
+  const el_s=document.getElementById('att-time-start');
+  const el_e=document.getElementById('att-time-end');
+  const el_b=document.getElementById('att-break');
+  const el_n=document.getElementById('att-note');
+  if(el_s) el_s.value = rec?.startTime || sched.startTime;
+  if(el_e) el_e.value = rec?.endTime   || sched.endTime;
+  if(el_b) el_b.value = rec?.break     ?? sched.breakMins;
+  if(el_n) el_n.value = rec?.note      || '';
+
+  // Update "Worked" subtitle
+  const sub=document.getElementById('att-btn-worked-sub');
+  if(sub) sub.textContent=`${sched.startTime}–${sched.endTime} (${defHrsFromSched(sched).toFixed(1)}h)`;
+
+  const panel=document.getElementById('att-day-panel');
+  if(panel){ panel.style.display='block'; setTimeout(()=>panel.scrollIntoView({behavior:'smooth',block:'nearest'}),50); }
   attCalcHours();
 }
 
-function applyToAllWeekday() {
-  if(!attSelectedDate) return;
-  const d   = new Date(attSelectedDate);
-  const dow = d.getDay(); // 0=Sun
-  const daysInMonth = new Date(attYear, attMonth+1, 0).getDate();
-  const today = new Date().toISOString().slice(0,10);
-  const data  = loadAttData();
-  const biz   = businesses.find(b=>b.id===currentBizId)||{};
-  const p     = JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null') || biz.portData || {};
-  const stdHrs = p.workHours || 8;
-
-  // Build the record from current panel state
-  const start = document.getElementById('att-time-start')?.value || '';
-  const end   = document.getElementById('att-time-end')?.value   || '';
-  const brk   = parseInt(document.getElementById('att-break')?.value)||0;
-  const note  = document.getElementById('att-note')?.value.trim() || '';
-
-  let hours = 0;
-  if(attSelectedStatus==='worked') hours = stdHrs;
-  else if(attSelectedStatus==='half') hours = stdHrs/2;
-  else if(attSelectedStatus==='custom' && start && end) {
-    const [sh,sm] = start.split(':').map(Number);
-    const [eh,em] = end.split(':').map(Number);
-    let netMins = (eh*60+em)-(sh*60+sm)-brk;
-    if(netMins<0) netMins+=24*60;
-    hours = Math.max(0, netMins/60);
-  }
-
-  let filled = 0;
-  for(let day=1; day<=daysInMonth; day++) {
-    const ds = `${attYear}-${String(attMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    if(new Date(attYear, attMonth, day).getDay() === dow && ds <= today) {
-      data[ds] = { status:attSelectedStatus, hours, startTime:start, endTime:end, break:brk, note };
-      filled++;
-    }
-  }
-
-  saveAttData(data);
-
-  // Show confirmation
-  const weekdayName = d.toLocaleDateString('en-GB',{weekday:'long'});
-  const preview = document.getElementById('att-bulk-preview');
-  if(preview) {
-    preview.style.color = 'var(--green-txt)';
-    preview.textContent = `✓ Applied to ${filled} ${weekdayName}${filled!==1?'s':''} this month`;
-    setTimeout(()=>{ if(preview) { preview.style.color=''; preview.textContent=`Will fill ${filled} ${weekdayName}s (past + today only)`; } }, 3000);
-  }
-
-  closeAttDayPanel();
-  renderAttendanceCal();
-}
-
-function calcEndTime(startTime, hours, breakMins) {
-  if(!startTime) return '';
-  const [h,m]  = startTime.split(':').map(Number);
-  const totalMins = h*60 + m + hours*60 + (breakMins||0);
-  return `${String(Math.floor(totalMins/60)%24).padStart(2,'0')}:${String(totalMins%60).padStart(2,'0')}`;
+function defHrsFromSched(sched){
+  const[sh,sm]=sched.startTime.split(':').map(Number);
+  const[eh,em]=sched.endTime.split(':').map(Number);
+  return Math.max(0,((eh*60+em)-(sh*60+sm)-sched.breakMins)/60);
 }
 
 function closeAttDayPanel() {
-  attSelectedDate = null;
-  const panel = document.getElementById('att-day-panel');
-  if(panel) panel.style.display = 'none';
+  attSelectedDate=null;
+  const panel=document.getElementById('att-day-panel');
+  if(panel) panel.style.display='none';
 }
 
 function setAttStatus(status) {
-  attSelectedStatus = status;
+  attSelectedStatus=status;
   highlightAttStatus(status);
   showAttTimeFields(status);
   attCalcHours();
 }
 
 function highlightAttStatus(status) {
-  ['worked','half','custom','absent'].forEach(s=>{
-    const btn = document.getElementById('att-btn-'+s);
+  const styles={
+    worked: {bg:'var(--green-bg)',bdr:'var(--green)',col:'var(--green-txt)'},
+    custom: {bg:'var(--amber-bg)',bdr:'var(--amber)',col:'var(--amber-txt)'},
+    absent: {bg:'var(--red-bg)',  bdr:'var(--red)',  col:'var(--red-txt)'},
+    holiday:{bg:'#EEEDFE',        bdr:'#7F77DD',     col:'#26215C'},
+  };
+  ['worked','custom','absent','holiday'].forEach(s=>{
+    const btn=document.getElementById('att-btn-'+s);
     if(!btn) return;
-    const isActive = s===status;
-    btn.style.background   = isActive ? (s==='worked'?'var(--green-bg)':s==='half'?'var(--amber-bg)':s==='custom'?'var(--blue-bg)':'var(--red-bg)') : 'var(--bg1)';
-    btn.style.borderColor  = isActive ? (s==='worked'?'var(--green)':s==='half'?'var(--amber)':s==='custom'?'var(--blue)':'var(--red)') : 'var(--brd)';
-    btn.style.color        = isActive ? (s==='worked'?'var(--green-txt)':s==='half'?'var(--amber-txt)':s==='custom'?'var(--blue-txt)':'var(--red-txt)') : 'var(--txt3)';
-    btn.style.fontWeight   = isActive ? '600' : '400';
+    const on=s===status; const st=styles[s]||styles.worked;
+    btn.style.background =on?st.bg:'var(--bg1)';
+    btn.style.borderColor=on?st.bdr:'var(--brd)';
+    btn.style.color      =on?st.col:'var(--txt)';
+    btn.style.fontWeight =on?'600':'400';
   });
 }
 
 function showAttTimeFields(status) {
-  const fields = document.getElementById('att-time-fields');
-  if(!fields) return;
-  fields.style.display = (status==='worked'||status==='custom') ? 'block' : 'none';
-  // For half day — set end time to half of standard hours
-  if(status==='half') {
-    const biz = businesses.find(b=>b.id===currentBizId)||{};
-    const p   = JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null') || biz.portData || {};
-    fields.style.display = 'block'; // still show for half day
-  }
+  const f=document.getElementById('att-time-fields');
+  if(f) f.style.display=status==='custom'?'block':'none';
 }
 
 function attCalcHours() {
-  const start = document.getElementById('att-time-start')?.value;
-  const end   = document.getElementById('att-time-end')?.value;
-  const brk   = parseInt(document.getElementById('att-break')?.value)||0;
-  const biz   = businesses.find(b=>b.id===currentBizId)||{};
-  const p     = JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null') || biz.portData || {};
-  const salary= (p.salary||0) - (p.jobExpenses||0);
-  const workDays = p.workDays||5;
-  const stdHrs   = p.workHours||8;
-  const workSecsPerMonth = workDays * stdHrs * 3600 * (30.44/7);
-  const hourlyRate = workSecsPerMonth > 0 ? salary / (workSecsPerMonth/3600) : 0;
-  const sym = SYMS[getBizCur(currentBizId)] || getBizCur(currentBizId);
-
-  if(start && end) {
-    const [sh,sm] = start.split(':').map(Number);
-    const [eh,em] = end.split(':').map(Number);
-    let netMins = (eh*60+em) - (sh*60+sm) - brk;
-    if(netMins < 0) netMins += 24*60; // overnight
-    const netHrs = Math.max(0, netMins/60);
-    const earned = netHrs * hourlyRate;
-    setText('att-net-hours', netHrs.toFixed(1)+' hrs');
-    setText('att-day-earned', sym+' '+Math.round(earned).toLocaleString());
-  } else {
-    setText('att-net-hours', '—');
-    setText('att-day-earned', '—');
-  }
+  if(attSelectedStatus!=='custom') return;
+  const s=document.getElementById('att-time-start')?.value;
+  const e=document.getElementById('att-time-end')?.value;
+  const b=parseInt(document.getElementById('att-break')?.value)||0;
+  if(!s||!e) return;
+  const[sh,sm]=s.split(':').map(Number);const[eh,em]=e.split(':').map(Number);
+  let m=(eh*60+em)-(sh*60+sm)-b; if(m<0)m+=24*60;
+  const hrs=Math.max(0,m/60);
+  const sched=loadSchedData();
+  const biz=businesses.find(b2=>b2.id===currentBizId)||{};
+  const p=JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null')||biz.portData||{};
+  const netMo=(p.salary||0)-(p.jobExpenses||0);
+  const defHrs=defHrsFromSched(sched);
+  const wdpm=sched.workDays.length*(30.44/7);
+  const hourly=wdpm*defHrs>0?netMo/(wdpm*defHrs):0;
+  const sym_=SYMS[getBizCur(currentBizId)]||getBizCur(currentBizId);
+  setText('att-net-hours',hrs.toFixed(2)+' hrs');
+  setText('att-day-earned',sym_+Math.round(hrs*hourly).toLocaleString());
 }
 
 function saveAttDay() {
-  if(!attSelectedDate) return;
-  const data   = loadAttData();
-  const start  = document.getElementById('att-time-start')?.value || '';
-  const end    = document.getElementById('att-time-end')?.value   || '';
-  const brk    = parseInt(document.getElementById('att-break')?.value)||0;
-  const note   = document.getElementById('att-note')?.value.trim() || '';
-  const biz    = businesses.find(b=>b.id===currentBizId)||{};
-  const p      = JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null') || biz.portData || {};
-  const stdHrs = p.workHours || 8;
-
-  let hours = 0;
-  if(attSelectedStatus==='worked') hours = stdHrs;
-  else if(attSelectedStatus==='half') hours = stdHrs/2;
-  else if(attSelectedStatus==='custom' && start && end) {
-    const [sh,sm] = start.split(':').map(Number);
-    const [eh,em] = end.split(':').map(Number);
-    let netMins = (eh*60+em) - (sh*60+sm) - brk;
-    if(netMins < 0) netMins += 24*60;
-    hours = Math.max(0, netMins/60);
-  } else if(attSelectedStatus==='absent') hours = 0;
-
-  if(attSelectedStatus === 'none' || !attSelectedStatus) {
-    delete data[attSelectedDate];
-  } else {
-    data[attSelectedDate] = { status:attSelectedStatus, hours, startTime:start, endTime:end, break:brk, note };
+  if(!attSelectedDate||!attSelectedStatus) return;
+  const status=attSelectedStatus;
+  const s=document.getElementById('att-time-start')?.value||'';
+  const e=document.getElementById('att-time-end')?.value||'';
+  const b=parseInt(document.getElementById('att-break')?.value)||0;
+  const note=document.getElementById('att-note')?.value.trim()||'';
+  const sched=loadSchedData();
+  const attData=loadAttData();
+  let hours=0;
+  if(status==='worked') hours=defHrsFromSched(sched);
+  else if(status==='custom'&&s&&e){
+    const[sh,sm]=s.split(':').map(Number);const[eh,em]=e.split(':').map(Number);
+    let m=(eh*60+em)-(sh*60+sm)-b; if(m<0)m+=24*60; hours=Math.max(0,m/60);
   }
-
-  saveAttData(data);
+  attData[attSelectedDate]={status,hours,startTime:s,endTime:e,break:b,note};
+  saveAttData(attData);
   closeAttDayPanel();
-  renderAttendanceCal();
-  // Update the job live ticker
-  updateJobFromAttendance();
+  renderSchedCalendar();
+  updateJobTickerFromSchedule();
 }
 
-function updateJobFromAttendance() {
-  // Recalculate this month's actual earnings from attendance data
-  const data  = loadAttData();
-  const biz   = businesses.find(b=>b.id===currentBizId)||{};
-  const p     = JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null') || biz.portData || {};
-  const salary= (p.salary||0)-(p.jobExpenses||0);
-  const stdHrs= p.workHours||8;
-  const workDays = p.workDays||5;
-  const workSecsPerMonth = workDays * stdHrs * 3600 * (30.44/7);
-  const hourlyRate = workSecsPerMonth > 0 ? salary/(workSecsPerMonth/3600) : 0;
-
-  const now = new Date();
-  const prefix = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  let totalHours = 0;
-  Object.entries(data).forEach(([date, rec])=>{
-    if(date.startsWith(prefix) && rec.hours) totalHours += rec.hours;
-  });
-
-  updateJobLiveTicker(totalHours, salary, hourlyRate);
-}
-
-// ── Highlight the weekday button matching the selected date ──
-function highlightRepeatBtn(dateStr) {
-  if(!dateStr) return;
-  const dow = new Date(dateStr).getDay(); // 0=Sun,1=Mon...
-  const days = [0,1,2,3,4,5,6]; // Sun,Mon,...,Sat
-  const btns = document.querySelectorAll('.att-repeat-day');
-  btns.forEach((btn, i) => {
-    // btns order: Mon=0,Tue=1,Wed=2,Thu=3,Fri=4,Sat=5,Sun=6
-    const btnDow = i === 6 ? 0 : i + 1; // convert btn index to JS day-of-week
-    const isMatch = btnDow === dow;
-    btn.style.background   = isMatch ? 'var(--blue-bg)'  : 'var(--bg1)';
-    btn.style.borderColor  = isMatch ? 'var(--blue)'     : 'var(--brd)';
-    btn.style.color        = isMatch ? 'var(--blue-txt)' : 'var(--txt3)';
-    btn.style.fontWeight   = isMatch ? '600'             : '400';
-  });
-}
-
-// ── Build an attendance record from current panel state ──
-function buildAttRecord() {
-  const status = attSelectedStatus || 'worked';
-  const start  = document.getElementById('att-time-start')?.value || '';
-  const end    = document.getElementById('att-time-end')?.value   || '';
-  const brk    = parseInt(document.getElementById('att-break')?.value)||0;
-  const note   = document.getElementById('att-note')?.value.trim() || '';
-  const biz    = businesses.find(b=>b.id===currentBizId)||{};
-  const p      = JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null') || biz.portData || {};
-  const stdHrs = p.workHours||8;
-
-  let hours = 0;
-  if(status==='worked') hours = stdHrs;
-  else if(status==='half') hours = stdHrs/2;
-  else if(status==='custom' && start && end) {
-    const [sh,sm] = start.split(':').map(Number);
-    const [eh,em] = end.split(':').map(Number);
-    let netMins = (eh*60+em)-(sh*60+sm)-brk;
-    if(netMins<0) netMins+=24*60;
-    hours = Math.max(0,netMins/60);
-  }
-  return { status, hours, startTime:start, endTime:end, break:brk, note };
-}
-
-// ── Repeat for all occurrences of a given weekday in the current month ──
-function repeatAttForDay(targetDow) { // 0=Sun,1=Mon,...,6=Sat
+function clearAttDay() {
   if(!attSelectedDate) return;
-  const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const daysInMonth = new Date(attYear, attMonth+1, 0).getDate();
-  const today   = new Date().toISOString().slice(0,10);
-  const rec     = buildAttRecord();
-  const data    = loadAttData();
-  let count = 0;
+  const attData=loadAttData();
+  delete attData[attSelectedDate];
+  saveAttData(attData);
+  closeAttDayPanel();
+  renderSchedCalendar();
+  updateJobTickerFromSchedule();
+}
 
-  for(let d=1; d<=daysInMonth; d++) {
-    const dateStr = `${attYear}-${String(attMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const dow     = new Date(attYear, attMonth, d).getDay();
-    if(dow === targetDow && dateStr <= today) {
-      data[dateStr] = {...rec};
-      count++;
+function updateJobTickerFromSchedule() {
+  const biz=businesses.find(b=>b.id===currentBizId)||{};
+  if((biz.type||'business')==='job'){
+    const p=JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null')||biz.portData||{};
+    startTypeLiveTicker('job',p);
+  }
+}
+
+// Keep these for compatibility
+function renderSchedDefaults(){}
+function saveSchedDefaults(){}
+function toggleSchedDay(){}
+function renderSchedSummaryLine(){}
+function updateSchedPreview(){}
+function closeAttDefaults(){}
+function applySchedToDay(){}
+function repeatAttForDay(){}
+function repeatAttForAll(){}
+function buildAttRecord(){ return {}; }
+function highlightRepeatBtn(){}
+
+
+// Schedule helpers used by live ticker
+function getSchedForBiz(bizId) {
+  const key = 'smt_'+(bizId||currentBizId)+'_schedule';
+  return JSON.parse(localStorage.getItem(key)||'null') || {
+    workDays:[1,2,3,4,5], startTime:'08:00', endTime:'17:00', breakMins:60
+  };
+}
+function getSchedDayRow(sched, dow) {
+  const on = sched.workDays?.includes(dow) ?? [1,2,3,4,5].includes(dow);
+  return { on, start:sched.startTime||'08:00', end:sched.endTime||'17:00', brk:sched.breakMins||60 };
+}
+function getSchedDayHrs(sched, dow) {
+  const r=getSchedDayRow(sched,dow); if(!r.on) return 0;
+  const[sh,sm]=r.start.split(':').map(Number); const[eh,em]=r.end.split(':').map(Number);
+  return Math.max(0,((eh*60+em)-(sh*60+sm)-r.brk)/60);
+}
+
+function isOnShiftNow(bizId) {
+  const sched   = getSchedForBiz(bizId);
+  const attData = JSON.parse(localStorage.getItem(lsAttKey(bizId||currentBizId))||'{}');
+  const now     = new Date();
+  const dateStr = now.toISOString().slice(0,10);
+  const rec     = attData[dateStr];
+  // Explicit absent or off override
+  if(rec?.status==='absent' || rec?.status==='off') return false;
+  // Not a work day (default or no override)
+  if(!rec && !sched.workDays.includes(now.getDay())) return false;
+  // Check time window
+  const [sh,sm] = sched.startTime.split(':').map(Number);
+  const [eh,em] = sched.endTime.split(':').map(Number);
+  const wStart  = new Date(now); wStart.setHours(sh,sm,0,0);
+  const wEnd    = new Date(now); wEnd.setHours(eh,em,0,0);
+  // Custom hours override
+  if(rec?.status==='custom' && rec.startTime && rec.endTime) {
+    const [csh,csm]=rec.startTime.split(':').map(Number);
+    const [ceh,cem]=rec.endTime.split(':').map(Number);
+    const cs=new Date(now); cs.setHours(csh,csm,0,0);
+    const ce=new Date(now); ce.setHours(ceh,cem,0,0);
+    return now>=cs && now<ce;
+  }
+  return now>=wStart && now<wEnd;
+}
+
+function calcScheduledSecsThisMonth(bizId) {
+  const sched   = getSchedForBiz(bizId);
+  const attData = JSON.parse(localStorage.getItem(lsAttKey(bizId||currentBizId))||'{}');
+  const now     = new Date();
+  const year    = now.getFullYear();
+  const month   = now.getMonth();
+
+  // Default shift hours from sched
+  const [dsh,dsm] = sched.startTime.split(':').map(Number);
+  const [deh,dem] = sched.endTime.split(':').map(Number);
+  const defNetHrs = Math.max(0,((deh*60+dem)-(dsh*60+dsm)-sched.breakMins)/60);
+  const wdpm      = sched.workDays.length*(30.44/7);
+
+  let totalSecs = 0;
+
+  // Count all past days this month (not today)
+  for(let d=1; d<now.getDate(); d++) {
+    const ds  = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const rec = attData[ds];
+    const dow = new Date(ds+'T12:00:00').getDay();
+
+    if(!rec) continue; // no entry = not counted (user must explicitly log days)
+    if(rec.status==='absent'||rec.status==='holiday') continue;
+    if(rec.status==='custom') { totalSecs += rec.hours*3600; continue; }
+    if(rec.status==='worked') {
+      // Use custom times if stored, else default
+      if(rec.startTime && rec.endTime) {
+        const[sh,sm]=rec.startTime.split(':').map(Number);
+        const[eh,em]=rec.endTime.split(':').map(Number);
+        const hrs=Math.max(0,((eh*60+em)-(sh*60+sm)-(rec.break||0))/60);
+        totalSecs+=hrs*3600;
+      } else {
+        totalSecs+=defNetHrs*3600;
+      }
     }
   }
 
-  saveAttData(data);
-  closeAttDayPanel();
-  renderAttendanceCal();
+  // Today — count actual worked seconds so far if on shift or already worked
+  const todayDs  = `${year}-${String(month+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const todayRec = attData[todayDs];
 
-  // Brief confirmation
-  const msg = `✓ Applied to all ${dayNames[targetDow]}s this month (${count} days)`;
-  setSyncStatus('ok', msg);
-  setTimeout(()=>setSyncStatus('ok',''), 3000);
-}
+  if(todayRec?.status==='worked'||todayRec?.status==='custom') {
+    const recStart = todayRec.startTime || sched.startTime;
+    const recEnd   = todayRec.endTime   || sched.endTime;
+    const recBreak = todayRec.break     ?? sched.breakMins;
+    const [tsh,tsm]=recStart.split(':').map(Number);
+    const [teh,tem]=recEnd.split(':').map(Number);
 
-// ── Repeat for all weekdays (Mon–Fri by default, or based on work days setting) ──
-function repeatAttForAll() {
-  if(!attSelectedDate) return;
-  const biz  = businesses.find(b=>b.id===currentBizId)||{};
-  const p    = JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null') || biz.portData || {};
-  const workDays = p.workDays || 5; // e.g. 5 = Mon-Fri
-  // Work days: assume Mon=1 through workDays (Mon=1,Tue=2,...,Fri=5,Sat=6)
-  const workDowSet = new Set();
-  for(let i=1; i<=workDays; i++) workDowSet.add(i>6?0:i);
+    const shiftStart=new Date(now); shiftStart.setHours(tsh,tsm,0,0);
+    const shiftEnd  =new Date(now); shiftEnd.setHours(teh,tem,0,0);
 
-  const daysInMonth = new Date(attYear, attMonth+1, 0).getDate();
-  const today = new Date().toISOString().slice(0,10);
-  const rec   = buildAttRecord();
-  const data  = loadAttData();
-  let count   = 0;
-
-  for(let d=1; d<=daysInMonth; d++) {
-    const dateStr = `${attYear}-${String(attMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const dow     = new Date(attYear, attMonth, d).getDay();
-    if(workDowSet.has(dow) && dateStr <= today) {
-      data[dateStr] = {...rec};
-      count++;
+    if(now>=shiftStart) {
+      const elapsed = Math.floor((Math.min(now,shiftEnd)-shiftStart)/1000);
+      const breakSecs = now>=shiftEnd ? recBreak*60 : 0; // only deduct break after shift
+      totalSecs += Math.max(0, elapsed-breakSecs);
     }
+  } else if(isOnShiftNow(bizId)) {
+    // User is on shift right now (default schedule, no explicit entry today)
+    const [sh,sm]=sched.startTime.split(':').map(Number);
+    const shiftStart=new Date(now); shiftStart.setHours(sh,sm,0,0);
+    const elapsed=Math.floor((now-shiftStart)/1000);
+    totalSecs+=Math.max(0,elapsed); // live ticking, break not deducted yet
   }
 
-  saveAttData(data);
-  closeAttDayPanel();
-  renderAttendanceCal();
-  setSyncStatus('ok', `✓ Applied to all ${count} working days this month`);
-  setTimeout(()=>setSyncStatus('ok',''), 3000);
+  return { totalSecs, defNetHrs, wdpm, sched };
 }
 
-// ── Clear all attendance for current month ──
-function clearAttMonth() {
-  if(!confirm('Clear all attendance records for this month?')) return;
-  const data   = loadAttData();
-  const prefix = `${attYear}-${String(attMonth+1).padStart(2,'0')}`;
-  Object.keys(data).forEach(k=>{ if(k.startsWith(prefix)) delete data[k]; });
-  saveAttData(data);
-  closeAttDayPanel();
-  renderAttendanceCal();
-}
-
-function updateJobLiveTicker(totalHoursThisMonth, netMonthly, hourlyRate) {
-  const sym = SYMS[getBizCur(currentBizId)] || getBizCur(currentBizId);
-  const fmt  = n => sym+' '+Math.round(n).toLocaleString();
-  setText('job-live-hr', fmt(hourlyRate));
-  setText('job-live-day', fmt(hourlyRate * (parseInt(document.getElementById('att-net-hours')?.textContent)||8)));
-}
-
-// ═══════════════════════════════════════════════════
 // TYPE-AWARE NAV SYSTEM
 // ═══════════════════════════════════════════════════
 
@@ -4974,9 +5018,9 @@ function renderNavForType(type) {
 
   // Rebuild nav — keep portfolio tab + manage tab, replace middle tabs
   nav.innerHTML = `
-    <button class="ntab" onclick="sw('portfolio',this)" id="nav-portfolio" style="border-radius:20px;padding:0 10px">⌂</button>
+    <button class="ntab" onclick="sw('portfolio',this)" id="nav-portfolio" title="Portfolio — Home"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle"><path d="M8 1.5L1.5 7H3v6.5h4v-4h2v4h4V7h1.5L8 1.5z" fill="currentColor" opacity=".9"/></svg></button>
     ${tabs.map(t=>`<button class="ntab" onclick="sw('${t.id}',this)" id="nav-${t.id}">${t.label}</button>`).join('')}
-    <button class="ntab" onclick="sw('manage',this)" style="margin-left:auto" id="nav-manage">⚙</button>
+    <button class="ntab" onclick="sw('manage',this)" style="margin-left:auto" id="nav-manage" title="Settings"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle"><circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M2.93 2.93l1.06 1.06M12.01 12.01l1.06 1.06M2.93 13.07l1.06-1.06M12.01 3.99l1.06-1.06" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
   `;
 
   // Update nav translation map
@@ -5156,31 +5200,49 @@ function startTypeLiveTicker(type, portData) {
     return { accrualSecs, isInSeason, seasonEnd, seasonStart };
   }
 
-  // ── Job: pre-compute base at start ──
+  // ── Job: pre-compute base using attendance + schedule ──
   let jobBase = 0, jobHourlyRate = 0, jobCurrentlyWorking = false;
   if(type === 'job') {
-    const jd = calcJobWorkedSecsThisMonth();
-    jobBase        = jd.totalEarned;
-    jobHourlyRate  = jd.hourlyRate;
-    // Check if currently in working hours right now
-    const isWorkDay    = now.getDay() !== 0 && now.getDay() !== 6;
-    const startTime    = p.startTime || '08:00';
-    const [sh, sm]     = startTime.split(':').map(Number);
-    const workStart    = new Date(now); workStart.setHours(sh, sm, 0, 0);
-    const workEnd      = new Date(workStart); workEnd.setHours(sh + (p.workHours||8), sm, 0, 0);
-    jobCurrentlyWorking = isWorkDay && now >= workStart && now < workEnd;
-    // Check attendance for today
-    const attData   = JSON.parse(localStorage.getItem(lsAttKey(currentBizId)) || '{}');
-    const todayRec  = attData[now.toISOString().slice(0,10)];
-    if(todayRec && todayRec.status === 'absent') jobCurrentlyWorking = false;
-    // Update status indicator
-    setText('job-live-status', jobCurrentlyWorking
-      ? `⏱ On shift · ${sym} ${Math.round(jobHourlyRate).toLocaleString()}/hr`
-      : `⏸ Off shift · ${sym} ${Math.round(jobHourlyRate).toLocaleString()}/hr`);
-    const perSecWhenWorking = jobHourlyRate / 3600;
-    if(perSecEl) perSecEl.textContent = jobCurrentlyWorking
-      ? `+${fmt4(perSecWhenWorking)} per second (on shift)`
-      : `Paused — not on shift`;
+    const netMonthly = (p.salary||0) - (p.jobExpenses||0);
+    const schedInfo  = calcScheduledSecsThisMonth(currentBizId);
+    const { totalSecs, avgNetHrs, wdpm: jobWdpm } = schedInfo;
+    jobHourlyRate       = jobWdpm*avgNetHrs>0 ? netMonthly/(jobWdpm*avgNetHrs) : 0;
+    jobBase             = (totalSecs/3600) * jobHourlyRate;
+    jobCurrentlyWorking = isOnShiftNow(currentBizId);
+
+    const todayDs2  = now.toISOString().slice(0,10);
+    const attData2  = JSON.parse(localStorage.getItem(lsAttKey(currentBizId))||'{}');
+    const todayRec2 = attData2[todayDs2];
+    const isAbsent2 = todayRec2?.status==='absent'||todayRec2?.status==='holiday';
+
+    // Show immediately — don't wait for first tick
+    setText('job-live-sec',    fmt4(jobBase));
+    setText('job-live-month',  fmt4(jobBase));
+    setText('job-live-hr',     fmt(jobHourlyRate));
+
+    const perSecEl2 = document.getElementById('job-live-per-sec');
+    if(jobCurrentlyWorking) {
+      setText('job-live-status', `⏱ On shift · ${sym} ${Math.round(jobHourlyRate).toLocaleString()}/hr`);
+      if(perSecEl2) perSecEl2.textContent = `+${fmt4(jobHourlyRate/3600)} per second`;
+    } else if(isAbsent2) {
+      setText('job-live-status', `🔴 Absent today`);
+      if(perSecEl2) perSecEl2.textContent = 'Absent / holiday today';
+    } else {
+      setText('job-live-status', `⏸ Off shift · ${sym} ${Math.round(jobHourlyRate).toLocaleString()}/hr`);
+      if(perSecEl2) perSecEl2.textContent = 'Off shift — ticker paused';
+    }
+
+    // Today earned
+    let todayHrs2 = 0;
+    if(jobCurrentlyWorking) {
+      const recStart2 = todayRec2?.startTime || schedInfo.sched.startTime;
+      const [tsh2,tsm2]=recStart2.split(':').map(Number);
+      const wS2=new Date(now); wS2.setHours(tsh2,tsm2,0,0);
+      todayHrs2=Math.max(0,(now-wS2)/3600000);
+    } else if(todayRec2?.status==='worked'||todayRec2?.status==='custom') {
+      todayHrs2=todayRec2.hours||0;
+    }
+    setText('job-live-day', fmt(todayHrs2*jobHourlyRate));
   }
 
   // ── Farming: pre-compute ──
@@ -5213,33 +5275,42 @@ function startTypeLiveTicker(type, portData) {
       return;
     }
 
-    // ── JOB: only tick during work hours ──
+    // ── JOB: tick only when on shift, show monthly total to this second ──
     if(type === 'job') {
-      const nowTick   = new Date();
-      const isWD      = nowTick.getDay() !== 0 && nowTick.getDay() !== 6;
-      const [sh2,sm2] = (p.startTime||'08:00').split(':').map(Number);
-      const wStart    = new Date(nowTick); wStart.setHours(sh2, sm2, 0, 0);
-      const wEnd      = new Date(wStart); wEnd.setHours(sh2 + (p.workHours||8), sm2, 0, 0);
-      const onShift   = isWD && nowTick >= wStart && nowTick < wEnd;
-      // Check attendance
-      const attData2  = JSON.parse(localStorage.getItem(lsAttKey(currentBizId)) || '{}');
-      const todayRec2 = attData2[nowTick.toISOString().slice(0,10)];
-      const isAbsent  = todayRec2?.status === 'absent';
-      const ticking   = onShift && !isAbsent;
+      const ticking    = isOnShiftNow(currentBizId);
+      const perSecEl3  = document.getElementById('job-live-per-sec');
+      const todayDs    = new Date().toISOString().slice(0,10);
+      const attData3   = JSON.parse(localStorage.getItem(lsAttKey(currentBizId))||'{}');
+      const todayRec   = attData3[todayDs];
+      const isAbsent   = todayRec?.status==='absent'||todayRec?.status==='holiday';
 
-      const perSecEl3 = document.getElementById('job-live-per-sec');
       if(ticking) {
         jobBase += jobHourlyRate / 3600;
-        setText('job-live-sec', fmt4(jobBase));
-        if(perSecEl3) perSecEl3.textContent = `+${fmt4(jobHourlyRate/3600)} per second (on shift)`;
+        if(perSecEl3) perSecEl3.textContent = `+${fmt4(jobHourlyRate/3600)} per second`;
         setText('job-live-status', `⏱ On shift · ${sym} ${Math.round(jobHourlyRate).toLocaleString()}/hr`);
       } else {
-        setText('job-live-sec', fmt4(jobBase)); // freeze — no ticking
-        if(perSecEl3) perSecEl3.textContent = isAbsent ? '🔴 Absent today' : (onShift ? 'Paused' : '⏸ Off shift');
-        setText('job-live-status', isAbsent ? `🔴 Absent today · ${sym} ${Math.round(jobHourlyRate).toLocaleString()}/hr` : `⏸ Off shift · ${sym} ${Math.round(jobHourlyRate).toLocaleString()}/hr`);
+        if(perSecEl3) perSecEl3.textContent = isAbsent ? '🔴 Absent / holiday today' : '⏸ Off shift — paused';
+        setText('job-live-status', isAbsent
+          ? `🔴 Absent today`
+          : `⏸ Off shift · ${sym} ${Math.round(jobHourlyRate).toLocaleString()}/hr`);
       }
+
+      // Big number = monthly earned to this exact second
+      setText('job-live-sec',   fmt4(jobBase));
       setText('job-live-month', fmt4(jobBase));
-      setText('job-live-day',   fmt(ticking ? jobHourlyRate * Math.floor((new Date()-wStart)/3600000) : 0));
+
+      // Today earned = hours worked today × hourly rate
+      const sched3 = getSchedForBiz(currentBizId);
+      let todayHrs = 0;
+      if(ticking) {
+        const recStart = todayRec?.startTime || sched3.startTime;
+        const [tsh,tsm]=recStart.split(':').map(Number);
+        const wStart3=new Date(); wStart3.setHours(tsh,tsm,0,0);
+        todayHrs=Math.max(0,(new Date()-wStart3)/3600000);
+      } else if(todayRec?.status==='worked'||todayRec?.status==='custom') {
+        todayHrs = todayRec.hours||0;
+      }
+      setText('job-live-day', fmt(todayHrs * jobHourlyRate));
       return;
     }
 
@@ -5575,7 +5646,7 @@ function applyStaticTranslations(){
   ids.forEach(([id,key])=>{ const el=document.getElementById(id); if(el&&key) el.textContent=t(key)||el.textContent; });
   // Nav tabs — use IDs to avoid index mismatch
   const navMap = {
-    'nav-portfolio':['Portfolio',      'ගෙවීම් ලේඛනය'],
+    'nav-portfolio':['__icon__',    '__icon__'],  // SVG icon — skip translation
     'nav-live':     ['Live target',    'සජීව ඉලක්කය'],
     'nav-charts':   ['Charts',         'ප්‍රස්ථාර'],
     'nav-hours':    ['Trading hours',  'වෙළඳ වේලා'],
@@ -5584,9 +5655,10 @@ function applyStaticTranslations(){
     'nav-loans':    ['💳 Loans',        '💳 ණය'],
     'nav-ops':      ['Daily log',      'දෛනික සටහන'],
     'nav-report':   ['Report',         'වාර්තාව'],
-    'nav-manage':   ['⚙',             '⚙'],
+    'nav-manage':   ['__icon__',      '__icon__'],  // SVG icon — skip translation
   };
   Object.entries(navMap).forEach(([id,[en,si]])=>{
+    if(en === '__icon__') return; // SVG icon button — don't overwrite
     const el = document.getElementById(id);
     if(el) el.textContent = currentLang==='si' ? si : en;
   });
@@ -5934,7 +6006,7 @@ function sw(name,el){
   if(name==='loans')renderLoans();
   if(name==='portfolio'){stopTypeLiveTicker();renderPortfolio();}
   if(name!=='portfolio')stopPortTicker();
-  if(name==='job-attendance') { attYear=new Date().getFullYear(); attMonth=new Date().getMonth(); renderAttendanceCal(); }
+  if(name==='job-attendance') { attYear=new Date().getFullYear(); attMonth=new Date().getMonth(); renderSchedDefaults(); renderSchedCalendar(); }
   if(name==='farming-loans') { renderLoansInto('farming-loans-content'); }
   if(name==='fd-loans')      { renderLoansInto('fd-loans-content'); }
   if(name==='inv-loans')     { renderLoansInto('inv-loans-content'); }
