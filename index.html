@@ -115,12 +115,12 @@ body.si .mono{font-family:'DM Mono',monospace}
 .sc-sub{font-size:10px;color:var(--txt3);margin-top:3px}
 
 /* ── NAV ── */
-.nav{display:flex;gap:3px;background:var(--bg2);padding:3px;border-radius:var(--r8);margin-bottom:12px;flex-wrap:wrap;overflow-x:auto}
+.nav{display:flex;gap:3px;background:var(--bg2);padding:3px;border-radius:0;margin:0;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;border-top:1px solid var(--brd);border-bottom:1px solid var(--brd)}
 .ntab{padding:6px 12px;font-size:12px;border:none;background:transparent;border-radius:6px;cursor:pointer;color:var(--txt3);font-family:inherit;white-space:nowrap;transition:all .15s}
 .ntab svg{pointer-events:none;transition:color .15s}
 .ntab[id="nav-portfolio"],.ntab[id="nav-manage"]{padding:6px 10px;min-width:36px;display:inline-flex;align-items:center;justify-content:center}
 .ntab.active{background:var(--bg1);color:var(--txt);font-weight:500;box-shadow:var(--shadow)}
-.tc{display:none}.tc.active{display:block}
+.tc{display:none}.tc.active{display:block;padding-top:10px}
 
 /* ── CARD ── */
 .card{background:var(--bg1);border:1px solid var(--brd);border-radius:var(--r12);padding:13px 15px;margin-bottom:10px;box-shadow:var(--shadow)}
@@ -1075,19 +1075,14 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
     </div>
   </div>
 
-  <!-- Sync URL bar -->
-  <div class="sync-bar" style="justify-content:space-between">
-    <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--txt3)">
-      <div class="sync-dot" id="sync-dot"></div>
-      <span id="sync-txt">—</span>
-    </div>
-    <span style="font-size:10px;color:var(--txt3)" id="last-sync-lbl"></span>
-    <!-- Hidden inputs kept for JS compatibility -->
-    <input type="text" id="sheet-url" style="display:none">
-    <input type="text" id="sheet-url-manage" style="display:none">
+  <!-- Hidden inputs for JS compatibility -->
+  <div style="display:none">
+    <input type="text" id="sheet-url">
+    <input type="text" id="sheet-url-manage">
+    <div id="sync-dot"></div>
+    <span id="sync-txt"></span>
+    <span id="last-sync-lbl"></span>
   </div>
-
-  <div class="summary" id="summary"></div>
 
   <div class="nav" id="main-nav">
     <button class="ntab active" onclick="sw('portfolio',this)" id="nav-portfolio" title="Portfolio — Home"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle"><path d="M8 1.5L1.5 7H3v6.5h4v-4h2v4h4V7h1.5L8 1.5z" fill="currentColor" opacity=".9"/></svg></button>
@@ -1172,6 +1167,7 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
 
   <!-- LIVE TARGET -->
   <div class="tc" id="tab-live">
+    <div class="summary" id="summary"></div>
     <div class="live-hero">
       <div class="hero-top">
         <div id="status-pill" class="status-pill s-closed"><div class="pulse-dot"></div><span id="status-txt">—</span></div>
@@ -2444,6 +2440,7 @@ async function switchBiz(bizId){
     if(curDropdown.value !== bizCurLoaded) curDropdown.value = 'LKR';
   }
   if(type==='business') { renderAll(); renderExpenses(); renderIncome(); renderWeekSchedule(); }
+
   renderNavForType(type);
   // For non-business types, go to their live tab and start ticker
   if(type !== 'business') {
