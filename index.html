@@ -1107,8 +1107,8 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
 
     <!-- View toggle -->
     <div style="display:flex;gap:6px;margin-bottom:10px">
-      <button class="btn-sm port-view-btn active-view" onclick="setPortView('today',this)" style="border-radius:20px;flex:1">Today</button>
-      <button class="btn-sm port-view-btn" onclick="setPortView('month',this)" style="border-radius:20px;flex:1">This month</button>
+      <button class="btn-sm port-view-btn" onclick="setPortView('today',this)" style="border-radius:20px;flex:1">Today</button>
+      <button class="btn-sm port-view-btn active-view" onclick="setPortView('month',this)" style="border-radius:20px;flex:1">This month</button>
       <button class="btn-sm port-view-btn" onclick="setPortView('year',this)" style="border-radius:20px;flex:1">This year</button>
     </div>
 
@@ -2424,17 +2424,26 @@ async function switchBiz(bizId){
   setText('biz-name-bar', biz.name||bizId);
   setText('app-logo', biz.icon||'🏪');
   document.getElementById('app-logo').style.background = biz.color||'#E6F1FB';
-  setText('biz-meta-bar', openDaysPerWeek()+' '+t('openDaysWeek')+' · '+getBizCur(currentBizId));
+  const type = biz.type || 'business';
+  // Update meta bar based on source type
+  const cur_ = getBizCur(bizId);
+  let metaStr = '';
+  if(type==='business')   metaStr = openDaysPerWeek()+' '+t('openDaysWeek')+' · '+cur_;
+  else if(type==='job')   { const p2=JSON.parse(localStorage.getItem(lsKey(bizId,'portData'))||'null')||{}; metaStr = (p2.workDays||5)+'d/wk · '+(p2.workHours||8)+'h/day · '+cur_; }
+  else if(type==='rental'){ const p2=JSON.parse(localStorage.getItem(lsKey(bizId,'portData'))||'null')||{}; metaStr = 'Rental · '+(p2.tenant||'No tenant')+' · '+cur_; }
+  else if(type==='fd')    { const p2=JSON.parse(localStorage.getItem(lsKey(bizId,'portData'))||'null')||{}; metaStr = 'FD · '+(p2.rate||0)+'% p.a. · '+cur_; }
+  else if(type==='investment'){ metaStr = 'Investment · '+cur_; }
+  else if(type==='farming')  { metaStr = 'Farming · '+cur_; }
+  else                    { metaStr = (PORT_TYPE_META[type]||{label:type}).label+' · '+cur_; }
+  setText('biz-meta-bar', metaStr);
   // Load this biz's currency into the dropdown
   const bizCurLoaded = getBizCur(bizId);
   const curDropdown = document.getElementById('cur');
   if(curDropdown && bizCurLoaded) {
     curDropdown.value = bizCurLoaded;
-    // If option doesn't exist for this currency, just show the code
     if(curDropdown.value !== bizCurLoaded) curDropdown.value = 'LKR';
   }
-  renderAll(); renderExpenses(); renderIncome(); renderWeekSchedule();
-  const type = biz.type || 'business';
+  if(type==='business') { renderAll(); renderExpenses(); renderIncome(); renderWeekSchedule(); }
   renderNavForType(type);
   // For non-business types, go to their live tab and start ticker
   if(type !== 'business') {
@@ -4990,29 +4999,25 @@ function getSchedDayHrs(sched, dow) {
 }
 
 function isOnShiftNow(bizId) {
-  const sched   = getSchedForBiz(bizId);
   const attData = JSON.parse(localStorage.getItem(lsAttKey(bizId||currentBizId))||'{}');
   const now     = new Date();
   const dateStr = now.toISOString().slice(0,10);
   const rec     = attData[dateStr];
-  // Explicit absent or off override
-  if(rec?.status==='absent' || rec?.status==='off') return false;
-  // Not a work day (default or no override)
-  if(!rec && !(sched.workDays||[1,2,3,4,5]).includes(now.getDay())) return false;
-  // Check time window
-  const [sh,sm] = sched.startTime.split(':').map(Number);
-  const [eh,em] = sched.endTime.split(':').map(Number);
-  const wStart  = new Date(now); wStart.setHours(sh,sm,0,0);
-  const wEnd    = new Date(now); wEnd.setHours(eh,em,0,0);
-  // Custom hours override
-  if(rec?.status==='custom' && rec.startTime && rec.endTime) {
-    const [csh,csm]=rec.startTime.split(':').map(Number);
-    const [ceh,cem]=rec.endTime.split(':').map(Number);
-    const cs=new Date(now); cs.setHours(csh,csm,0,0);
-    const ce=new Date(now); ce.setHours(ceh,cem,0,0);
-    return now>=cs && now<ce;
-  }
-  return now>=wStart && now<wEnd;
+
+  // No attendance record for today = not on shift (user must explicitly log)
+  if(!rec) return false;
+
+  // Explicitly absent or holiday = not on shift
+  if(rec.status==='absent' || rec.status==='holiday') return false;
+
+  // Has a worked or custom record — check if currently within shift window
+  const startTime = rec.startTime || getSchedForBiz(bizId).startTime || '08:00';
+  const endTime   = rec.endTime   || getSchedForBiz(bizId).endTime   || '17:00';
+  const [sh,sm]   = startTime.split(':').map(Number);
+  const [eh,em]   = endTime.split(':').map(Number);
+  const wStart    = new Date(now); wStart.setHours(sh,sm,0,0);
+  const wEnd      = new Date(now); wEnd.setHours(eh,em,0,0);
+  return now >= wStart && now < wEnd;
 }
 
 function calcScheduledSecsThisMonth(bizId) {
@@ -5077,12 +5082,14 @@ function calcScheduledSecsThisMonth(bizId) {
       totalSecs += Math.max(0, elapsed-breakSecs);
     }
   } else if(isOnShiftNow(bizId)) {
-    // User is on shift right now (default schedule, no explicit entry today)
-    const [sh,sm]=sched.startTime.split(':').map(Number);
-    const shiftStart=new Date(now); shiftStart.setHours(sh,sm,0,0);
-    const elapsed=Math.floor((now-shiftStart)/1000);
-    totalSecs+=Math.max(0,elapsed); // live ticking, break not deducted yet
+    // User is currently on shift today (has attendance record + within time window)
+    const recStart = todayRec?.startTime || sched.startTime;
+    const [sh,sm]  = recStart.split(':').map(Number);
+    const shiftStart = new Date(now); shiftStart.setHours(sh,sm,0,0);
+    const elapsed  = Math.floor((now-shiftStart)/1000);
+    totalSecs += Math.max(0,elapsed);
   }
+  // No record for today and not on shift = 0 seconds today
 
   return { totalSecs, defNetHrs, wdpm, sched };
 }
@@ -5516,7 +5523,7 @@ function stopTypeLiveTicker() {
 // ═══════════════════════════════════════════════════
 let portTimer       = null;
 let portElapsed     = 0;
-let portView        = 'today'; // today | month | year
+let portView        = 'month'; // today | month | year
 let portSources     = [];      // computed each render
 
 const PORT_TYPE_META = {
@@ -5530,63 +5537,98 @@ const PORT_TYPE_META = {
 };
 
 function calcPortSources() {
-  const now        = new Date();
-  const startOfMo  = new Date(now.getFullYear(), now.getMonth(), 1);
-  const secsIntoMo = Math.floor((now - startOfMo) / 1000);
-  const sources    = [];
+  const now         = new Date();
+  const startOfDay  = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfMo   = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+  const secsToday   = Math.floor((now - startOfDay)  / 1000);
+  const secsThisMo  = Math.floor((now - startOfMo)   / 1000);
+  const secsThisYr  = Math.floor((now - startOfYear)  / 1000);
+
+  // Which period to calculate earnedToNow for
+  const secs = portView==='today' ? secsToday : portView==='year' ? secsThisYr : secsThisMo;
+
+  // Label for hero
+  const lbl = portView==='today' ? 'Earned today so far' : portView==='year' ? 'Earned this year so far' : 'Earned this month so far';
+  setText('port-hero-lbl', lbl);
+
+  const sources = [];
 
   businesses.forEach(biz => {
-    const type    = biz.type || 'business';
-    const meta    = PORT_TYPE_META[type] || PORT_TYPE_META.business;
-    const stored  = JSON.parse(localStorage.getItem(lsKey(biz.id,'portData')) || 'null');
-    const p       = stored || {};
-    const sym_    = SYMS[getBizCur(biz.id)] || getBizCur(biz.id);
+    const type   = biz.type || 'business';
+    const meta   = PORT_TYPE_META[type] || PORT_TYPE_META.business;
+    const stored = JSON.parse(localStorage.getItem(lsKey(biz.id,'portData')) || 'null');
+    const p      = stored || {};
 
-    let monthlyIncome = 0; // full month target
-    let earnedToNow   = 0; // actual earned this month to this second
-    let ratePerSec    = 0; // current per-second rate (0 if not actively earning)
+    let monthlyIncome = 0;
+    let earnedToNow   = 0;
+    let ratePerSec    = 0;
 
     if(type === 'business') {
       const log = JSON.parse(localStorage.getItem(lsKey(biz.id,'income')) || '[]');
-      monthlyIncome = log.filter(e => {
+      const filterFn = e => {
         const d = new Date(e.date);
+        if(portView==='today') return d.toDateString()===now.toDateString();
+        if(portView==='year')  return d.getFullYear()===now.getFullYear();
         return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
-      }).reduce((a,e) => a+Number(e.amt), 0);
-      earnedToNow = monthlyIncome; // income log is already actual earned
-      const od = JSON.parse(localStorage.getItem(lsKey(biz.id,'hours')) || '[]').filter(h=>h.open).length || 6;
-      const workSecsPerMonth = od * 8 * 3600 * 30.44/7;
-      ratePerSec = workSecsPerMonth > 0 ? monthlyIncome / workSecsPerMonth : 0;
+      };
+      earnedToNow   = log.filter(filterFn).reduce((a,e)=>a+Number(e.amt),0);
+      monthlyIncome = log.filter(e=>{ const d=new Date(e.date); return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear(); }).reduce((a,e)=>a+Number(e.amt),0);
+      const od = JSON.parse(localStorage.getItem(lsKey(biz.id,'hours'))||'[]').filter(h=>h.open).length||6;
+      ratePerSec = od*8*3600*(30.44/7) > 0 ? monthlyIncome/(od*8*3600*(30.44/7)) : 0;
 
     } else if(type === 'job') {
-      const netMonthly = p.monthlyIncome || ((p.grossMonthly||p.salary||0) * (1-(p.taxRate||0)/100) - (p.jobExpenses||0));
+      const netMonthly = p.monthlyIncome || ((p.grossMonthly||p.salary||0)*(1-(p.taxRate||0)/100)-(p.jobExpenses||0));
       monthlyIncome    = netMonthly;
-      const schedInfo  = calcScheduledSecsThisMonth(biz.id);
-      const { totalSecs, defNetHrs, wdpm: jobWdpm } = schedInfo;
-      // Hourly rate: use schedule if available, else portData workDays/workHours
-      let hourly = jobWdpm*defNetHrs>0 ? netMonthly/(jobWdpm*defNetHrs) : 0;
-      if(!hourly) {
-        const wd = p.workDays||5, wh = p.workHours||8;
-        hourly = wd*(30.44/7)*wh>0 ? netMonthly/(wd*(30.44/7)*wh) : 0;
+      const wd = p.workDays||5, wh = p.workHours||8;
+      const hourly = wd*(30.44/7)*wh > 0 ? netMonthly/(wd*(30.44/7)*wh) : 0;
+
+      if(portView==='today') {
+        // Today: hours logged today × hourly rate
+        const todayDs  = now.toISOString().slice(0,10);
+        const attData  = JSON.parse(localStorage.getItem(lsAttKey(biz.id))||'{}');
+        const todayRec = attData[todayDs];
+        if(isOnShiftNow(biz.id)) {
+          const recStart = todayRec?.startTime || '08:00';
+          const [sh,sm]  = recStart.split(':').map(Number);
+          const wS = new Date(now); wS.setHours(sh,sm,0,0);
+          earnedToNow = Math.max(0,(now-wS)/3600000) * hourly;
+        } else if(todayRec?.status==='worked'||todayRec?.status==='custom') {
+          earnedToNow = (todayRec.hours||0) * hourly;
+        }
+      } else if(portView==='year') {
+        // Year: sum all attendance entries this year
+        const attData = JSON.parse(localStorage.getItem(lsAttKey(biz.id))||'{}');
+        let hrs = 0;
+        Object.entries(attData).forEach(([ds,rec]) => {
+          if(!ds.startsWith(now.getFullYear()+'')) return;
+          if(rec.status==='worked'||rec.status==='custom') hrs += rec.hours||0;
+        });
+        earnedToNow = hrs * hourly;
+      } else {
+        // Month: use calcScheduledSecsThisMonth
+        const schedInfo = calcScheduledSecsThisMonth(biz.id);
+        earnedToNow = (schedInfo.totalSecs/3600) * hourly;
       }
-      earnedToNow = (totalSecs/3600) * hourly;
-      ratePerSec  = isOnShiftNow(biz.id) ? hourly/3600 : 0;
+      ratePerSec = isOnShiftNow(biz.id) ? hourly/3600 : 0;
 
     } else if(type === 'rental') {
       monthlyIncome = p.rent || 0;
       ratePerSec    = monthlyIncome / (30.44*24*3600);
-      earnedToNow   = ratePerSec * secsIntoMo;
+      earnedToNow   = ratePerSec * secs;
 
     } else if(type === 'fd') {
       const annualInt = (p.principal||0) * ((p.rate||0)/100);
       monthlyIncome   = annualInt / 12;
       ratePerSec      = annualInt / (365*24*3600);
-      earnedToNow     = ratePerSec * secsIntoMo;
+      earnedToNow     = ratePerSec * secs;
 
     } else if(type === 'investment') {
       const gain    = (p.currentValue||0) - (p.invested||0);
       monthlyIncome = Math.max(0,gain) / 12;
       ratePerSec    = Math.max(0,gain) / (365*24*3600);
-      earnedToNow   = ratePerSec * secsIntoMo;
+      earnedToNow   = ratePerSec * secs;
 
     } else if(type === 'farming') {
       const seasonDays  = p.seasonDays || 120;
@@ -5595,21 +5637,19 @@ function calcPortSources() {
       const inSeason    = now>=seasonStart && now<seasonEnd;
       monthlyIncome     = (p.harvestValue||0) / (seasonDays/30.44);
       ratePerSec        = inSeason ? (p.harvestValue||0)/(seasonDays*24*3600) : 0;
-      const accrualStart= seasonStart>startOfMo ? seasonStart : startOfMo;
-      const accrualSecs = inSeason ? Math.floor((now-accrualStart)/1000) : 0;
+      const periodStart = portView==='today' ? startOfDay : portView==='year' ? startOfYear : startOfMo;
+      const accrualStart= seasonStart>periodStart ? seasonStart : periodStart;
+      const accrualSecs = inSeason ? Math.max(0,Math.floor((now-accrualStart)/1000)) : 0;
       earnedToNow       = ratePerSec * accrualSecs;
 
     } else if(type === 'other') {
       monthlyIncome = p.income || 0;
       ratePerSec    = monthlyIncome / (30.44*24*3600);
-      earnedToNow   = ratePerSec * secsIntoMo;
+      earnedToNow   = ratePerSec * secs;
     }
 
     if(monthlyIncome > 0 || type === 'business') {
-      sources.push({
-        id: biz.id, name: biz.name, icon: biz.icon || meta.emoji,
-        type, meta, monthlyIncome, earnedToNow, ratePerSec, color: meta.color,
-      });
+      sources.push({ id:biz.id, name:biz.name, icon:biz.icon||meta.emoji, type, meta, monthlyIncome, earnedToNow, ratePerSec, color:meta.color });
     }
   });
 
@@ -5746,7 +5786,6 @@ function renderPortfolio() {
   const totalEarned = portSources.reduce((a,s)=>a+s.earnedToNow,0);
   const totalMonthly= portSources.reduce((a,s)=>a+s.monthlyIncome,0);
 
-  setText('port-hero-lbl','Earned this month so far');
   setText('port-hero-sub', portSources.length+' source'+(portSources.length!==1?'s':'')+(curKeys.length>1?' · '+curKeys.length+' currencies':''));
   // FX rates line — populated after fetch, hidden for single currency
   const fxBar = document.getElementById('port-fx-bar');
