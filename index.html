@@ -5365,47 +5365,82 @@ const PORT_TYPE_META = {
 };
 
 function calcPortSources() {
-  const cur = getBizCur(currentBizId);
-  const sources = [];
+  const now        = new Date();
+  const startOfMo  = new Date(now.getFullYear(), now.getMonth(), 1);
+  const secsIntoMo = Math.floor((now - startOfMo) / 1000);
+  const sources    = [];
 
   businesses.forEach(biz => {
-    const type   = biz.type || 'business';
-    const meta   = PORT_TYPE_META[type] || PORT_TYPE_META.business;
-    const stored = JSON.parse(localStorage.getItem(lsKey(biz.id,'portData')) || 'null');
+    const type    = biz.type || 'business';
+    const meta    = PORT_TYPE_META[type] || PORT_TYPE_META.business;
+    const stored  = JSON.parse(localStorage.getItem(lsKey(biz.id,'portData')) || 'null');
+    const p       = stored || {};
+    const sym_    = SYMS[getBizCur(biz.id)] || getBizCur(biz.id);
 
-    // Calculate monthly income for this source
-    let monthlyIncome = 0;
-    let ratePerSec    = 0;
+    let monthlyIncome = 0; // full month target
+    let earnedToNow   = 0; // actual earned this month to this second
+    let ratePerSec    = 0; // current per-second rate (0 if not actively earning)
 
     if(type === 'business') {
-      // Use actual income log for this biz
       const log = JSON.parse(localStorage.getItem(lsKey(biz.id,'income')) || '[]');
-      const now  = new Date();
-      const thisMonth = log.filter(e => {
+      monthlyIncome = log.filter(e => {
         const d = new Date(e.date);
         return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
-      });
-      monthlyIncome = thisMonth.reduce((a,e) => a+Number(e.amt), 0);
-      const od   = JSON.parse(localStorage.getItem(lsKey(biz.id,'hours')) || '[]').filter(h=>h.open).length || 6;
-      const workSecsPerMonth = od * (7/7) * 8 * 3600 * 30.44/7;
+      }).reduce((a,e) => a+Number(e.amt), 0);
+      earnedToNow = monthlyIncome; // income log is already actual earned
+      const od = JSON.parse(localStorage.getItem(lsKey(biz.id,'hours')) || '[]').filter(h=>h.open).length || 6;
+      const workSecsPerMonth = od * 8 * 3600 * 30.44/7;
       ratePerSec = workSecsPerMonth > 0 ? monthlyIncome / workSecsPerMonth : 0;
-    } else if(stored) {
-      monthlyIncome = stored.monthlyIncome || 0;
-      // Passive sources tick 24/7
-      const secsPerMonth = (type==='job') ? (stored.workDays||22) * (stored.workHours||8) * 3600 : 30.44*24*3600;
-      ratePerSec = secsPerMonth > 0 ? monthlyIncome / secsPerMonth : 0;
+
+    } else if(type === 'job') {
+      // Use actual attendance to calc earned to now
+      const netMonthly = (p.salary||0) - (p.jobExpenses||0);
+      monthlyIncome    = netMonthly;
+      const schedInfo  = calcScheduledSecsThisMonth(biz.id);
+      const { totalSecs, avgNetHrs, wdpm: jobWdpm } = schedInfo;
+      const hourlyRate = jobWdpm*avgNetHrs>0 ? netMonthly/(jobWdpm*avgNetHrs) : 0;
+      earnedToNow      = (totalSecs/3600) * hourlyRate;
+      // Rate only ticks when on shift
+      ratePerSec       = isOnShiftNow(biz.id) ? hourlyRate/3600 : 0;
+
+    } else if(type === 'rental') {
+      monthlyIncome = p.rent || 0;
+      ratePerSec    = monthlyIncome / (30.44*24*3600);
+      earnedToNow   = ratePerSec * secsIntoMo;
+
+    } else if(type === 'fd') {
+      const annualInt = (p.principal||0) * ((p.rate||0)/100);
+      monthlyIncome   = annualInt / 12;
+      ratePerSec      = annualInt / (365*24*3600);
+      earnedToNow     = ratePerSec * secsIntoMo;
+
+    } else if(type === 'investment') {
+      const gain    = (p.currentValue||0) - (p.invested||0);
+      monthlyIncome = Math.max(0,gain) / 12;
+      ratePerSec    = Math.max(0,gain) / (365*24*3600);
+      earnedToNow   = ratePerSec * secsIntoMo;
+
+    } else if(type === 'farming') {
+      const seasonDays  = p.seasonDays || 120;
+      const seasonStart = p.seasonStart ? new Date(p.seasonStart) : startOfMo;
+      const seasonEnd   = new Date(seasonStart); seasonEnd.setDate(seasonEnd.getDate()+seasonDays);
+      const inSeason    = now>=seasonStart && now<seasonEnd;
+      monthlyIncome     = (p.harvestValue||0) / (seasonDays/30.44);
+      ratePerSec        = inSeason ? (p.harvestValue||0)/(seasonDays*24*3600) : 0;
+      const accrualStart= seasonStart>startOfMo ? seasonStart : startOfMo;
+      const accrualSecs = inSeason ? Math.floor((now-accrualStart)/1000) : 0;
+      earnedToNow       = ratePerSec * accrualSecs;
+
+    } else if(type === 'other') {
+      monthlyIncome = p.income || 0;
+      ratePerSec    = monthlyIncome / (30.44*24*3600);
+      earnedToNow   = ratePerSec * secsIntoMo;
     }
 
     if(monthlyIncome > 0 || type === 'business') {
       sources.push({
-        id:      biz.id,
-        name:    biz.name,
-        icon:    biz.icon || meta.emoji,
-        type,
-        meta,
-        monthlyIncome,
-        ratePerSec,
-        color:   meta.color,
+        id: biz.id, name: biz.name, icon: biz.icon || meta.emoji,
+        type, meta, monthlyIncome, earnedToNow, ratePerSec, color: meta.color,
       });
     }
   });
@@ -5416,155 +5451,124 @@ function calcPortSources() {
 function renderPortfolio() {
   portSources = calcPortSources();
 
-  const totalRatePerSec = portSources.reduce((a,s) => a+s.ratePerSec, 0);
-  const totalMonthly    = portSources.reduce((a,s) => a+s.monthlyIncome, 0);
-
-  // Group sources by currency for hero display
   const byCur = {};
   portSources.forEach(s => {
     const cur = getBizCur(s.id);
-    const curSym = SYMS[cur] || cur;
-    if(!byCur[cur]) byCur[cur] = { sym:curSym, monthly:0, ratePerSec:0 };
-    byCur[cur].monthly    += s.monthlyIncome;
-    byCur[cur].ratePerSec += s.ratePerSec;
+    const sym_ = SYMS[cur]||cur;
+    if(!byCur[cur]) byCur[cur]={sym:sym_,earned:0,rate:0,monthly:0};
+    byCur[cur].earned  += s.earnedToNow;
+    byCur[cur].rate    += s.ratePerSec;
+    byCur[cur].monthly += s.monthlyIncome;
   });
+  const curKeys     = Object.keys(byCur);
+  const totalEarned = portSources.reduce((a,s)=>a+s.earnedToNow,0);
+  const totalMonthly= portSources.reduce((a,s)=>a+s.monthlyIncome,0);
 
-  // Hero: show multi-currency breakdown or single if only one
-  const curKeys = Object.keys(byCur);
-  const viewMult = portView==='today' ? 1/30.44 : portView==='year' ? 12 : 1;
+  setText('port-hero-lbl','Earned this month so far');
+  setText('port-hero-sub', portSources.length+' source'+(portSources.length!==1?'s':'')+(curKeys.length>1?' · '+curKeys.length+' currencies':''));
 
-  const heroLbls = {today:'Total portfolio income today', month:'This month', year:'This year'};
-  setText('port-hero-lbl', heroLbls[portView]);
-  setText('port-hero-sub', portSources.length+' income source'+(portSources.length!==1?'s':'')+(curKeys.length>1?' · '+curKeys.length+' currencies':''));
+  const showTotal = byCur => curKeys.map(c=>`${byCur[c].sym} ${Math.round(byCur[c].earned).toLocaleString()}`).join('  +  ');
+  setText('port-hero-total', curKeys.length===1 ? byCur[curKeys[0]].sym+' '+Math.round(byCur[curKeys[0]].earned).toLocaleString() : showTotal(byCur));
 
-  if(curKeys.length === 1) {
-    // Single currency — show simple total
-    const c = byCur[curKeys[0]];
-    setText('port-hero-total', c.sym+' '+Math.round(c.monthly*viewMult).toLocaleString());
-    setText('port-per-sec',  '+'+c.sym+' '+(c.ratePerSec).toFixed(4));
-    setText('port-per-min',  c.sym+' '+(c.ratePerSec*60).toFixed(2));
-    setText('port-per-hr',   c.sym+' '+Math.round(c.ratePerSec*3600).toLocaleString());
-    setText('port-per-day',  c.sym+' '+Math.round(c.ratePerSec*86400).toLocaleString());
+  const totalRate = portSources.reduce((a,s)=>a+s.ratePerSec,0);
+  if(curKeys.length===1){
+    const c=byCur[curKeys[0]];
+    setText('port-per-sec', totalRate>0?'+'+c.sym+' '+totalRate.toFixed(4):'⏸ Paused');
+    setText('port-per-min', c.sym+' '+(totalRate*60).toFixed(2));
+    setText('port-per-hr',  c.sym+' '+Math.round(totalRate*3600).toLocaleString());
+    setText('port-per-day', c.sym+' '+Math.round(totalRate*86400).toLocaleString());
   } else {
-    // Multi-currency — show each on its own line in hero
-    const lines = curKeys.map(cur => {
-      const c = byCur[cur];
-      return `${c.sym} ${Math.round(c.monthly*viewMult).toLocaleString()}`;
-    });
-    setText('port-hero-total', lines.join('  +  '));
-    // Per-second: show all currencies
-    const secLines = curKeys.map(cur => `${byCur[cur].sym} ${byCur[cur].ratePerSec.toFixed(4)}`);
-    setText('port-per-sec', secLines.join(' + '));
-    setText('port-per-min', curKeys.map(cur=>`${byCur[cur].sym} ${(byCur[cur].ratePerSec*60).toFixed(2)}`).join(' + '));
-    setText('port-per-hr',  curKeys.map(cur=>`${byCur[cur].sym} ${Math.round(byCur[cur].ratePerSec*3600).toLocaleString()}`).join(' + '));
-    setText('port-per-day', curKeys.map(cur=>`${byCur[cur].sym} ${Math.round(byCur[cur].ratePerSec*86400).toLocaleString()}`).join(' + '));
+    setText('port-per-sec', curKeys.map(c=>byCur[c].rate>0?`+${byCur[c].sym}${byCur[c].rate.toFixed(4)}`:'—').join(' '));
+    setText('port-per-min', curKeys.map(c=>`${byCur[c].sym} ${(byCur[c].rate*60).toFixed(2)}`).join(' + '));
+    setText('port-per-hr',  curKeys.map(c=>`${byCur[c].sym} ${Math.round(byCur[c].rate*3600).toLocaleString()}`).join(' + '));
+    setText('port-per-day', curKeys.map(c=>`${byCur[c].sym} ${Math.round(byCur[c].rate*86400).toLocaleString()}`).join(' + '));
   }
-  setText('port-bk-total', curKeys.map(cur=>`${byCur[cur].sym} ${Math.round(byCur[cur].monthly*viewMult).toLocaleString()}`).join(' + '));
+  setText('port-bk-total', curKeys.map(c=>`${byCur[c].sym} ${Math.round(byCur[c].earned).toLocaleString()}`).join(' + '));
 
-  // Render source cards — each in its own currency
-  const list = document.getElementById('port-sources');
+  // Source cards
+  const list=document.getElementById('port-sources');
   if(!list) return;
-  list.innerHTML = portSources.length === 0
-    ? `<div style="text-align:center;padding:20px;color:var(--txt3);font-size:12px">No income sources yet — add businesses or income sources in ⚙</div>`
-    : portSources.map(s => {
-      const pct    = totalMonthly > 0 ? Math.round(s.monthlyIncome/totalMonthly*100) : 0;
-      const srcCur = getBizCur(s.id);
-      const srcSym = SYMS[srcCur] || srcCur;
-      const viewMult2 = portView==='today' ? 1/30.44 : portView==='year' ? 12 : 1;
-      const switchTarget = (s.type||'business')==='business' ? `sw('live',document.getElementById('nav-live'))` : `sw('${(TYPE_TABS[s.type]||TYPE_TABS.business)[0].id}',document.getElementById('nav-${(TYPE_TABS[s.type]||TYPE_TABS.business)[0].id}'))`;
-      return `
-      <div class="port-src" onclick="switchBiz('${s.id}');${switchTarget}">
+  list.innerHTML = portSources.length===0
+    ? `<div style="text-align:center;padding:20px;color:var(--txt3);font-size:12px">No income sources yet</div>`
+    : portSources.map(s=>{
+      const pct    = totalEarned>0?Math.round(s.earnedToNow/totalEarned*100):0;
+      const srcSym = SYMS[getBizCur(s.id)]||getBizCur(s.id);
+      const active = s.ratePerSec>0;
+      const firstTab = (TYPE_TABS[s.type]||TYPE_TABS.business)[0].id;
+      const sw_ = s.type==='business' ? `sw('live',document.getElementById('nav-live'))` : `sw('${firstTab}',document.getElementById('nav-${firstTab}'))`;
+      return `<div class="port-src" onclick="switchBiz('${s.id}');${sw_}">
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:20px">${s.icon}</span>
           <div style="flex:1;min-width:0">
             <div style="font-size:12px;font-weight:500">${s.name}</div>
             <div style="display:flex;align-items:center;gap:5px;margin-top:2px">
-              <div style="width:5px;height:5px;border-radius:50%;background:${s.color};animation:port-pulse 1.5s ease-in-out infinite"></div>
-              <span style="font-size:10px;color:var(--txt3)">${s.meta.label} · ${srcSym} · ${s.meta.mode}</span>
+              <div style="width:5px;height:5px;border-radius:50%;background:${active?s.color:'var(--txt3)'};${active?'animation:port-pulse 1.5s ease-in-out infinite':''}"></div>
+              <span style="font-size:10px;color:var(--txt3)">${s.meta.label} · ${srcSym} · ${active?s.meta.mode:'paused'}</span>
             </div>
           </div>
           <div style="text-align:right;flex-shrink:0">
-            <div style="font-size:10px;color:var(--txt3);font-family:'DM Mono',monospace" id="psec-${s.id}">+${srcSym}${s.ratePerSec.toFixed(4)}/s</div>
-            <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${s.color}" id="ptot-${s.id}">${srcSym} ${Math.round(s.monthlyIncome*viewMult2).toLocaleString()}</div>
+            <div style="font-size:10px;color:var(--txt3);font-family:'DM Mono',monospace" id="psec-${s.id}">${active?'+'+srcSym+s.ratePerSec.toFixed(4)+'/s':'⏸'}</div>
+            <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${s.color}" id="ptot-${s.id}">${srcSym} ${Math.round(s.earnedToNow).toLocaleString()}</div>
           </div>
         </div>
         <div class="port-src-bar"><div class="port-src-bar-fill" id="pbar-${s.id}" style="width:${pct}%;background:${s.color}"></div></div>
       </div>`;
     }).join('');
 
-  // Render breakdown — each in own currency
-  const bk = document.getElementById('port-breakdown');
-  if(bk) {
-    bk.innerHTML = portSources.map(s => {
-      const pct    = totalMonthly > 0 ? Math.round(s.monthlyIncome/totalMonthly*100) : 0;
-      const srcCur = getBizCur(s.id);
-      const srcSym = SYMS[srcCur] || srcCur;
-      const viewMult3 = portView==='today' ? 1/30.44 : portView==='year' ? 12 : 1;
-      return `
-      <div class="port-bk-row">
-        <span style="font-size:14px;width:22px">${s.icon}</span>
-        <span style="font-size:11px;flex:1;color:var(--txt2)">${s.name}</span>
-        <div class="port-bk-bar-wrap"><div class="port-bk-bar" id="pbkbar-${s.id}" style="width:${pct}%;background:${s.color}"></div></div>
-        <span style="font-size:10px;font-family:'DM Mono',monospace;width:30px;text-align:right;color:var(--txt3)">${pct}%</span>
-        <span style="font-size:11px;font-family:'DM Mono',monospace;width:90px;text-align:right;font-weight:500" id="pbkamt-${s.id}">${srcSym} ${Math.round(s.monthlyIncome*viewMult3).toLocaleString()}</span>
-      </div>`;
-    }).join('') || `<div style="font-size:12px;color:var(--txt3);text-align:center;padding:10px 0">No data yet</div>`;
-  }
+  // Breakdown
+  const bk=document.getElementById('port-breakdown');
+  if(bk) bk.innerHTML=portSources.map(s=>{
+    const pct=totalEarned>0?Math.round(s.earnedToNow/totalEarned*100):0;
+    const srcSym=SYMS[getBizCur(s.id)]||getBizCur(s.id);
+    return `<div class="port-bk-row">
+      <span style="font-size:14px;width:22px">${s.icon}</span>
+      <span style="font-size:11px;flex:1;color:var(--txt2)">${s.name}</span>
+      <div class="port-bk-bar-wrap"><div class="port-bk-bar" id="pbkbar-${s.id}" style="width:${pct}%;background:${s.color}"></div></div>
+      <span style="font-size:10px;font-family:'DM Mono',monospace;width:30px;text-align:right;color:var(--txt3)">${pct}%</span>
+      <span style="font-size:11px;font-family:'DM Mono',monospace;width:90px;text-align:right;font-weight:500" id="pbkamt-${s.id}">${srcSym} ${Math.round(s.earnedToNow).toLocaleString()}</span>
+    </div>`;
+  }).join('')||`<div style="font-size:12px;color:var(--txt3);text-align:center;padding:10px 0">No data yet</div>`;
 
-  // Start ticker
   startPortTicker(portSources);
 }
 
 function startPortTicker(sources) {
   if(portTimer) clearInterval(portTimer);
-  portElapsed = 0;
+  portElapsed=0;
 
-  portTimer = setInterval(() => {
+  portTimer=setInterval(()=>{
     portElapsed++;
 
-    // Per-source ticker updates
-    if(portView === 'today') {
-      // Group by currency for hero
-      const byCur = {};
-      portSources.forEach(s => {
-        const cur    = getBizCur(s.id);
-        const srcSym = SYMS[cur] || cur;
-        const base   = s.monthlyIncome / 30.44;
-        const total  = base + s.ratePerSec * portElapsed;
-        if(!byCur[cur]) byCur[cur] = { sym:srcSym, total:0 };
-        byCur[cur].total += total;
+    // Accumulate by currency
+    const byCur2={};
+    portSources.forEach(s=>{
+      const cur=getBizCur(s.id);
+      const srcSym=SYMS[cur]||cur;
+      if(s.ratePerSec>0) s.earnedToNow+=s.ratePerSec; // tick only active sources
 
-        // Update card
-        setText('ptot-'+s.id, srcSym+' '+Math.round(total).toLocaleString());
-        // Update breakdown
-        const grandBase = portSources.reduce((a,ss)=>a+ss.monthlyIncome/30.44,0);
-        const grandEarned = portSources.reduce((a,ss)=>a+ss.ratePerSec*portElapsed,0);
-        const grandTotal  = grandBase + grandEarned;
-        const pct = grandTotal>0?Math.round(total/grandTotal*100):0;
-        setText('pbkamt-'+s.id, srcSym+' '+Math.round(total).toLocaleString());
-        const bar = document.getElementById('pbkbar-'+s.id);
-        if(bar) bar.style.width = pct+'%';
-        const srcBar = document.getElementById('pbar-'+s.id);
-        if(srcBar) srcBar.style.width = pct+'%';
-      });
+      setText('ptot-'+s.id, srcSym+' '+Math.round(s.earnedToNow).toLocaleString());
+      if(!byCur2[cur]) byCur2[cur]={sym:srcSym,total:0,rate:0};
+      byCur2[cur].total+=s.earnedToNow;
+      byCur2[cur].rate +=s.ratePerSec;
 
-      // Update hero total — multi or single currency
-      const curKeys = Object.keys(byCur);
-      if(curKeys.length === 1) {
-        const c = byCur[curKeys[0]];
-        setText('port-hero-total', c.sym+' '+Math.round(c.total).toLocaleString());
-        setText('port-sec-ticker', '+'+c.sym+' '+(portSources.reduce((a,s)=>a+s.ratePerSec,0)).toFixed(4));
-      } else {
-        setText('port-hero-total', curKeys.map(cur=>`${byCur[cur].sym} ${Math.round(byCur[cur].total).toLocaleString()}`).join('  +  '));
-        setText('port-sec-ticker', curKeys.map(cur=>{
-          const r = portSources.filter(s=>getBizCur(s.id)===cur).reduce((a,s)=>a+s.ratePerSec,0);
-          return `+${byCur[cur].sym}${r.toFixed(4)}`;
-        }).join(' '));
-      }
+      const grand=portSources.reduce((a,ss)=>a+ss.earnedToNow,0);
+      const pct=grand>0?Math.round(s.earnedToNow/grand*100):0;
+      const bar=document.getElementById('pbar-'+s.id); if(bar) bar.style.width=pct+'%';
+      const bkbar=document.getElementById('pbkbar-'+s.id); if(bkbar) bkbar.style.width=pct+'%';
+      setText('pbkamt-'+s.id, srcSym+' '+Math.round(s.earnedToNow).toLocaleString());
+    });
+
+    const ck=Object.keys(byCur2);
+    if(ck.length===1){
+      const c=byCur2[ck[0]];
+      setText('port-hero-total', c.sym+' '+Math.round(c.total).toLocaleString());
+      setText('port-sec-ticker', c.rate>0?'+'+c.sym+' '+c.rate.toFixed(4):'⏸ All paused');
+    } else {
+      setText('port-hero-total', ck.map(c=>`${byCur2[c].sym} ${Math.round(byCur2[c].total).toLocaleString()}`).join('  +  '));
+      setText('port-sec-ticker', ck.filter(c=>byCur2[c].rate>0).map(c=>`+${byCur2[c].sym}${byCur2[c].rate.toFixed(4)}`).join(' ')||'⏸');
     }
-  }, 1000);
+  },1000);
 }
-
 function stopPortTicker() {
   if(portTimer) { clearInterval(portTimer); portTimer = null; }
 }
