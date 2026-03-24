@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#f5f5f0">
-<title>Business Tracker | ව්‍යාපාර සටහන</title>
+<title>Wealth Tracker | ධන සටහන</title>
 <!-- Google Identity Services — handles sign-in popup -->
 <!-- Google Identity Services — required for sign-in -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -390,6 +390,17 @@ body.dark .google-btn{background:#2a2a2d;border-color:#4a4a4f;color:#f0ede6}
 .ob-user-name{font-size:13px;font-weight:500;color:var(--txt)}
 .ob-user-email{font-size:11px;color:var(--txt3)}
 .ob-pstep{background:var(--bg2);border-radius:var(--r8);padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--txt3)}
+.acct-btn{width:32px;height:32px;border-radius:50%;background:var(--blue-bg);border:2px solid var(--brd);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--blue-txt);overflow:hidden;flex-shrink:0;transition:border-color .15s}
+.acct-btn:hover{border-color:var(--blue)}
+.acct-btn img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.acct-menu{position:absolute;top:52px;right:8px;background:var(--bg1);border:1px solid var(--brd);border-radius:var(--r8);box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:500;min-width:220px;padding:8px 0;display:none}
+.acct-menu.open{display:block}
+.acct-menu-header{padding:10px 14px 8px;border-bottom:1px solid var(--brd);margin-bottom:4px}
+.acct-menu-name{font-size:13px;font-weight:500;color:var(--txt)}
+.acct-menu-email{font-size:11px;color:var(--txt3);margin-top:1px}
+.acct-menu-item{display:flex;align-items:center;gap:10px;padding:9px 14px;font-size:13px;color:var(--txt2);cursor:pointer;transition:background .1s}
+.acct-menu-item:hover{background:var(--bg2)}
+.acct-menu-item.danger{color:var(--red-txt)}
 .ob-pstep.done{color:var(--green-txt);background:var(--green-bg)}
 .ob-pstep.active{color:var(--blue-txt);background:var(--blue-bg)}
 .ob-pstep.err{color:var(--red-txt);background:var(--red-bg)}
@@ -467,7 +478,7 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
   <div class="ob-header">
     <div class="ob-logo">
       <div class="ob-logo-icon">🏪</div>
-      <div class="ob-logo-txt">Business Tracker</div>
+      <div class="ob-logo-txt">Wealth Tracker</div>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <div class="ob-lang">
@@ -487,120 +498,40 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
       <div class="ob-dot active" id="ob-dot-0"></div>
       <div class="ob-dot" id="ob-dot-1"></div>
       <div class="ob-dot" id="ob-dot-2"></div>
-      <div class="ob-dot" id="ob-dot-3"></div>
-      <div class="ob-dot" id="ob-dot-4"></div>
     </div>
 
     <!-- ── SLIDE 0: Welcome ── -->
     <div class="ob-slide active" id="ob-slide-0">
-      <span class="ob-emoji">🏪</span>
-      <div class="ob-title" id="ob-welcome-title">Welcome to Business Tracker</div>
-      <div class="ob-desc" id="ob-welcome-desc">Track your business expenses, set live sales targets, and see exactly how much you need to earn every second you are open.</div>
+      <span class="ob-emoji">💰</span>
+      <div class="ob-title" id="ob-welcome-title">Welcome to Wealth Tracker</div>
+      <div class="ob-desc" id="ob-welcome-desc">Track all your income sources — businesses, jobs, rentals, investments and more. See your total wealth growing in real time.</div>
       <div class="ob-features">
         <div class="ob-feat">
           <div class="ob-feat-icon">⏱</div>
-          <div><div class="ob-feat-title" id="f1-title">Live daily target</div><div class="ob-feat-desc" id="f1-desc">See how much you need to earn every second, minute and hour based on all your real expenses.</div></div>
+          <div><div class="ob-feat-title" id="f1-title">Live wealth ticker</div><div class="ob-feat-desc" id="f1-desc">Watch your total income from all sources ticking up every second, in real time.</div></div>
         </div>
         <div class="ob-feat">
           <div class="ob-feat-icon">📊</div>
-          <div><div class="ob-feat-title" id="f2-title">Charts & reports</div><div class="ob-feat-desc" id="f2-desc">Track income vs target, see expense breakdowns and 30-day performance heatmaps.</div></div>
+          <div><div class="ob-feat-title" id="f2-title">Charts & reports</div><div class="ob-feat-desc" id="f2-desc">Portfolio breakdown, income trends, expense analysis and performance heatmaps.</div></div>
         </div>
         <div class="ob-feat">
           <div class="ob-feat-icon">🏢</div>
-          <div><div class="ob-feat-title" id="f3-title">Multiple businesses</div><div class="ob-feat-desc" id="f3-desc">Manage multiple businesses. Switch instantly — all data separate.</div></div>
+          <div><div class="ob-feat-title" id="f3-title">Multiple income sources</div><div class="ob-feat-desc" id="f3-desc">Add businesses, jobs, rental properties, investments, fixed deposits and more.</div></div>
         </div>
         <div class="ob-feat">
           <div class="ob-feat-icon">☁️</div>
-          <div><div class="ob-feat-title" id="f4-title">Google Sheets sync</div><div class="ob-feat-desc" id="f4-desc">All data saves to your own Google Sheet. Access from any phone or computer.</div></div>
+          <div><div class="ob-feat-title" id="f4-title">Google Sheets sync</div><div class="ob-feat-desc" id="f4-desc">All data saves to your own Google Sheet. Access from any device, anywhere.</div></div>
         </div>
       </div>
       <button class="ob-btn" onclick="obNext()" id="ob-get-started">Get started →</button>
-      <div class="skip-lnk" onclick="skipSetup()" id="ob-skip-0">Skip setup — use offline only</div>
+      <div class="skip-lnk" onclick="skipSetup()" id="ob-skip-0">Use offline — skip Google sign-in</div>
     </div>
 
-    <!-- ── SLIDE 1: Name your first business ── -->
+    <!-- ── SLIDE 1: Google Sign-in ── -->
     <div class="ob-slide" id="ob-slide-1">
-      <span class="ob-emoji">🏷️</span>
-      <div class="ob-title" id="ob-biz-title">Name your first business</div>
-      <div class="ob-desc" id="ob-biz-desc">You can add more businesses later. Start with your main shop.</div>
-
-      <!-- Business name — full width, prominent -->
-      <div style="margin-bottom:16px">
-        <label style="display:block;font-size:11px;font-weight:500;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px" id="ob-lbl-bizname">Business name</label>
-        <input type="text" id="ob-biz-name"
-          style="width:100%;height:52px;padding:0 16px;font-size:18px;font-weight:500;border:2px solid var(--brd);border-radius:var(--r8);background:var(--bg1);color:var(--txt);font-family:inherit;transition:border .15s;outline:none"
-          placeholder="e.g. Colombo Grocery"
-          maxlength="40" autocomplete="off"
-          onfocus="this.style.borderColor='var(--blue)'"
-          onblur="this.style.borderColor='var(--brd)'"
-          onkeydown="if(event.key==='Enter')obSaveBiz()">
-      </div>
-
-      <!-- Icon + colour on same row -->
-      <div style="display:grid;grid-template-columns:80px 1fr;gap:14px;margin-bottom:20px;align-items:start">
-        <div>
-          <label style="display:block;font-size:11px;font-weight:500;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px" id="ob-lbl-icon">Icon</label>
-          <input type="text" id="ob-biz-icon" value="🏪" maxlength="2"
-            style="width:100%;height:52px;font-size:28px;text-align:center;border:2px solid var(--brd);border-radius:var(--r8);background:var(--bg1);cursor:pointer;font-family:inherit;outline:none"
-            class="emoji-trigger"
-            onfocus="openEmojiPicker('ob-biz-icon',this)"
-            onblur="this.style.borderColor='var(--brd)'"
-            title="Click to pick an emoji" readonly>
-        </div>
-        <div>
-          <label style="display:block;font-size:11px;font-weight:500;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px" id="ob-color-lbl">Colour</label>
-          <div class="ob-color-row" id="ob-color-row" style="margin-bottom:0;justify-content:flex-start">
-            <div class="ob-color-swatch picked" data-color="#E6F1FB" style="background:#E6F1FB" onclick="obPickColor(this)"></div>
-            <div class="ob-color-swatch" data-color="#E1F5EE" style="background:#E1F5EE" onclick="obPickColor(this)"></div>
-            <div class="ob-color-swatch" data-color="#FAEEDA" style="background:#FAEEDA" onclick="obPickColor(this)"></div>
-            <div class="ob-color-swatch" data-color="#FAECE7" style="background:#FAECE7" onclick="obPickColor(this)"></div>
-            <div class="ob-color-swatch" data-color="#EEEDFE" style="background:#EEEDFE" onclick="obPickColor(this)"></div>
-            <div class="ob-color-swatch" data-color="#EAF3DE" style="background:#EAF3DE" onclick="obPickColor(this)"></div>
-            <div class="ob-color-swatch" data-color="#FCE8F5" style="background:#FCE8F5" onclick="obPickColor(this)"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Preview card -->
-      <div id="ob-biz-preview" style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--brd);border-radius:var(--r8);padding:12px 14px;margin-bottom:20px">
-        <div id="ob-preview-icon" style="width:36px;height:36px;border-radius:9px;background:#E6F1FB;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🏪</div>
-        <div>
-          <div id="ob-preview-name" style="font-size:14px;font-weight:500;color:var(--txt)">My Shop</div>
-          <div style="font-size:11px;color:var(--txt3)">Preview</div>
-        </div>
-      </div>
-
-      <button class="ob-btn" onclick="obSaveBiz()" id="ob-biz-next">Continue →</button>
-      <div id="ob-biz-msg" class="ob-msg err"></div>
-    </div>
-
-    <!-- ── SLIDE 2: Set profit margin ── -->
-    <div class="ob-slide" id="ob-slide-2">
-      <span class="ob-emoji">💰</span>
-      <div class="ob-title" id="ob-margin-title">What's your profit margin?</div>
-      <div class="ob-desc" id="ob-margin-desc">This is used to calculate your daily target. You can change it anytime. If you're unsure, 30% is a good starting point.</div>
-      <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:24px">
-        <button onclick="adjustMargin(-5)" style="width:40px;height:40px;font-size:20px;border:1px solid var(--brd);border-radius:50%;background:var(--bg2);cursor:pointer;font-family:inherit">−</button>
-        <div style="text-align:center">
-          <div style="font-size:52px;font-weight:600;color:var(--txt);font-family:'DM Mono',monospace;line-height:1" id="ob-margin-display">30</div>
-          <div style="font-size:14px;color:var(--txt3);margin-top:2px">%</div>
-        </div>
-        <button onclick="adjustMargin(5)" style="width:40px;height:40px;font-size:20px;border:1px solid var(--brd);border-radius:50%;background:var(--bg2);cursor:pointer;font-family:inherit">+</button>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:20px">
-        <button onclick="setMarginQuick(15)" class="ob-btn secondary">15%</button>
-        <button onclick="setMarginQuick(25)" class="ob-btn secondary">25%</button>
-        <button onclick="setMarginQuick(30)" class="ob-btn secondary">30%</button>
-        <button onclick="setMarginQuick(50)" class="ob-btn secondary">50%</button>
-      </div>
-      <button class="ob-btn" onclick="obNext()" id="ob-margin-next">Continue →</button>
-    </div>
-
-    <!-- ── SLIDE 3: Connect Google Sheet ── -->
-    <div class="ob-slide" id="ob-slide-3">
       <span class="ob-emoji">🔑</span>
-      <div class="ob-title" id="ob-sheet-title">Connect your Google account</div>
-      <div class="ob-desc" id="ob-sheet-desc">Sign in with Google and we'll automatically create a spreadsheet in your Google Drive to store all your data. You own it completely — we never see it.</div>
+      <div class="ob-title" id="ob-sheet-title">Sign in with Google</div>
+      <div class="ob-desc" id="ob-sheet-desc">Your data is stored in your own Google Drive. Sign in to create a new account or reconnect to an existing one.</div>
 
       <!-- Signed-in user card (hidden until signed in) -->
       <div class="ob-user-card" id="ob-user-card" style="display:none">
@@ -609,7 +540,7 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
           <div class="ob-user-name" id="ob-user-name">—</div>
           <div class="ob-user-email" id="ob-user-email">—</div>
         </div>
-        <button class="btn-sm" style="margin-left:auto;font-size:10px" onclick="obSignOut()">Sign out</button>
+        <button class="btn-sm" style="margin-left:auto;font-size:10px" onclick="obSignOut()">Change</button>
       </div>
 
       <!-- Sign-in button (hidden after signed in) -->
@@ -629,7 +560,6 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
       <div id="ob-sheet-msg" class="ob-msg"></div>
 
       <button class="ob-btn" id="ob-auth-continue-btn" style="display:none" onclick="obFinishAuth()">Continue →</button>
-      <div class="skip-lnk" onclick="skipSetup()" id="ob-skip-3">Skip — I'll connect later</div>
       <div style="text-align:center;font-size:11px;color:var(--txt3);margin-top:14px;line-height:1.7">
         By continuing you agree to our
         <a href="#" onclick="showLegalPage('terms');return false" style="color:var(--blue)">Terms &amp; Conditions</a>
@@ -638,21 +568,37 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
       </div>
     </div>
 
-    <!-- ── SLIDE 4: All done ── -->
-    <div class="ob-slide" id="ob-slide-4">
+    <!-- ── SLIDE 2: All done — add first source ── -->
+    <div class="ob-slide" id="ob-slide-2">
       <span class="ob-emoji">🎉</span>
       <div class="ob-title" id="ob-done-title">You're all set!</div>
-      <div class="ob-desc" id="ob-done-desc">Your shop is ready. Here's what you can do right now:</div>
+      <div class="ob-desc" id="ob-done-desc">Your wealth tracker is ready. Add your first income source to get started.</div>
       <div class="ob-done-grid">
-        <div class="ob-done-card"><div class="ob-done-card-icon">💸</div><div class="ob-done-card-title" id="dc1">Add expenses</div><div class="ob-done-card-desc" id="dc1d">Enter all your shop costs to calculate your daily target</div></div>
-        <div class="ob-done-card"><div class="ob-done-card-icon">⏱</div><div class="ob-done-card-title" id="dc2">Watch the clock</div><div class="ob-done-card-desc" id="dc2d">See your live target ticking every second</div></div>
-        <div class="ob-done-card"><div class="ob-done-card-icon">📥</div><div class="ob-done-card-title" id="dc3">Record sales</div><div class="ob-done-card-desc" id="dc3d">Enter your daily sales to track against target</div></div>
-        <div class="ob-done-card"><div class="ob-done-card-icon">🏢</div><div class="ob-done-card-title" id="dc4">Add more shops</div><div class="ob-done-card-desc" id="dc4d">Tap the business name at the top to add another</div></div>
+        <div class="ob-done-card" onclick="obFinishAndAddSource('job')" style="cursor:pointer;border:1.5px solid var(--brd);transition:border-color .15s" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--brd)'">
+          <div class="ob-done-card-icon">💼</div>
+          <div class="ob-done-card-title">Add a Job</div>
+          <div class="ob-done-card-desc">Salary, hourly or weekly — track your take-home pay</div>
+        </div>
+        <div class="ob-done-card" onclick="obFinishAndAddSource('business')" style="cursor:pointer;border:1.5px solid var(--brd);transition:border-color .15s" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--brd)'">
+          <div class="ob-done-card-icon">🏪</div>
+          <div class="ob-done-card-title">Add a Business</div>
+          <div class="ob-done-card-desc">Shop, service or any self-employment income</div>
+        </div>
+        <div class="ob-done-card" onclick="obFinishAndAddSource('rental')" style="cursor:pointer;border:1.5px solid var(--brd);transition:border-color .15s" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--brd)'">
+          <div class="ob-done-card-icon">🏠</div>
+          <div class="ob-done-card-title">Add a Rental</div>
+          <div class="ob-done-card-desc">Property rental income, tenants and maintenance</div>
+        </div>
+        <div class="ob-done-card" onclick="obFinishAndAddSource('investment')" style="cursor:pointer;border:1.5px solid var(--brd);transition:border-color .15s" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--brd)'">
+          <div class="ob-done-card-icon">📈</div>
+          <div class="ob-done-card-title">Add Investments</div>
+          <div class="ob-done-card-desc">Stocks, funds or any investment portfolio</div>
+        </div>
       </div>
       <div class="ob-install" id="ob-install-tip">
-        📱 <strong>Install as an app:</strong> On Android open in Chrome → tap ⋮ → "Add to Home Screen". On iPhone open in Safari → tap Share → "Add to Home Screen".
+        📱 <strong>Install as app:</strong> Chrome → ⋮ → "Add to Home Screen" · Safari → Share → "Add to Home Screen"
       </div>
-      <button class="ob-btn green" onclick="obFinish()" id="ob-finish-btn">Open my shop tracker →</button>
+      <button class="ob-btn green" onclick="obFinish()" id="ob-finish-btn">Skip — explore first →</button>
     </div>
 
   </div><!-- end ob-body -->
@@ -1008,8 +954,8 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
     <div class="top-left">
       <div class="app-logo" id="app-logo" style="background:#E6F1FB">🏪</div>
       <div>
-        <div class="app-title-txt" id="app-title-txt">Business Tracker</div>
-        <div class="app-sub-txt" id="app-sub-txt">Multi-business · Google Sheets sync</div>
+        <div class="app-title-txt" id="app-title-txt">Wealth Tracker</div>
+        <div class="app-sub-txt" id="app-sub-txt">All income sources · Google Sheets sync</div>
       </div>
     </div>
     <div class="top-right">
@@ -1040,6 +986,21 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
         <option value="QAR">QAR ر.ق</option>
         <option value="KWD">KWD د.ك</option>
       </select>
+      <!-- Google account avatar -->
+      <div style="position:relative">
+        <div class="acct-btn" id="acct-btn" onclick="toggleAcctMenu()" title="Account" style="display:none">
+          <span id="acct-initials">?</span>
+        </div>
+        <div class="acct-menu" id="acct-menu">
+          <div class="acct-menu-header">
+            <div class="acct-menu-name" id="acct-menu-name">—</div>
+            <div class="acct-menu-email" id="acct-menu-email">—</div>
+          </div>
+          <div class="acct-menu-item" onclick="syncNow();closeAcctMenu()">↻ &nbsp;Sync now from Google</div>
+          <div class="acct-menu-item" onclick="switchGoogleAccount()">⇄ &nbsp;Switch account</div>
+          <div class="acct-menu-item danger" onclick="signOutAndReset()">↩ &nbsp;Sign out</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1114,7 +1075,10 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
       <div style="font-size:11px;color:var(--txt3);margin-bottom:6px" id="port-hero-sub">across all income sources</div>
       <!-- FX converted total (only multi-currency) -->
       <div id="port-fx-bar" style="display:none;margin-bottom:6px;font-size:11px;color:var(--txt3)">
-        <span id="port-fx-rates"></span>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+          <span id="port-fx-rates"></span>
+          <span id="port-fx-age" style="font-size:10px;color:var(--txt3);opacity:.7;white-space:nowrap"></span>
+        </div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
         <div style="background:var(--bg1);border-radius:8px;padding:8px 4px;border:1px solid var(--brd)">
@@ -2824,7 +2788,7 @@ async function createIncomeSourceSheet(token, bizId, name, type, icon, color, po
       const create = await fetch(DRIVE_API, {
         method:'POST',
         headers:{ Authorization:'Bearer '+token, 'Content-Type':'application/json' },
-        body: JSON.stringify({ name:'Income Tracker', mimeType:'application/vnd.google-apps.folder' })
+        body: JSON.stringify({ name:'Wealth Tracker', mimeType:'application/vnd.google-apps.folder' })
       });
       if(!create.ok) throw new Error('Could not create Drive folder ('+create.status+')');
       const cData = await create.json();
@@ -5658,28 +5622,57 @@ let _fxRates   = {};      // { 'USD': 1, 'GBP': 0.79, 'LKR': 325, ... } relative
 let _fxFetched = 0;       // timestamp of last fetch
 let _fxBaseCur = null;    // the main currency (first source's currency)
 
-async function fetchFxRates(baseCur) {
+async function fetchFxRates(baseCur, force=false) {
   const now = Date.now();
-  if(_fxBaseCur === baseCur && now - _fxFetched < 3600000) return _fxRates; // cache 1hr
+  const CACHE_MS = 15 * 60 * 1000; // 15 minutes
+  if(!force && _fxBaseCur === baseCur && now - _fxFetched < CACHE_MS) return _fxRates;
   try {
     const r = await fetch(`https://open.er-api.com/v6/latest/${baseCur}`);
     const d = await r.json();
     if(d.rates) {
-      _fxRates   = d.rates;
-      _fxRates[baseCur] = 1; // base = 1
-      _fxFetched = now;
-      _fxBaseCur = baseCur;
+      _fxRates        = d.rates;
+      _fxRates[baseCur] = 1;
+      _fxFetched      = now;
+      _fxBaseCur      = baseCur;
       localStorage.setItem('smt_fxRates',   JSON.stringify(_fxRates));
       localStorage.setItem('smt_fxBase',    baseCur);
       localStorage.setItem('smt_fxFetched', now);
+      updateFxAgeLabel();
       return _fxRates;
     }
   } catch(e) {
-    // Use cached rates from localStorage if available
     const cached = localStorage.getItem('smt_fxRates');
-    if(cached) { _fxRates = JSON.parse(cached); _fxBaseCur = localStorage.getItem('smt_fxBase')||baseCur; }
+    if(cached) {
+      _fxRates   = JSON.parse(cached);
+      _fxBaseCur = localStorage.getItem('smt_fxBase') || baseCur;
+      _fxFetched = parseInt(localStorage.getItem('smt_fxFetched')||'0');
+    }
   }
   return _fxRates;
+}
+
+// ── FX age label — shows "Rates updated Xm ago" in the FX bar ──
+let _fxAgeTimer = null;
+function updateFxAgeLabel() {
+  const el = document.getElementById('port-fx-age');
+  if(!el) return;
+  if(!_fxFetched) { el.textContent = ''; return; }
+  const mins = Math.floor((Date.now() - _fxFetched) / 60000);
+  el.textContent = mins < 1 ? 'Rates updated just now' : `Rates updated ${mins}m ago`;
+}
+
+// ── Background FX refresh every 15 min ──
+let _fxBgTimer = null;
+function startFxAutoRefresh() {
+  if(_fxBgTimer) clearInterval(_fxBgTimer);
+  _fxBgTimer = setInterval(async () => {
+    if(!_fxBaseCur) return;
+    await fetchFxRates(_fxBaseCur, true);
+    if(portSources && portSources.length > 0) updateFxBar(portSources, _fxRates);
+  }, 15 * 60 * 1000);
+  // Also tick the age label every minute
+  if(_fxAgeTimer) clearInterval(_fxAgeTimer);
+  _fxAgeTimer = setInterval(updateFxAgeLabel, 60000);
 }
 
 function convertToBase(amount, fromCur, rates) {
@@ -5861,11 +5854,16 @@ function renderPortfolio() {
 
   startPortTicker(portSources);
 
-  // Fetch live FX rates and show converted total
-  updateFxBar(portSources, _fxRates); // show with cached rates immediately
-  fetchFxRates(baseCur).then(rates => {
+  // Show cached rates immediately, then fetch fresh in background
+  updateFxBar(portSources, _fxRates);
+  updateFxAgeLabel();
+  // Force fresh fetch if rates are older than 15 min or missing
+  const STALE_MS = 15 * 60 * 1000;
+  const isStale = !_fxFetched || (Date.now() - _fxFetched > STALE_MS);
+  fetchFxRates(baseCur, isStale).then(rates => {
     _fxRates = rates;
     updateFxBar(portSources, rates);
+    updateFxAgeLabel();
   });
 }
 
@@ -6385,22 +6383,14 @@ function renderAll(){
 // INIT
 // ═══════════════════════════════
 function skipSetup(){
-  // Save business if entered
+  // Create a placeholder offline source if none exists
   if(!currentBizId || businesses.length === 0){
     const id = 'biz_' + Date.now();
-    const nameEl = document.getElementById('ob-biz-name');
-    const name = nameEl ? nameEl.value.trim() || 'My Shop' : 'My Shop';
-    const iconEl = document.getElementById('ob-biz-icon');
-    const icon = iconEl ? iconEl.value.trim() || '🏪' : '🏪';
-    businesses = [{id, name, icon, color: obBizColor || '#E6F1FB'}];
+    businesses = [{id, name:'My Income', icon:'💰', color:'#E6F1FB', type:'other'}];
     currentBizId = id;
     localStorage.setItem('smt_businesses', JSON.stringify(businesses));
     localStorage.setItem('smt_currentBiz', id);
   }
-  // Save margin
-  document.getElementById('global-margin').value = obMarginVal;
-  document.getElementById('margin2').value = obMarginVal;
-  localStorage.setItem(lsKey(currentBizId, 'margin'), obMarginVal);
   localStorage.setItem('smt_onboarded', '1');
   document.getElementById('ob-overlay').style.display = 'none';
   document.getElementById('main-app').style.display = 'block';
@@ -6435,6 +6425,10 @@ function initApp(){
   setText('biz-meta-bar', openDaysPerWeek()+' '+t('openDaysWeek')+' · '+getBizCur(currentBizId));
   renderAll();renderExpenses();renderIncome();renderWeekSchedule();
   startClock();
+  startFxAutoRefresh(); // background FX rate refresh every 15 min
+  // Restore cached FX age label
+  const cachedFxTs = parseInt(localStorage.getItem('smt_fxFetched')||'0');
+  if(cachedFxTs) { _fxFetched = cachedFxTs; updateFxAgeLabel(); }
   // Render type-aware nav for current biz
   const initBiz = businesses.find(b=>b.id===currentBizId)||{};
   renderNavForType(initBiz.type || 'business');
@@ -6457,6 +6451,18 @@ function initApp(){
       if(banner) banner.classList.add('gemini-banner-active');
     }
   }, 300);
+  // Restore account button from cached user info if available
+  setTimeout(async ()=>{
+    try {
+      const token = googleToken || localStorage.getItem('smt_googleToken');
+      if(token && !googleUser) {
+        const user = await fetchGoogleUserInfo(token);
+        if(user && (user.name||user.email)) { googleUser=user; updateAcctBtn(user); }
+      } else if(googleUser) {
+        updateAcctBtn(googleUser);
+      }
+    } catch(e) {}
+  }, 500);
 }
 
 // Close dropdown when clicking outside
@@ -6472,7 +6478,7 @@ document.addEventListener('click',e=>{
 let obStep = 0;
 let obBizColor = '#E6F1FB';
 let obMarginVal = 30;
-const OB_SLIDES = 5;
+const OB_SLIDES = 3;
 
 // Full Apps Script text for copy button
 const APPS_SCRIPT_CODE = `// ═══════════════════════════════════════════════════
@@ -6594,14 +6600,14 @@ function obSetLang(lang) {
 function applyObTranslations() {
   const si = currentLang === 'si';
   const tx = {
-    'ob-welcome-title': si ? 'ව්‍යාපාර ලුහුබඳිනයට සාදරයෙන් පිළිගනිමු' : 'Welcome to Business Tracker',
-    'ob-welcome-desc': si ? 'ඔබේ ව්‍යාපාරයේ දෛනික වියදම් ලුහුබඳින්න, සජීව විකුණුම් ඉලක්ක සකසන්න.' : 'Track your business expenses, set live targets, and see exactly how much you need to earn every second.',
-    'f1-title': si ? 'සජීව දෛනික ඉලක්කය' : 'Live daily target',
-    'f1-desc': si ? 'ඔබේ සියලු වියදම් මත පදනම්ව තත්පරයට, විනාඩියට ඉලක්කය බලන්න.' : 'See how much you need to earn every second, minute and hour based on all your real expenses.',
+    'ob-welcome-title': si ? 'ධන සටහනයට සාදරයෙන් පිළිගනිමු' : 'Welcome to Wealth Tracker',
+    'ob-welcome-desc': si ? 'ඔබේ සියලු ආදායම් ප්‍රභවයන් — ව්‍යාපාර, රැකියා, කුලී, ආයෝජන ලුහුබඳින්න.' : 'Track all your income sources — businesses, jobs, rentals, investments and more.',
+    'f1-title': si ? 'සජීව ධන ගණකය' : 'Live wealth ticker',
+    'f1-desc': si ? 'සියලු ආදායම් ප්‍රභවයන්ගෙන් ඔබේ සම්පූර්ණ ආදායම තත්පරයෙන් තත්පරයට බලන්න.' : 'Watch your total income from all sources ticking up every second, in real time.',
     'f2-title': si ? 'ප්‍රස්ථාර හා වාර්තා' : 'Charts & reports',
     'f2-desc': si ? 'ආදායම vs ඉලක්කය, වියදම් බෙදීම් සහ දින 30 සාධන ප්‍රස්ථාර.' : 'Track income vs target, see expense breakdowns and 30-day performance heatmaps.',
-    'f3-title': si ? 'බහු ව්‍යාපාර' : 'Multiple businesses',
-    'f3-desc': si ? 'ව්‍යාපාර කිහිපයක් කළමනාකරණය කරන්න. ඕනෑ විටෙක මාරු වන්න.' : 'Manage multiple businesses. Switch instantly — all data separate.',
+    'f3-title': si ? 'බහු ආදායම් ප්‍රභවයන්' : 'Multiple income sources',
+    'f3-desc': si ? 'ව්‍යාපාර, රැකියා, කුලී, ආයෝජන, ස්ථාවර තැන්පතු සහ වෙනත් ආදායම් එකතු කරන්න.' : 'Add businesses, jobs, rentals, investments, fixed deposits and more.',
     'f4-title': si ? 'Google Sheets සමමුහූර්ත' : 'Google Sheets sync',
     'f4-desc': si ? 'ඔබේ Google Sheet ට දත්ත සුරැකේ. ඕනෑම උපාංගයකින් ප්‍රවේශ වන්න.' : 'All data saves to your own Google Sheet. Access from any phone or computer.',
     'ob-get-started': si ? 'ආරම්භ කරන්න →' : 'Get started →',
@@ -6617,7 +6623,7 @@ function applyObTranslations() {
     'ob-margin-next': si ? 'ඉදිරියට →' : 'Continue →',
     'ob-sheet-title': si ? 'ඔබේ Google Sheet සම්බන්ධ කරන්න' : 'Connect your Google Sheet',
     'ob-sheet-desc': si ? 'ඔබේ Google ගිණුමේ Sheet එකට දත්ත සමමුහූර්ත වේ. ඔබේ Google ගිණුමේ රැඳේ — අපට නොපෙනේ.' : 'Your data will sync to a Google Sheet you own. Everything stays in your Google account — we never see it.',
-    'ob-s1': si ? '<a href="https://sheets.google.com" target="_blank">sheets.google.com</a> → ප්‍රවේශ → <strong>නව spreadsheet</strong> → <strong>Shop Tracker</strong> ලෙස නම් කරන්න.' : 'Go to <a href="https://sheets.google.com" target="_blank">sheets.google.com</a> → sign in → create a <strong>new blank spreadsheet</strong> → name it <strong>Shop Tracker</strong>.',
+    'ob-s1': si ? '<a href="https://sheets.google.com" target="_blank">sheets.google.com</a> → ප්‍රවේශ → <strong>නව spreadsheet</strong> → <strong>Wealth Tracker</strong> ලෙස නම් කරන්න.' : 'Go to <a href="https://sheets.google.com" target="_blank">sheets.google.com</a> → sign in → create a <strong>new blank spreadsheet</strong> → name it <strong>Wealth Tracker</strong>.',
     'ob-s2': si ? '<strong>Extensions → Apps Script</strong> ක්ලික් කරන්න. Default code මකා, පහත button ක්ලික් කර script copy කරන්න, paste කර <strong>Save (💾)</strong> ක්ලික් කරන්න.' : 'Click <strong>Extensions → Apps Script</strong>. Delete default code. Click the button below to copy the script, paste it in, and click <strong>Save (💾)</strong>.',
     'ob-copy-btn': si ? '📋 Script copy කරන්න' : '📋 Copy script',
     'ob-s3': si ? '<strong>Deploy → New deployment</strong>. ⚙ gear → <strong>Web app</strong>. Execute as: <strong>Me</strong>. Access: <strong>Anyone</strong>. Deploy → permissions allow → URL copy කරන්න.' : 'Click <strong>Deploy → New deployment</strong> → ⚙ gear → <strong>Web app</strong>. Execute as: <strong>Me</strong>, Access: <strong>Anyone</strong>. Deploy → allow permissions → copy the Web App URL.',
@@ -6625,17 +6631,17 @@ function applyObTranslations() {
     'ob-connect-btn': si ? 'සම්බන්ධ කරන්න' : 'Connect',
     'ob-skip-3': si ? 'Skip — පසුව සම්බන්ධ කරන්නම්' : 'Skip — I\'ll connect later',
     'ob-done-title': si ? 'සියල්ල සකසා ඇත!' : 'You\'re all set!',
-    'ob-done-desc': si ? 'ඔබේ කඩය සූදානම්. දැන් කළ හැකි දෙවල්:' : 'Your shop is ready. Here\'s what you can do right now:',
-    'dc1': si ? 'වියදම් එකතු කරන්න' : 'Add expenses',
+    'ob-done-desc': si ? 'ඔබේ ධන සටහනය සූදානම්. ඔබේ පළමු ආදායම් ප්‍රභවය එකතු කරන්න.' : 'Your wealth tracker is ready. Add your first income source to get started.',
+    'dc1': si ? 'ආදායම් ප්‍රභවයන් එකතු කරන්න' : 'Add income sources',
     'dc1d': si ? 'ඔබේ දෛනික ඉලක්කය ගණනය කිරීමට සියලු වියදම් ඇතුළු කරන්න' : 'Enter all your business costs to calculate your daily target',
-    'dc2': si ? 'ඔරලෝසුව බලන්න' : 'Watch the clock',
+    'dc2': si ? 'ගණකය බලන්න' : 'Watch it tick',
     'dc2d': si ? 'සෑම තත්පරයකටම ජීව ඉලක්කය ටිකින් ටික ඉදිරියට යයි' : 'See your live target ticking every second',
-    'dc3': si ? 'විකුණුම් සටහන් කරන්න' : 'Record sales',
+    'dc3': si ? 'වියදම් සටහන් කරන්න' : 'Log expenses',
     'dc3d': si ? 'ඉලක්කය සමඟ සංසන්දනය කිරීමට දෛනික විකුණුම් ඇතුළු කරන්න' : 'Enter your daily sales to track against target',
-    'dc4': si ? 'කඩ එකතු කරන්න' : 'Add more shops',
+    'dc4': si ? 'ඔබේ ධන කළඹ ගොඩනඟන්න' : 'Build your portfolio',
     'dc4d': si ? 'ඉහළ ව්‍යාපාර නාමය ස්පර්ශ කර තවත් එකක් එකතු කරන්න' : 'Tap the business name at the top to add another',
     'ob-install-tip': si ? '📱 <strong>App ලෙස install කරන්න:</strong> Android Chrome → ⋮ → "Add to Home Screen". iPhone Safari → Share → "Add to Home Screen".' : '📱 <strong>Install as an app:</strong> Android Chrome → ⋮ → "Add to Home Screen". iPhone Safari → Share → "Add to Home Screen".',
-    'ob-finish-btn': si ? 'Business Tracker විවෘත කරන්න →' : 'Open my business tracker →',
+    'ob-finish-btn': si ? 'මුලින්ම බලන්න →' : 'Skip — explore first →',
   };
   Object.entries(tx).forEach(([id,val])=>{
     const el=document.getElementById(id);
@@ -6648,7 +6654,7 @@ function applyObTranslations() {
 function obShowSlide(n) {
   document.querySelectorAll('.ob-slide').forEach(s=>s.classList.remove('active'));
   document.getElementById('ob-slide-'+n).classList.add('active');
-  // Update dots
+  // Update dots (3 slides now)
   for(let i=0;i<OB_SLIDES;i++){
     const dot=document.getElementById('ob-dot-'+i);
     if(!dot)continue;
@@ -6658,33 +6664,10 @@ function obShowSlide(n) {
   }
   obStep=n;
   window.scrollTo(0,0);
-  // Wire live preview on slide 1
-  if(n===1){
-    setTimeout(()=>{
-      const nameEl=document.getElementById('ob-biz-name');
-      const iconEl=document.getElementById('ob-biz-icon');
-      if(nameEl){ nameEl.focus(); nameEl.oninput=updateBizPreview; }
-      if(iconEl){ iconEl.oninput=updateBizPreview; }
-      updateBizPreview();
-    },50);
-  }
 }
 
 function obNext() {
-  // For returning users skip straight to sign-in (slide 3)
-  if(obStep === 0) {
-    const hasBiz  = localStorage.getItem('smt_businesses');
-    const hasSsId = localStorage.getItem('smt_spreadsheetId');
-    if(hasBiz || hasSsId) {
-      // Mark dots 1 and 2 as done
-      ['ob-dot-1','ob-dot-2'].forEach(id => {
-        const d = document.getElementById(id);
-        if(d) d.className = 'ob-dot done';
-      });
-      obShowSlide(3);
-      return;
-    }
-  }
+  // From welcome (0) → go straight to Google sign-in (1)
   obShowSlide(obStep + 1);
 }
 
@@ -6771,7 +6754,7 @@ async function obConnect() {
         body:JSON.stringify({action:'saveSetting',biz:biz.id,key:'margin',value:obMarginVal})});
     }
     msg.className='ob-msg ok'; msg.textContent=currentLang==='si'?'✓ සාර්ථකව සම්බන්ධ විය!':'✓ Connected successfully!';
-    setTimeout(()=>obShowSlide(4), 800);
+    setTimeout(()=>obShowSlide(2), 800);
   }catch(e){
     msg.className='ob-msg err'; msg.textContent=(currentLang==='si'?'සම්බන්ධ කිරීම අසාර්ථකයි: ':'Connection failed: ')+e.message;
   }
@@ -6806,7 +6789,7 @@ async function obConnect() {
 // NO redirect needed. Works on any https:// URL.
 //
 // ONE-TIME SETUP (you do this once as the developer):
-//  1. console.cloud.google.com → Create project "Business Tracker"
+//  1. console.cloud.google.com → Create project "Wealth Tracker"
 //  2. APIs & Services → Library → Enable "Google Sheets API"
 //  3. APIs & Services → OAuth consent screen → External → fill name/email
 //     → Add scope: .../auth/spreadsheets  and  .../auth/drive.file
@@ -6909,6 +6892,7 @@ async function handleGoogleToken(token, expiresIn) {
   const user = await fetchGoogleUserInfo(token);
   googleUser = user;
   showSignedInState(user);
+  updateAcctBtn(user); // Update topbar avatar
   runAutoSetup(token);
 }
 
@@ -7035,7 +7019,7 @@ async function runAutoSetup(token) {
     } else {
       // ── NEW USER: create fresh spreadsheet ──
       const biz = businesses.find(b=>b.id===currentBizId) || businesses[0] || {};
-      const sheetTitle = (biz.name || 'Shop') + ' Tracker';
+      const sheetTitle = (biz.name || 'Wealth') + ' — Wealth Tracker';
       const createResp = await fetch(SHEETS_API, {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
@@ -7353,14 +7337,14 @@ function obFinishAuth() {
   localStorage.setItem('smt_spreadsheetId', spreadsheetId);
   localStorage.setItem('smt_googleToken',   googleToken);
   localStorage.setItem('smt_useDirectApi',  '1');
-  localStorage.setItem('smt_onboarded',     '1'); // Set NOW so refresh doesn't reset
-  obShowSlide(4);
+  localStorage.setItem('smt_onboarded',     '1');
+  obShowSlide(2); // Go to done/add-first-source slide
 }
 
 function showClientIdHelp() {
   alert(
     'Google Cloud setup:\n\n' +
-    '1. console.cloud.google.com → project "Business Tracker"\n' +
+    '1. console.cloud.google.com → project "Wealth Tracker"\n' +
     '2. APIs & Services → Enable Google Sheets API\n' +
     '3. OAuth consent screen → External → add your email\n' +
     '4. Credentials → OAuth 2.0 Client ID → Web application\n' +
@@ -7376,6 +7360,104 @@ function showClientIdHelp() {
 // ── checkOAuthRedirect kept as no-op (GIS uses popup, not redirect) ──
 function checkOAuthRedirect() { return false; }
 
+// ── Account menu ──
+let _acctMenuOpen = false;
+function toggleAcctMenu() {
+  _acctMenuOpen = !_acctMenuOpen;
+  document.getElementById('acct-menu').classList.toggle('open', _acctMenuOpen);
+  if(_acctMenuOpen) {
+    setTimeout(()=>{
+      document.addEventListener('click', _closeAcctMenuOutside, {once:true});
+    }, 0);
+  }
+}
+function closeAcctMenu() {
+  _acctMenuOpen = false;
+  document.getElementById('acct-menu').classList.remove('open');
+}
+function _closeAcctMenuOutside(e) {
+  if(!document.getElementById('acct-menu')?.contains(e.target) &&
+     !document.getElementById('acct-btn')?.contains(e.target)) {
+    closeAcctMenu();
+  }
+}
+
+function updateAcctBtn(user) {
+  const btn = document.getElementById('acct-btn');
+  const initEl = document.getElementById('acct-initials');
+  const nameEl = document.getElementById('acct-menu-name');
+  const emailEl = document.getElementById('acct-menu-email');
+  if(!btn) return;
+  if(user && (user.name || user.email)) {
+    btn.style.display = 'flex';
+    // Show photo or initials
+    if(user.picture) {
+      btn.innerHTML = `<img src="${user.picture}" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    } else {
+      const initial = (user.name || user.email || '?')[0].toUpperCase();
+      btn.textContent = initial;
+    }
+    if(nameEl) nameEl.textContent = user.name || '—';
+    if(emailEl) emailEl.textContent = user.email || '—';
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+function switchGoogleAccount() {
+  closeAcctMenu();
+  // Force account picker by prompting
+  if(typeof google !== 'undefined' && google.accounts) {
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+      callback: async (resp) => {
+        if(!resp.error && resp.access_token) {
+          await handleGoogleToken(resp.access_token, resp.expires_in);
+          syncNow();
+        }
+      }
+    });
+    client.requestAccessToken({ prompt: 'select_account' });
+  }
+}
+
+function signOutAndReset() {
+  closeAcctMenu();
+  if(!confirm('Sign out and return to the sign-in screen?')) return;
+  // Clear all local state
+  googleToken = null; googleUser = null; _tokenExpiry = 0;
+  ['smt_googleToken','smt_useDirectApi','smt_spreadsheetId','smt_onboarded',
+   'smt_businesses','smt_currentBiz','smt_sheetUrl'].forEach(k=>localStorage.removeItem(k));
+  // Update account btn
+  const btn = document.getElementById('acct-btn');
+  if(btn) btn.style.display = 'none';
+  // Show sign-in screen
+  document.getElementById('main-app').style.display = 'none';
+  document.getElementById('ob-overlay').style.display = 'flex';
+  // Reset onboarding state
+  googleToken = null; googleUser = null;
+  document.getElementById('ob-user-card').style.display = 'none';
+  document.getElementById('ob-google-btn').style.display = 'flex';
+  document.getElementById('ob-google-btn').disabled = false;
+  document.getElementById('ob-google-btn-txt').textContent = 'Continue with Google';
+  document.getElementById('ob-setup-progress').style.display = 'none';
+  document.getElementById('ob-auth-continue-btn').style.display = 'none';
+  document.getElementById('ob-sheet-msg').textContent = '';
+  obShowSlide(1); // Go straight to sign-in slide
+}
+
+// ── obFinishAndAddSource — called from done-slide source cards ──
+function obFinishAndAddSource(type) {
+  obFinish();
+  setTimeout(()=>{
+    selectedIncomeType = type;
+    openAddBiz();
+    // Pre-select the type card
+    setTimeout(()=>selectIncomeType(type), 150);
+  }, 400);
+}
+
 // ═══════════════════════════════════════════════════
 // LEGAL PAGES
 // ═══════════════════════════════════════════════════
@@ -7386,7 +7468,7 @@ const LEGAL_CONTENT = {
 <p style="color:var(--txt3);font-size:11px;margin-bottom:20px">Last updated: ${new Date().toLocaleDateString('en-GB',{year:'numeric',month:'long',day:'numeric'})}</p>
 
 <h2 style="font-size:15px;font-weight:600;color:var(--txt);margin:0 0 8px">1. Who we are</h2>
-<p>Business Tracker is a free web application hosted at sun250sw-alt.github.io/biz. This policy explains how we handle your data when you use this app.</p>
+<p>Wealth Tracker is a free web application hosted at sun250sw-alt.github.io/biz. This policy explains how we handle your data when you use this app.</p>
 
 <h2 style="font-size:15px;font-weight:600;color:var(--txt);margin:20px 0 8px">2. Data we collect</h2>
 <p>We collect only what is necessary to provide the service:</p>
@@ -7412,7 +7494,7 @@ const LEGAL_CONTENT = {
 <p>When you sign in with Google we request the following permissions:</p>
 <ul style="padding-left:18px;margin:8px 0">
   <li style="margin-bottom:6px"><strong>Google Sheets</strong> — to create and edit the spreadsheet that stores your data.</li>
-  <li style="margin-bottom:6px"><strong>Google Drive (metadata only)</strong> — to search for an existing Business Tracker spreadsheet when you sign in on a new device.</li>
+  <li style="margin-bottom:6px"><strong>Google Drive (metadata only)</strong> — to search for an existing Wealth Tracker spreadsheet when you sign in on a new device.</li>
   <li style="margin-bottom:6px"><strong>Basic profile</strong> — your name and email, to display in the app.</li>
 </ul>
 <p>We only access the spreadsheet that this app creates. We do not read any other files in your Google Drive.</p>
@@ -7439,10 +7521,10 @@ const LEGAL_CONTENT = {
 <p style="color:var(--txt3);font-size:11px;margin-bottom:20px">Last updated: ${new Date().toLocaleDateString('en-GB',{year:'numeric',month:'long',day:'numeric'})}</p>
 
 <h2 style="font-size:15px;font-weight:600;color:var(--txt);margin:0 0 8px">1. Acceptance of terms</h2>
-<p>By using Business Tracker you agree to these Terms and Conditions. If you do not agree, please do not use the app.</p>
+<p>By using Wealth Tracker you agree to these Terms and Conditions. If you do not agree, please do not use the app.</p>
 
 <h2 style="font-size:15px;font-weight:600;color:var(--txt);margin:20px 0 8px">2. Description of the service</h2>
-<p>Business Tracker is a free web application that helps you track business expenses, set daily sales targets, and monitor your performance. The app uses Google Sheets as a backend to store your data.</p>
+<p>Wealth Tracker is a free web application that helps you track all your income sources, monitor expenses, and see your wealth growing in real time. The app uses Google Sheets as a backend to store your data.</p>
 
 <h2 style="font-size:15px;font-weight:600;color:var(--txt);margin:20px 0 8px">3. Your account and data</h2>
 <p>You are responsible for maintaining the security of your Google account. All data you enter into the app is stored in your own Google Drive and is your sole responsibility. We strongly recommend keeping a backup of important financial data outside of this app.</p>
@@ -7457,7 +7539,7 @@ const LEGAL_CONTENT = {
 </ul>
 
 <h2 style="font-size:15px;font-weight:600;color:var(--txt);margin:20px 0 8px">5. No financial advice</h2>
-<p>Business Tracker is a tool to help you track and visualise your business data. The calculations, targets, and reports it produces are for informational purposes only and do <strong>not</strong> constitute financial, accounting, or legal advice. Always consult a qualified professional for financial decisions.</p>
+<p>Wealth Tracker is a tool to help you track and visualise your financial data. The calculations, targets, and reports it produces are for informational purposes only and do <strong>not</strong> constitute financial, accounting, or legal advice. Always consult a qualified professional for financial decisions.</p>
 
 <h2 style="font-size:15px;font-weight:600;color:var(--txt);margin:20px 0 8px">6. Disclaimer of warranties</h2>
 <p>This app is provided "as is" without any warranty, express or implied. We do not guarantee that the app will be available at all times, free of errors, or that calculations will be accurate in all circumstances. You use the app at your own risk.</p>
@@ -7495,13 +7577,6 @@ function hideLegalPage() {
 
 
 function obFinish() {
-  const isReturning = !!localStorage.getItem('smt_spreadsheetId');
-  // Only apply onboarding margin for NEW users — returning users keep their saved margin
-  if(!isReturning) {
-    document.getElementById('global-margin').value = obMarginVal;
-    document.getElementById('margin2').value = obMarginVal;
-    localStorage.setItem(lsKey(currentBizId||'biz1','margin'), obMarginVal);
-  }
   localStorage.setItem('smt_onboarded', '1');
   document.getElementById('ob-overlay').style.display = 'none';
   document.getElementById('main-app').style.display = 'block';
@@ -7530,37 +7605,48 @@ window.addEventListener('load',()=>{
     applyObTranslations();
   } catch(e) {}
 
-  const onboarded   = localStorage.getItem('smt_onboarded');
-  const hasBiz      = localStorage.getItem('smt_businesses');
-  const savedUrl    = localStorage.getItem('smt_sheetUrl');
-  const useDirectApi= localStorage.getItem('smt_useDirectApi');
-  const hasSsId     = localStorage.getItem('smt_spreadsheetId');
-
   // Check for ?join= parameter (from QR code scan or link)
   const urlParams = new URLSearchParams(window.location.search);
   const joinCode  = urlParams.get('join');
   if(joinCode) {
-    // Clean URL without reloading
     history.replaceState(null,'', window.location.pathname);
     localStorage.setItem('smt_pendingJoinCode', joinCode);
   }
 
-  const isReturning = !!(onboarded || hasBiz || hasSsId || useDirectApi);
+  const onboarded    = localStorage.getItem('smt_onboarded');
+  const hasBiz       = localStorage.getItem('smt_businesses');
+  const savedUrl     = localStorage.getItem('smt_sheetUrl');
+  const useDirectApi = localStorage.getItem('smt_useDirectApi');
+  const hasSsId      = localStorage.getItem('smt_spreadsheetId');
+  const isReturning  = !!(onboarded || hasBiz || hasSsId || useDirectApi);
 
   if(isReturning){
     document.getElementById('ob-overlay').style.display='none';
     document.getElementById('main-app').style.display='block';
-    try {
-      initApp();
-    } catch(e) {
-      console.error('initApp error:', e);
-      // Still keep app visible even if initApp partially fails
-      document.getElementById('ob-overlay').style.display='none';
-      document.getElementById('main-app').style.display='block';
-    }
-    if(savedUrl||useDirectApi) setTimeout(()=>{ try{syncNow();}catch(e){console.error(e);} }, 1000);
+    try { initApp(); } catch(e) { console.error('initApp error:', e); }
 
-    // Handle pending join code from QR scan or invite link
+    // ── Always sync from Google first for returning users ──
+    if(useDirectApi || savedUrl) {
+      setTimeout(async ()=>{
+        try {
+          // Try silent token refresh first
+          const token = await ensureToken();
+          if(token) {
+            // Fetch user info to update account button
+            const user = await fetchGoogleUserInfo(token);
+            if(user && (user.name||user.email)) {
+              googleUser = user;
+              updateAcctBtn(user);
+            }
+            // Sync latest data from Google
+            await syncFromSheetsDirect();
+            renderAll(); renderExpenses(); renderIncome(); renderWeekSchedule();
+          }
+        } catch(e) { console.log('Background sync:', e.message); }
+      }, 800);
+    }
+
+    // Handle pending join code
     const pendingJoin = localStorage.getItem('smt_pendingJoinCode');
     if(pendingJoin) {
       localStorage.removeItem('smt_pendingJoinCode');
@@ -7574,7 +7660,7 @@ window.addEventListener('load',()=>{
             if(msg) { msg.style.color='var(--blue-txt)'; msg.textContent='✓ Code filled from invite link — tap Connect to join.'; }
           }
         } catch(e) {}
-      }, 1000);
+      }, 1200);
     }
   } else {
     obShowSlide(0);
