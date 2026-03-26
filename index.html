@@ -2158,14 +2158,14 @@ updateLastSync();
 }catch(e){ setSyncStatus('err','Sync failed'); }
 }
 async function syncNow(){
-if(localStorage.getItem('smt_useDirectApi')==='1'){
-await syncFromSheetsDirect();
-return;
-}
 const btn = document.getElementById('sync-btn');
 if(btn) btn.textContent='↻...';
+if(localStorage.getItem('smt_useDirectApi')==='1'){
+await syncAllSources();
+} else if(sheetUrl) {
 await loadBizFromSheet(currentBizId);
 renderAll(); renderExpenses(); renderIncome(); renderWeekSchedule();
+}
 if(btn) btn.textContent='↻';
 }
 async function pushToSheet(action, data){
@@ -2282,6 +2282,59 @@ stopTypeLiveTicker();
 setTimeout(()=>sw('live', document.getElementById('nav-live')), 100);
 }
 if(sheetUrl) loadBizFromSheet(bizId).then(()=>{ renderAll(); renderExpenses(); renderIncome(); });
+// For direct API: load this source's data if not already loaded, and refresh portData
+if(localStorage.getItem('smt_useDirectApi')==='1') {
+const token = ensureToken();
+token.then(async t => {
+if(!t) return;
+// Always refresh portData from sheet
+await loadPortDataFromSheet(t, biz);
+const ssId = localStorage.getItem('smt_sharedSheet_'+bizId) || localStorage.getItem(lsKey(bizId,'ssId'));
+if(ssId) {
+try {
+// Reload income + loans for this source
+const [incR, lnR, setR] = await Promise.all([
+sheetsRead(t, ssId, bizId+'_income!A2:E').catch(()=>[]),
+sheetsRead(t, ssId, bizId+'_loans!A2:K').catch(()=>[]),
+sheetsRead(t, ssId, bizId+'_settings!A1:B').catch(()=>[]),
+]);
+incomeLog = incR.filter(r=>r[0]&&r[0]!=='ID').map(r=>({id:r[0],date:r[1],amt:Number(r[2]),note:r[3]||''}));
+localStorage.setItem(lsKey(bizId,'income'), JSON.stringify(incomeLog));
+if(lnR.length>0) {
+loans = lnR.filter(r=>r[0]&&r[0]!=='ID').map(r=>({
+id:r[0],name:r[1],total:Number(r[2])||0,remaining:Number(r[3])||0,
+monthly:Number(r[4])||0,interest:Number(r[5])||0,lender:r[6]||'',
+paidOff:r[7]==='YES',createdAt:r[8]||'',paidAt:r[9]||'',
+payments:r[10]?JSON.parse(r[10]):{}
+}));
+localStorage.setItem(lsKey(bizId,'loans'), JSON.stringify(loans));
+}
+setR.filter(r=>r[0]&&r[0]!=='Key').forEach(r=>{
+if(r[0]==='margin'){document.getElementById('global-margin').value=r[1];document.getElementById('margin2').value=r[1];}
+if(r[0]==='tradingHours'){try{tradingHours=JSON.parse(r[1]);}catch(e){}}
+if(r[0]==='currency'){document.getElementById('cur').value=r[1];}
+});
+if(type==='business') {
+const [expR, logR] = await Promise.all([
+sheetsRead(t, ssId, bizId+'_expenses!A2:E').catch(()=>[]),
+sheetsRead(t, ssId, bizId+'_log!A2:H').catch(()=>[]),
+]);
+const newExp={};
+CATS.forEach(c=>{newExp[c.id]=[];});
+expR.filter(r=>r[0]&&r[0]!=='Category').forEach(r=>{if(!newExp[r[0]])newExp[r[0]]=[];newExp[r[0]].push({name:r[1],amt:Number(r[2]),freq:r[3]||'monthly'});});
+expenses=newExp; localStorage.setItem(lsKey(bizId,'expenses'),JSON.stringify(expenses));
+opsLog=logR.filter(r=>r[0]&&r[0]!=='ID').map(r=>({id:r[0],date:r[1],sales:Number(r[2]),target:Number(r[3]),breakeven:Number(r[4]),profit:Number(r[5]),net:Number(r[6]),hit:r[7]==='YES'}));
+localStorage.setItem(lsKey(bizId,'ops'),JSON.stringify(opsLog));
+}
+if(type==='job') await loadAttFromSheet(bizId);
+} catch(e) { console.log('switchBiz load:', e.message); }
+}
+renderAll(); renderExpenses(); renderIncome(); renderLoans();
+// Restart ticker with fresh portData
+const freshPd = JSON.parse(localStorage.getItem(lsKey(bizId,'portData'))||'null') || biz.portData || {};
+if(type!=='business') startTypeLiveTicker(type, freshPd);
+}).catch(()=>{});
+}
 }
 let selectedIncomeType = 'business';
 let editingBizId = null; // null = adding new, string = editing existing
@@ -4600,6 +4653,138 @@ const p=JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null')
 startTypeLiveTicker('job',p);
 }
 }
+// ── Load Overview/portData for a single source from its sheet ──
+async function loadPortDataFromSheet(token, biz) {
+const ssId = localStorage.getItem('smt_sharedSheet_'+biz.id) || localStorage.getItem(lsKey(biz.id,'ssId'));
+if(!ssId) return;
+try {
+const ovRows = await sheetsRead(token, ssId, 'Overview!A1:B20');
+if(!ovRows.length) return;
+const raw = {};
+ovRows.forEach(r=>{ if(r[0]&&r[1]!==undefined) raw[r[0]] = r[1]; });
+const pd = { type: biz.type, currency: raw['Currency']||'LKR' };
+if(raw['Monthly income'])  pd.monthlyIncome = Number(raw['Monthly income']);
+if(raw['Gross monthly'])   pd.grossMonthly  = Number(raw['Gross monthly']);
+if(raw['Tax rate'])        pd.taxRate       = Number(raw['Tax rate']);
+if(raw['Work days'])       pd.workDays      = Number(raw['Work days']);
+if(raw['Work hours'])      pd.workHours     = Number(raw['Work hours']);
+if(raw['Pay day'])         pd.payDay        = raw['Pay day'];
+if(raw['Rent'])            pd.rent          = Number(raw['Rent']);
+if(raw['Due day'])         pd.dueDay        = Number(raw['Due day']);
+if(raw['Tenant'])          pd.tenant        = raw['Tenant'];
+if(raw['Principal'])       pd.principal     = Number(raw['Principal']);
+if(raw['Rate'])            pd.rate          = Number(raw['Rate']);
+if(raw['Start date'])      pd.startDate     = raw['Start date'];
+if(raw['End date'])        pd.endDate       = raw['End date'];
+if(raw['Invested'])        pd.invested      = Number(raw['Invested']);
+if(raw['Current value'])   pd.currentValue  = Number(raw['Current value']);
+if(raw['Harvest value'])   pd.harvestValue  = Number(raw['Harvest value']);
+if(raw['Season days'])     pd.seasonDays    = Number(raw['Season days']);
+if(raw['Income'])          pd.income        = Number(raw['Income']);
+biz.portData = pd;
+localStorage.setItem(lsKey(biz.id,'portData'), JSON.stringify(pd));
+localStorage.setItem(lsKey(biz.id,'cur'), pd.currency);
+} catch(e) { console.log('loadPortDataFromSheet', biz.id, e.message); }
+}
+
+// ── Full sync of ALL sources — called on login and manual sync ──
+async function syncAllSources() {
+const token = await ensureToken();
+const masterSsId = localStorage.getItem('smt_spreadsheetId');
+if(!token || !masterSsId) return;
+try {
+setSyncStatus('pending','Syncing all sources...');
+// 1. Read _businesses master list
+const bizRows = await sheetsRead(token, masterSsId, '_businesses!A2:G');
+if(bizRows.length > 0) {
+// Rebuild businesses array from sheet (source of truth)
+const sheetBizIds = new Set(bizRows.filter(r=>r[0]).map(r=>r[0]));
+// Remove any that were deleted
+businesses = businesses.filter(b=>sheetBizIds.has(b.id));
+// Add/update from sheet rows
+bizRows.filter(r=>r[0]).forEach(r=>{
+const type = r[4] || 'business';
+const ssId = r[5] || '';
+let biz = businesses.find(b=>b.id===r[0]);
+if(!biz) {
+biz = {id:r[0], name:r[1], icon:r[2]||'🏪', color:r[3]||'#E6F1FB', type};
+businesses.push(biz);
+} else {
+biz.name=r[1]; biz.icon=r[2]||biz.icon; biz.color=r[3]||biz.color; biz.type=type;
+}
+if(ssId) {
+localStorage.setItem('smt_sharedSheet_'+r[0], ssId);
+localStorage.setItem(lsKey(r[0],'ssId'), ssId);
+}
+});
+if(!businesses.find(b=>b.id===currentBizId) && businesses.length>0) {
+currentBizId = businesses[0].id;
+}
+localStorage.setItem('smt_businesses', JSON.stringify(businesses));
+localStorage.setItem('smt_currentBiz', currentBizId);
+}
+// 2. Load portData for ALL sources in parallel
+await Promise.all(businesses.map(biz => loadPortDataFromSheet(token, biz)));
+localStorage.setItem('smt_businesses', JSON.stringify(businesses));
+// 3. Load attendance for all job sources in parallel
+await Promise.all(businesses.filter(b=>b.type==='job').map(b=>loadAttFromSheet(b.id).catch(()=>{})));
+// 4. Load full data for current biz
+const bizId = currentBizId;
+const biz   = businesses.find(b=>b.id===bizId)||{};
+const type  = biz.type||'business';
+const ssId  = localStorage.getItem('smt_sharedSheet_'+bizId) || localStorage.getItem(lsKey(bizId,'ssId')) || masterSsId;
+// Load income + loans + settings for every source (in parallel batches)
+await Promise.all(businesses.map(async b=>{
+const bSsId = localStorage.getItem('smt_sharedSheet_'+b.id) || localStorage.getItem(lsKey(b.id,'ssId')) || masterSsId;
+try {
+// Income log for all sources
+const incR = await sheetsRead(token, bSsId, b.id+'_income!A2:E').catch(()=>[]);
+const inc  = incR.filter(r=>r[0]&&r[0]!=='ID').map(r=>({id:r[0],date:r[1],amt:Number(r[2]),note:r[3]||''}));
+localStorage.setItem(lsKey(b.id,'income'), JSON.stringify(inc));
+// Loans for all sources
+const lnR  = await sheetsRead(token, bSsId, b.id+'_loans!A2:K').catch(()=>[]);
+if(lnR.length>0) {
+const lns = lnR.filter(r=>r[0]&&r[0]!=='ID').map(r=>({
+id:r[0],name:r[1],total:Number(r[2])||0,remaining:Number(r[3])||0,
+monthly:Number(r[4])||0,interest:Number(r[5])||0,lender:r[6]||'',
+paidOff:r[7]==='YES',createdAt:r[8]||'',paidAt:r[9]||'',
+payments:r[10]?JSON.parse(r[10]):{}
+}));
+localStorage.setItem(lsKey(b.id,'loans'), JSON.stringify(lns));
+}
+// Settings for all sources
+const setR = await sheetsRead(token, bSsId, b.id+'_settings!A1:B').catch(()=>[]);
+setR.filter(r=>r[0]&&r[0]!=='Key').forEach(r=>{
+if(r[0]==='margin')  localStorage.setItem(lsKey(b.id,'margin'), r[1]);
+if(r[0]==='currency') localStorage.setItem(lsKey(b.id,'cur'), r[1]);
+if(r[0]==='tradingHours') localStorage.setItem(lsKey(b.id,'hours'), r[1]);
+});
+} catch(e) { console.log('sync source', b.id, e.message); }
+}));
+// 5. For current business type: also load expenses + ops log
+if(type==='business') {
+const [expR, logR] = await Promise.all([
+sheetsRead(token, ssId, bizId+'_expenses!A2:E').catch(()=>[]),
+sheetsRead(token, ssId, bizId+'_log!A2:H').catch(()=>[]),
+]);
+const newExp={};
+CATS.forEach(c=>{newExp[c.id]=[];});
+expR.filter(r=>r[0]&&r[0]!=='Category').forEach(r=>{if(!newExp[r[0]])newExp[r[0]]=[];newExp[r[0]].push({name:r[1],amt:Number(r[2]),freq:r[3]||'monthly'});});
+expenses = newExp;
+localStorage.setItem(lsKey(bizId,'expenses'), JSON.stringify(expenses));
+opsLog = logR.filter(r=>r[0]&&r[0]!=='ID').map(r=>({id:r[0],date:r[1],sales:Number(r[2]),target:Number(r[3]),breakeven:Number(r[4]),profit:Number(r[5]),net:Number(r[6]),hit:r[7]==='YES'}));
+localStorage.setItem(lsKey(bizId,'ops'), JSON.stringify(opsLog));
+}
+// 6. Reload current biz local data into memory
+loadLocalForBiz(currentBizId);
+setSyncStatus('ok','All synced · '+new Date().toLocaleTimeString());
+updateLastSync();
+// 7. Re-render everything
+renderAll(); renderExpenses(); renderIncome(); renderWeekSchedule(); renderLoans();
+renderBizDropdown(); renderManageBiz();
+setTimeout(renderPortfolio, 100);
+} catch(e) { setSyncStatus('err','Sync failed: '+e.message); console.error(e); }
+}
 // ── Attendance → Google Sheet sync ──
 async function saveAttToSheet(bizId) {
 bizId = bizId || currentBizId;
@@ -6070,7 +6255,10 @@ renderNavForType(initBiz.type || 'business');
 setTimeout(()=>{ sw('portfolio', document.getElementById('nav-portfolio')); renderPortfolio(); }, 200);
 document.getElementById('today-sales').addEventListener('input',renderSalesResult);
 // Auto sync if connected
-if(sheetUrl){ syncNow(); setInterval(()=>{ if(sheetUrl&&currentBizId) syncNow(); }, 5*60*1000); }
+if(sheetUrl || localStorage.getItem('smt_useDirectApi')){
+syncNow();
+setInterval(()=>{ if(currentBizId) syncAllSources().catch(()=>{}); }, 5*60*1000);
+}
 // Restore Gemini state silently (no animation on load, just restore UI)
 setTimeout(()=>{
 if(getGeminiKey()) {
@@ -6886,36 +7074,10 @@ currentBizId = businesses[0].id;
 localStorage.setItem('smt_currentBiz', currentBizId);
 }
 }
-// ── 2. Load portData for each non-business source ──
+// ── 2. Load portData for ALL non-business sources (always refresh) ──
 for(const biz of businesses) {
 if(biz.type && biz.type !== 'business') {
-const ssId = localStorage.getItem('smt_sharedSheet_'+biz.id) || localStorage.getItem(lsKey(biz.id,'ssId'));
-if(ssId && !localStorage.getItem(lsKey(biz.id,'portData'))) {
-try {
-const ovRows = await sheetsRead(token, ssId, 'Overview!A1:B20');
-if(ovRows.length > 0) {
-const pd = { type: biz.type, currency: 'LKR' };
-ovRows.forEach(r=>{ if(r[0]&&r[1]) pd[r[0].toLowerCase().replace(/ /g,'_')]=isNaN(r[1])?r[1]:Number(r[1]); });
-// Also try natural key names
-const raw = {};
-ovRows.forEach(r=>{ if(r[0]&&r[1]) raw[r[0]]=r[1]; });
-if(raw['Monthly income'])  pd.monthlyIncome = Number(raw['Monthly income']);
-if(raw['Gross monthly'])   pd.grossMonthly  = Number(raw['Gross monthly']);
-if(raw['Tax rate'])        pd.taxRate       = Number(raw['Tax rate']);
-if(raw['Work days'])       pd.workDays      = Number(raw['Work days']);
-if(raw['Work hours'])      pd.workHours     = Number(raw['Work hours']);
-if(raw['Rent'])            pd.rent          = Number(raw['Rent']);
-if(raw['Principal'])       pd.principal     = Number(raw['Principal']);
-if(raw['Rate'])            pd.rate          = Number(raw['Rate']);
-if(raw['Invested'])        pd.invested      = Number(raw['Invested']);
-if(raw['Current value'])   pd.currentValue  = Number(raw['Current value']);
-if(raw['Income'])          pd.income        = Number(raw['Income']);
-if(raw['Currency'])        pd.currency      = raw['Currency'];
-biz.portData = pd;
-localStorage.setItem(lsKey(biz.id,'portData'), JSON.stringify(pd));
-}
-} catch(e) {}
-}
+await loadPortDataFromSheet(token, biz).catch(()=>{});
 }
 }
 localStorage.setItem('smt_businesses', JSON.stringify(businesses));
@@ -6976,7 +7138,7 @@ localStorage.setItem('smt_spreadsheetId', spreadsheetId);
 localStorage.setItem('smt_googleToken',   googleToken);
 localStorage.setItem('smt_useDirectApi',  '1');
 localStorage.setItem('smt_onboarded',     '1');
-obShowSlide(2); // Go to done/add-first-source slide
+obShowSlide(2);
 }
 function showClientIdHelp() {
 alert(
@@ -7058,18 +7220,16 @@ client.requestAccessToken({ prompt: 'select_account' });
 function signOutAndReset() {
 closeAcctMenu();
 if(!confirm('Sign out and return to the sign-in screen?')) return;
-// Clear all local state
+// Clear ONLY auth tokens — keep business data so it shows on next login
 googleToken = null; googleUser = null; _tokenExpiry = 0;
-['smt_googleToken','smt_useDirectApi','smt_spreadsheetId','smt_onboarded',
-'smt_businesses','smt_currentBiz','smt_sheetUrl','smt_googleUser'].forEach(k=>localStorage.removeItem(k));
+['smt_googleToken','smt_useDirectApi','smt_spreadsheetId',
+'smt_onboarded','smt_sheetUrl','smt_googleUser','smt_folderID'].forEach(k=>localStorage.removeItem(k));
 // Update account btn
 const btn = document.getElementById('acct-btn');
 if(btn) btn.style.display = 'none';
 // Show sign-in screen
 document.getElementById('main-app').style.display = 'none';
 document.getElementById('ob-overlay').style.display = 'flex';
-// Reset onboarding state
-googleToken = null; googleUser = null;
 document.getElementById('ob-user-card').style.display = 'none';
 document.getElementById('ob-google-btn').style.display = 'flex';
 document.getElementById('ob-google-btn').disabled = false;
@@ -7077,7 +7237,7 @@ document.getElementById('ob-google-btn-txt').textContent = 'Continue with Google
 document.getElementById('ob-setup-progress').style.display = 'none';
 document.getElementById('ob-auth-continue-btn').style.display = 'none';
 document.getElementById('ob-sheet-msg').textContent = '';
-obShowSlide(1); // Go straight to sign-in slide
+obShowSlide(1);
 }
 // ── obFinishAndAddSource — called from done-slide source cards ──
 function obFinishAndAddSource(type) {
@@ -7125,14 +7285,17 @@ document.getElementById('legal-overlay').scrollTop = 0;
 function hideLegalPage() {
 document.getElementById('legal-overlay').style.display = 'none';
 }
-function obFinish() {
+async function obFinish() {
 localStorage.setItem('smt_onboarded', '1');
 document.getElementById('ob-overlay').style.display = 'none';
 document.getElementById('main-app').style.display = 'block';
 initApp();
+// Always do a full sync on login — loads all sources + all portData
 const useApi = localStorage.getItem('smt_useDirectApi');
-if(useApi) setTimeout(syncNow, 800);
-else if(sheetUrl) setTimeout(syncNow, 800);
+if(useApi || sheetUrl) {
+setSyncStatus('pending','Loading all your data...');
+await syncAllSources();
+}
 }
 // skipSetup defined earlier
 // ── Auto-start ──
@@ -7176,18 +7339,12 @@ const token = await ensureToken();
 if(token) {
 // Refresh user info and account button
 const user = await fetchGoogleUserInfo(token);
-if(user && (user.name||user.email)) {
-googleUser = user;
-updateAcctBtn(user);
-}
-// Sync latest data from Google if we have a spreadsheet
-if(useDirectApi || hasSsId) {
-await syncFromSheetsDirect();
-renderAll(); renderExpenses(); renderIncome(); renderWeekSchedule();
-}
+if(user && (user.name||user.email)) { googleUser=user; updateAcctBtn(user); }
+// Full sync — loads ALL sources, not just current
+if(useDirectApi || hasSsId) await syncAllSources();
 }
 } catch(e) { console.log('Background sync:', e.message); }
-}, 800);
+}, 600);
 }
 // Handle pending join code
 const pendingJoin = localStorage.getItem('smt_pendingJoinCode');
