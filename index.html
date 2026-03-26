@@ -2645,14 +2645,55 @@ await w('Income log!A1',   [['Date','Amount','Description','Notes']]);
 }
 async function deleteBiz(bizId){
 const biz = businesses.find(b=>b.id===bizId);
-if(!confirm('Delete "'+biz?.name+'"? All data for this business will be removed.')) return;
+if(!confirm('Delete "'+biz?.name+'"?\n\nThis will permanently delete the Google Sheet from your Drive and all local data.')) return;
+// ── Get the sheet ID before we remove anything ──
+const ssId = localStorage.getItem('smt_sharedSheet_'+bizId) || localStorage.getItem(lsKey(bizId,'ssId'));
 businesses = businesses.filter(b=>b.id!==bizId);
 localStorage.setItem('smt_businesses', JSON.stringify(businesses));
-// Clean local storage
-['expenses','income','ops','hours','margin','cur'].forEach(k=>localStorage.removeItem(lsKey(bizId,k)));
-// Push to sheet
-if(sheetUrl){
-try{ await fetch(sheetUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'deleteBusiness',biz:bizId})}); }catch(e){}
+// Clean ALL local storage keys for this biz
+['expenses','income','ops','hours','margin','cur','loans','portData',
+'attendance','schedule','ssId'].forEach(k=>localStorage.removeItem(lsKey(bizId,k)));
+localStorage.removeItem('smt_sharedSheet_'+bizId);
+localStorage.removeItem('smt_sharedAccessKey_'+bizId);
+// ── Delete the Google Sheet from Drive ──
+if(ssId) {
+const token = await ensureToken();
+if(token) {
+setSyncStatus('pending','Deleting from Drive…');
+try {
+// First check it's not the master spreadsheet
+const masterSsId = localStorage.getItem('smt_spreadsheetId');
+if(ssId !== masterSsId) {
+const r = await fetch('https://www.googleapis.com/drive/v3/files/'+ssId, {
+method: 'DELETE',
+headers: { Authorization: 'Bearer '+token }
+});
+if(r.ok || r.status===204) {
+setSyncStatus('ok','✓ Deleted from Drive');
+} else if(r.status===404) {
+setSyncStatus('ok','Sheet already removed');
+} else {
+const e = await r.json().catch(()=>({}));
+setSyncStatus('err','Drive delete failed: '+(e.error?.message||r.status));
+}
+} else {
+// Master sheet — just remove the biz tab rows, don't delete whole sheet
+try {
+const rows = await sheetsRead(token, masterSsId, '_businesses!A:A');
+const idx = rows.findIndex(r=>r[0]===bizId);
+if(idx>=0) {
+await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${masterSsId}:batchUpdate`,{
+method:'POST',
+headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+body:JSON.stringify({requests:[{deleteDimension:{range:{sheetId:0,dimension:'ROWS',startIndex:idx+1,endIndex:idx+2}}}]})
+});
+}
+} catch(e2){}
+setSyncStatus('ok','Removed from sheet');
+}
+} catch(e){ setSyncStatus('err','Delete error: '+e.message); }
+setTimeout(()=>setSyncStatus('ok',''),3000);
+}
 }
 // Switch to another business
 if(businesses.length===0){ await addFirstBusiness(); }
@@ -5818,24 +5859,42 @@ const banner = document.getElementById('ai-banner');
 if(banner) banner.classList.add('gemini-banner-active');
 }
 }, 300);
-// Restore account button instantly from cached user info (no network needed)
+// Restore account button — show instantly, no network needed
 try {
+// Try cached user first (has name + photo)
 const cachedUser = JSON.parse(localStorage.getItem('smt_googleUser') || 'null');
-if(cachedUser) {
+if(cachedUser && (cachedUser.name || cachedUser.email)) {
 googleUser = googleUser || cachedUser;
 updateAcctBtn(cachedUser);
+} else {
+// No cached user but we have a token — show placeholder "G" icon immediately
+const hasStoredToken = !!localStorage.getItem('smt_googleToken');
+if(hasStoredToken) {
+const btn = document.getElementById('acct-btn');
+if(btn) {
+btn.style.display = 'flex';
+btn.textContent = 'G';
+const nameEl = document.getElementById('acct-menu-name');
+const emailEl = document.getElementById('acct-menu-email');
+if(nameEl) nameEl.textContent = 'Google account';
+if(emailEl) emailEl.textContent = 'Loading…';
+}
+}
 }
 } catch(e) {}
-// Then refresh user info in background
+// Refresh user info in background and update button with real photo/name
 setTimeout(async ()=>{
 try {
 const token = googleToken || localStorage.getItem('smt_googleToken');
 if(token) {
 const user = await fetchGoogleUserInfo(token);
-if(user && (user.name||user.email)) { googleUser=user; updateAcctBtn(user); }
+if(user && (user.name || user.email)) {
+googleUser = user;
+updateAcctBtn(user); // replaces placeholder with real photo/name
+}
 }
 } catch(e) {}
-}, 500);
+}, 600);
 }
 // Close dropdown when clicking outside
 document.addEventListener('click',e=>{
@@ -6148,7 +6207,19 @@ try {
 const r = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
 headers: { Authorization: 'Bearer ' + token }
 });
-return await r.json();
+const d = await r.json();
+// If token expired, try refreshing once
+if(d.error === 'invalid_token' || r.status === 401) {
+const newToken = await ensureToken();
+if(newToken && newToken !== token) {
+const r2 = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+headers: { Authorization: 'Bearer ' + newToken }
+});
+return await r2.json();
+}
+return {};
+}
+return d;
 } catch(e) { return {}; }
 }
 function showSignedInState(user) {
@@ -6726,27 +6797,29 @@ const hasBiz       = localStorage.getItem('smt_businesses');
 const savedUrl     = localStorage.getItem('smt_sheetUrl');
 const useDirectApi = localStorage.getItem('smt_useDirectApi');
 const hasSsId      = localStorage.getItem('smt_spreadsheetId');
-const isReturning  = !!(onboarded || hasBiz || hasSsId || useDirectApi);
+const hasToken     = localStorage.getItem('smt_googleToken');
+const isReturning  = !!(onboarded || hasBiz || hasSsId || useDirectApi || hasToken);
 if(isReturning){
 document.getElementById('ob-overlay').style.display='none';
 document.getElementById('main-app').style.display='block';
 try { initApp(); } catch(e) { console.error('initApp error:', e); }
 // ── Always sync from Google first for returning users ──
-if(useDirectApi || savedUrl) {
+if(useDirectApi || savedUrl || hasToken) {
 setTimeout(async ()=>{
 try {
-// Try silent token refresh first
 const token = await ensureToken();
 if(token) {
-// Fetch user info to update account button
+// Refresh user info and account button
 const user = await fetchGoogleUserInfo(token);
 if(user && (user.name||user.email)) {
 googleUser = user;
 updateAcctBtn(user);
 }
-// Sync latest data from Google
+// Sync latest data from Google if we have a spreadsheet
+if(useDirectApi || hasSsId) {
 await syncFromSheetsDirect();
 renderAll(); renderExpenses(); renderIncome(); renderWeekSchedule();
+}
 }
 } catch(e) { console.log('Background sync:', e.message); }
 }, 800);
