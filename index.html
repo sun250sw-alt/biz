@@ -1983,6 +1983,70 @@ localStorage.setItem('smt_businesses', JSON.stringify(businesses));
 localStorage.setItem('smt_currentBiz', currentBizId);
 localStorage.setItem('smt_sheetUrl',   sheetUrl);
 }catch(e){}
+// Debounce full sheet save for current biz
+clearTimeout(saveLocal._sheetTimer);
+saveLocal._sheetTimer = setTimeout(()=>saveCurrentBizToSheet(), 1200);
+}
+
+// ── Save ALL data for any biz to its own Google Sheet ──
+async function saveCurrentBizToSheet(bizId) {
+bizId = bizId || currentBizId;
+const token = await ensureToken();
+const ssId  = localStorage.getItem('smt_sharedSheet_'+bizId) || localStorage.getItem(lsKey(bizId,'ssId'));
+if(!token || !ssId) return;
+const biz  = businesses.find(b=>b.id===bizId)||{};
+const type = biz.type || 'business';
+try {
+// ── Settings (margin, currency, tradingHours) ──
+const marginVal = localStorage.getItem(lsKey(bizId,'margin')) || '30';
+const curVal    = localStorage.getItem(lsKey(bizId,'cur'))    || 'LKR';
+const hoursVal  = localStorage.getItem(lsKey(bizId,'hours'));
+const settRows  = [['margin', marginVal], ['currency', curVal]];
+if(hoursVal) settRows.push(['tradingHours', hoursVal]);
+await sheetsWrite(token, ssId, bizId+'_settings!A1', settRows);
+// ── Income log ──
+const inc = JSON.parse(localStorage.getItem(lsKey(bizId,'income'))||'[]');
+if(inc.length > 0) {
+const incRows = [['ID','Date','Amount','Note','Timestamp']];
+inc.forEach(e=>incRows.push([e.id,e.date,e.amt,e.note||'',e.ts||'']));
+await sheetsWrite(token, ssId, bizId+'_income!A1', incRows);
+} else {
+// Write header only if sheet might be blank
+await sheetsWrite(token, ssId, bizId+'_income!A1', [['ID','Date','Amount','Note','Timestamp']]);
+}
+// ── Expenses (business type only) ──
+if(type==='business') {
+const exp = JSON.parse(localStorage.getItem(lsKey(bizId,'expenses'))||'null') || {};
+const expRows = [['Category','Name','Amount','Frequency','Updated']];
+Object.entries(exp).forEach(([cat, items])=>{
+(items||[]).forEach(item=>{ if(item.name||item.amt) expRows.push([cat,item.name||'',item.amt||0,item.freq||'monthly',new Date().toISOString()]); });
+});
+await sheetsWrite(token, ssId, bizId+'_expenses!A1', expRows);
+// ── Daily ops log ──
+const ops = JSON.parse(localStorage.getItem(lsKey(bizId,'ops'))||'[]');
+if(ops.length > 0) {
+const logRows = [['ID','Date','Sales','Target','Breakeven','Profit','Net','Hit']];
+ops.forEach(o=>logRows.push([o.id,o.date,o.sales,o.target,o.breakeven,o.profit,o.net,o.hit?'YES':'NO']));
+await sheetsWrite(token, ssId, bizId+'_log!A1', logRows);
+}
+}
+// ── Loans (all types) ──
+const lns = JSON.parse(localStorage.getItem(lsKey(bizId,'loans'))||'[]');
+if(lns.length > 0) {
+const loanRows = [['ID','Name','Total','Remaining','Monthly','Interest','Lender','PaidOff','CreatedAt','PaidAt','Payments']];
+lns.forEach(l=>loanRows.push([l.id,l.name,l.total||0,l.remaining||0,l.monthly||0,l.interest||0,l.lender||'',l.paidOff?'YES':'NO',l.createdAt||'',l.paidAt||'',JSON.stringify(l.payments||{})]));
+await sheetsWrite(token, ssId, bizId+'_loans!A1', loanRows);
+}
+// ── Attendance (job type only) ──
+if(type==='job') {
+await saveAttToSheet(bizId);
+}
+// ── Update Overview with latest portData ──
+const portData = JSON.parse(localStorage.getItem(lsKey(bizId,'portData'))||'null') || biz.portData;
+if(portData) {
+await writeIncomeSourceHeaders(token, ssId, type, biz.name, portData);
+}
+} catch(e) { console.error('saveCurrentBizToSheet:', e.message); }
 }
 function loadLocalForBiz(bizId){
 expenses     = JSON.parse(localStorage.getItem(lsKey(bizId,'expenses')) || 'null') || defaultExpenses();
@@ -2465,6 +2529,24 @@ if(saveBtn2) saveBtn2.textContent = 'Add source';
 renderManageBiz();
 renderBizDropdown();
 renderPortfolio();
+// Update Overview sheet with new portData (salary/rent/rate changes)
+updateOverviewSheet(biz.id, portData, name);
+// Update _businesses registry row with new name/icon
+(async ()=>{
+const tok = await ensureToken();
+const mSsId = localStorage.getItem('smt_spreadsheetId');
+if(tok && mSsId) {
+try {
+const rows = await sheetsRead(tok, mSsId, '_businesses!A2:G');
+const idx = rows.findIndex(r=>r[0]===biz.id);
+if(idx>=0) {
+await sheetsWrite(tok, mSsId, `_businesses!A${idx+2}:G${idx+2}`,
+[[biz.id, biz.name, biz.icon, biz.color, biz.type||'business',
+rows[idx][5]||'', rows[idx][6]||'']]);
+}
+} catch(e) { console.log('_businesses update:', e.message); }
+}
+})();
 }
 return;
 }
@@ -2526,72 +2608,75 @@ if(type==='other')      return { currency, income:+g('mx-otherincome')||0, freq:
 return null; // business
 }
 // ── Create a separate Google Sheet for each income source ──
-async function createIncomeSourceSheet(token, bizId, name, type, icon, color, portData) {
-const DRIVE_API = 'https://www.googleapis.com/drive/v3/files';
-// Step 1: Find or create "Income Tracker" folder in Drive
+// ── Single source of truth: ensure the "Wealth Tracker" folder exists ──
+async function ensureFolder(token) {
 let folderId = localStorage.getItem('smt_folderID');
-if(!folderId) {
-// Search for existing folder first
+if(folderId) return folderId;
+const DRIVE_API = 'https://www.googleapis.com/drive/v3/files';
+// Search for existing folder (any of the possible names)
 try {
-const search = await fetch(
-`${DRIVE_API}?q=${encodeURIComponent("name='Income Tracker' and mimeType='application/vnd.google-apps.folder' and trashed=false")}&fields=files(id,name)&pageSize=5`,
-{ headers:{ Authorization:'Bearer '+token } }
-);
-if(search.ok) {
-const sData = await search.json();
-if(sData.files && sData.files.length > 0) folderId = sData.files[0].id;
+const q = encodeURIComponent("(name='Wealth Tracker' or name='Income Tracker') and mimeType='application/vnd.google-apps.folder' and trashed=false");
+const s = await fetch(`${DRIVE_API}?q=${q}&fields=files(id,name)&pageSize=5`, { headers:{Authorization:'Bearer '+token} });
+if(s.ok) {
+const d = await s.json();
+if(d.files && d.files.length > 0) {
+folderId = d.files[0].id;
+localStorage.setItem('smt_folderID', folderId);
+return folderId;
+}
 }
 } catch(e) {}
-if(!folderId) {
 // Create the folder
-const create = await fetch(DRIVE_API, {
+const c = await fetch(DRIVE_API, {
 method:'POST',
-headers:{ Authorization:'Bearer '+token, 'Content-Type':'application/json' },
+headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
 body: JSON.stringify({ name:'Wealth Tracker', mimeType:'application/vnd.google-apps.folder' })
 });
-if(!create.ok) throw new Error('Could not create Drive folder ('+create.status+')');
-const cData = await create.json();
-folderId = cData.id;
-}
+if(!c.ok) throw new Error('Could not create Drive folder ('+c.status+')');
+folderId = (await c.json()).id;
 localStorage.setItem('smt_folderID', folderId);
+return folderId;
 }
-// Step 2: Create a new Google Sheet inside the folder
-const sheetTitle = `${icon} ${name}`;
-const createSheet = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
-method:'POST',
-headers:{ Authorization:'Bearer '+token, 'Content-Type':'application/json' },
-body: JSON.stringify({
-properties: { title: sheetTitle },
-sheets: getDefaultSheetsForType(type)
-})
-});
-if(!createSheet.ok) {
-const err = await createSheet.json();
-throw new Error(err.error?.message || 'Failed to create sheet ('+createSheet.status+')');
-}
-const sheetData = await createSheet.json();
-const newSsId   = sheetData.spreadsheetId;
-if(!newSsId) throw new Error('No spreadsheet ID returned');
-// Step 3: Move sheet into the Income Tracker folder
+
+// ── Move any sheet into the Wealth Tracker folder ──
+async function moveToFolder(token, ssId, folderId) {
 try {
-await fetch(`${DRIVE_API}/${newSsId}?addParents=${folderId}&removeParents=root&fields=id,parents`, {
-method:'PATCH',
-headers:{ Authorization:'Bearer '+token, 'Content-Type':'application/json' },
-body: JSON.stringify({})
+await fetch(`https://www.googleapis.com/drive/v3/files/${ssId}?addParents=${folderId}&removeParents=root&fields=id,parents`, {
+method:'PATCH', headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'}, body:'{}'
 });
-} catch(e) { console.log('Move to folder failed (non-critical):', e.message); }
-// Step 4: Write header rows for each sheet tab
+} catch(e) { console.log('moveToFolder:', e.message); }
+}
+
+async function createIncomeSourceSheet(token, bizId, name, type, icon, color, portData) {
+// Step 1: Ensure folder
+const folderId = await ensureFolder(token);
+// Step 2: Create sheet with correct tabs
+const sheetTitle = `${icon} ${name}`;
+const createResp = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+method:'POST',
+headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+body: JSON.stringify({ properties:{title:sheetTitle}, sheets:getDefaultSheetsForType(type) })
+});
+if(!createResp.ok) {
+const err = await createResp.json();
+throw new Error(err.error?.message || 'Failed to create sheet ('+createResp.status+')');
+}
+const newSsId = (await createResp.json()).spreadsheetId;
+if(!newSsId) throw new Error('No spreadsheet ID returned');
+// Step 3: Move into Wealth Tracker folder immediately
+await moveToFolder(token, newSsId, folderId);
+// Step 4: Write all headers + portData to Overview
 await writeIncomeSourceHeaders(token, newSsId, type, name, portData);
-// Step 5: Store the sheet ID so this source syncs to its own sheet
+// Step 5: Store sheet ID
 localStorage.setItem(lsKey(bizId,'ssId'), newSsId);
 localStorage.setItem('smt_sharedSheet_'+bizId, newSsId);
-// Step 6: Register in the master sheet's _businesses tab
+// Step 6: Register in master _businesses sheet
 const masterSsId = localStorage.getItem('smt_spreadsheetId');
 if(masterSsId) {
 try {
 await sheetsAppend(token, masterSsId, '_businesses',
 [bizId, name, icon, color, type, newSsId, new Date().toISOString()]);
-} catch(e) { console.log('Master sheet registration failed:', e.message); }
+} catch(e) { console.log('Master sheet registration:', e.message); }
 }
 return newSsId;
 }
@@ -2607,19 +2692,45 @@ return sheets(['Overview','Income','Expenses','Daily log','Loans']); // business
 }
 async function writeIncomeSourceHeaders(token, ssId, type, name, portData) {
 const w = (range, vals) => sheetsWrite(token, ssId, range, vals);
-// Write a summary row on Overview sheet
 const p = portData || {};
+// Use readable key names that sync can parse back
 const overviewData = [
 ['Income Source', name],
 ['Type', type],
+['Currency', p.currency||'LKR'],
 ['Created', new Date().toLocaleDateString()],
-...Object.entries(p).filter(([k])=>k!=='monthlyIncome').map(([k,v])=>[k,v]),
-['Monthly income', p.monthlyIncome||0],
 ];
+// Type-specific portData fields with readable keys
+if(type==='job') {
+if(p.grossMonthly)  overviewData.push(['Gross monthly',   p.grossMonthly]);
+if(p.taxRate)       overviewData.push(['Tax rate',         p.taxRate]);
+if(p.monthlyIncome) overviewData.push(['Monthly income',   p.monthlyIncome]);
+if(p.workDays)      overviewData.push(['Work days',        p.workDays]);
+if(p.workHours)     overviewData.push(['Work hours',       p.workHours]);
+if(p.payDay)        overviewData.push(['Pay day',          p.payDay]);
+} else if(type==='rental') {
+if(p.rent)          overviewData.push(['Rent',             p.rent]);
+if(p.dueDay)        overviewData.push(['Due day',          p.dueDay]);
+if(p.tenant)        overviewData.push(['Tenant',           p.tenant]);
+} else if(type==='fd') {
+if(p.principal)     overviewData.push(['Principal',        p.principal]);
+if(p.rate)          overviewData.push(['Rate',             p.rate]);
+if(p.startDate)     overviewData.push(['Start date',       p.startDate]);
+if(p.endDate)       overviewData.push(['End date',         p.endDate]);
+} else if(type==='investment') {
+if(p.invested)      overviewData.push(['Invested',         p.invested]);
+if(p.currentValue)  overviewData.push(['Current value',    p.currentValue]);
+} else if(type==='farming') {
+if(p.harvestValue)  overviewData.push(['Harvest value',    p.harvestValue]);
+if(p.seasonDays)    overviewData.push(['Season days',      p.seasonDays]);
+} else if(type==='other') {
+if(p.income)        overviewData.push(['Income',           p.income]);
+}
+if(p.monthlyIncome && type!=='job') overviewData.push(['Monthly income', p.monthlyIncome]);
 await w('Overview!A1', overviewData);
 // Type-specific headers
 if(type==='job') {
-await w('Attendance!A1', [['Date','Day','Status','Notes']]);
+await w('Attendance!A1', [['Date','Day','Status','StartTime','EndTime','BreakMins','Hours','Note']]);
 await w('Salary log!A1',  [['Month','Expected','Received','Date received','Notes']]);
 await w('Job expenses!A1',[['Date','Category','Amount','Notes']]);
 await w('Leave tracker!A1',[['Type','Total days','Used','Remaining']]);
@@ -2642,6 +2753,17 @@ await w('Sales!A1',        [['Date','Buyer','Quantity','Price','Total']]);
 } else if(type==='other') {
 await w('Income log!A1',   [['Date','Amount','Description','Notes']]);
 }
+}
+
+// Update Overview sheet when a source is edited (salary change, rent change etc.)
+async function updateOverviewSheet(bizId, portData, name) {
+const token = await ensureToken();
+const ssId  = localStorage.getItem('smt_sharedSheet_'+bizId) || localStorage.getItem(lsKey(bizId,'ssId'));
+if(!token || !ssId) return;
+const biz  = businesses.find(b=>b.id===bizId)||{};
+try {
+await writeIncomeSourceHeaders(token, ssId, biz.type||'business', name||biz.name, portData);
+} catch(e) { console.error('updateOverviewSheet:', e.message); }
 }
 async function deleteBiz(bizId){
 const biz = businesses.find(b=>b.id===bizId);
@@ -4178,7 +4300,14 @@ let attSelectedStatus = null;
 function lsAttKey(bizId)  { return 'smt_'+(bizId||currentBizId)+'_attendance'; }
 function lsSchedKey(bizId){ return 'smt_'+(bizId||currentBizId)+'_schedule'; }
 function loadAttData()    { return JSON.parse(localStorage.getItem(lsAttKey())||'{}'); }
-function saveAttData(d)   { localStorage.setItem(lsAttKey(), JSON.stringify(d)); }
+let _attSaveTimer = null;
+function saveAttData(d) {
+// Write to localStorage immediately (cache)
+localStorage.setItem(lsAttKey(), JSON.stringify(d));
+// Debounce sheet write — coalesces rapid bulk saves into one API call
+clearTimeout(_attSaveTimer);
+_attSaveTimer = setTimeout(()=>saveAttToSheet(), 800);
+}
 function loadSchedData()  {
 return JSON.parse(localStorage.getItem(lsSchedKey())||'null') || {
 workDays:[1,2,3,4,5], startTime:'08:00', endTime:'17:00', breakMins:60
@@ -4244,7 +4373,6 @@ if(new Date(ds+'T12:00:00').getDay()===targetDow){ attData[ds]={...rec}; count++
 }
 saveAttData(attData);
 renderSchedCalendar();
-const dayNames=['Sundays','Mondays','Tuesdays','Wednesdays','Thursdays','Fridays','Saturdays'];
 setSyncStatus('ok',`✓ Added ${hrs.toFixed(1)}h to all ${dayNames[targetDow]} (${count} days)`);
 setTimeout(()=>setSyncStatus('ok',''),2500);
 // Flash the button
@@ -4472,9 +4600,55 @@ const p=JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null')
 startTypeLiveTicker('job',p);
 }
 }
-// Keep these for compatibility
-function renderSchedDefaults(){}
-function saveSchedDefaults(){}
+// ── Attendance → Google Sheet sync ──
+async function saveAttToSheet(bizId) {
+bizId = bizId || currentBizId;
+const token = await ensureToken();
+const ssId  = localStorage.getItem('smt_sharedSheet_'+bizId) || localStorage.getItem(lsKey(bizId,'ssId'));
+if(!token || !ssId) return; // no sheet yet — local only
+try {
+const attData = JSON.parse(localStorage.getItem(lsAttKey(bizId))||'{}');
+const rows = [['Date','Day','Status','StartTime','EndTime','BreakMins','Hours','Note']];
+const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+Object.entries(attData).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([date,rec])=>{
+const dow = days[new Date(date+'T12:00:00').getDay()];
+rows.push([
+date, dow,
+rec.status||'',
+rec.startTime||'',
+rec.endTime||'',
+rec.break||0,
+Number((rec.hours||0).toFixed(2)),
+rec.note||''
+]);
+});
+// Clear and rewrite the whole Attendance sheet
+await sheetsWrite(token, ssId, 'Attendance!A1', rows);
+} catch(e) { console.error('saveAttToSheet:', e.message); }
+}
+
+async function loadAttFromSheet(bizId) {
+bizId = bizId || currentBizId;
+const token = await ensureToken();
+const ssId  = localStorage.getItem('smt_sharedSheet_'+bizId) || localStorage.getItem(lsKey(bizId,'ssId'));
+if(!token || !ssId) return;
+try {
+const rows = await sheetsRead(token, ssId, 'Attendance!A2:H');
+if(!rows.length) return;
+const attData = {};
+rows.filter(r=>r[0]).forEach(r=>{
+attData[r[0]] = {
+status:    r[2]||'worked',
+startTime: r[3]||'',
+endTime:   r[4]||'',
+break:     Number(r[5])||0,
+hours:     Number(r[6])||0,
+note:      r[7]||''
+};
+});
+localStorage.setItem(lsAttKey(bizId), JSON.stringify(attData));
+} catch(e) { console.error('loadAttFromSheet:', e.message); }
+}
 function toggleSchedDay(){}
 function renderSchedSummaryLine(){}
 function updateSchedPreview(){}
@@ -4982,9 +5156,12 @@ const startOfYear = new Date(now.getFullYear(), 0, 1);
 const secsToday   = Math.floor((now - startOfDay)  / 1000);
 const secsThisMo  = Math.floor((now - startOfMo)   / 1000);
 const secsThisYr  = Math.floor((now - startOfYear)  / 1000);
-// Which period to calculate earnedToNow for
 const secs = portView==='today' ? secsToday : portView==='year' ? secsThisYr : secsThisMo;
-// Label for hero
+// Expected full period amounts (what the full day/month/year should yield)
+const secsFullDay  = 86400;
+const secsFullMo   = 30.44 * 86400;
+const secsFullYear = 365   * 86400;
+const secsTarget   = portView==='today' ? secsFullDay : portView==='year' ? secsFullYear : secsFullMo;
 const lbl = portView==='today' ? 'Earned today so far' : portView==='year' ? 'Earned this year so far' : 'Earned this month so far';
 setText('port-hero-lbl', lbl);
 const sources = [];
@@ -4992,10 +5169,11 @@ businesses.forEach(biz => {
 const type   = biz.type || 'business';
 const meta   = PORT_TYPE_META[type] || PORT_TYPE_META.business;
 const stored = JSON.parse(localStorage.getItem(lsKey(biz.id,'portData')) || 'null');
-const p      = stored || {};
-let monthlyIncome = 0;
-let earnedToNow   = 0;
-let ratePerSec    = 0;
+const p      = stored || biz.portData || {};
+let monthlyIncome    = 0;
+let earnedToNow      = 0;
+let ratePerSec       = 0;
+let expectedForPeriod = 0; // ← what should have been earned by now in the period
 if(type === 'business') {
 const log = JSON.parse(localStorage.getItem(lsKey(biz.id,'income')) || '[]');
 const filterFn = e => {
@@ -5008,26 +5186,44 @@ earnedToNow   = log.filter(filterFn).reduce((a,e)=>a+Number(e.amt),0);
 monthlyIncome = log.filter(e=>{ const d=new Date(e.date); return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear(); }).reduce((a,e)=>a+Number(e.amt),0);
 const od = JSON.parse(localStorage.getItem(lsKey(biz.id,'hours'))||'[]').filter(h=>h.open).length||6;
 ratePerSec = od*8*3600*(30.44/7) > 0 ? monthlyIncome/(od*8*3600*(30.44/7)) : 0;
+// For business: expected = full period amount (no automatic expectation — use monthly avg)
+const avgMonthly = log.length>0 ? log.reduce((a,e)=>a+Number(e.amt),0) / Math.max(1, new Set(log.map(e=>e.date?.slice(0,7))).size) : 0;
+expectedForPeriod = portView==='today' ? avgMonthly/30.44 : portView==='year' ? avgMonthly*12 : avgMonthly;
 } else if(type === 'job') {
 const netMonthly = p.monthlyIncome || ((p.grossMonthly||p.salary||0)*(1-(p.taxRate||0)/100)-(p.jobExpenses||0));
 monthlyIncome    = netMonthly;
 const wd = p.workDays||5, wh = p.workHours||8;
 const hourly = wd*(30.44/7)*wh > 0 ? netMonthly/(wd*(30.44/7)*wh) : 0;
+// Expected by now = hourly × hours that SHOULD have been worked by this time
+const totalWorkSecsPerDay  = wh * 3600;
+const totalWorkSecsPerMonth= wd * (30.44/7) * wh * 3600;
+const totalWorkSecsPerYear = wd * (365/7)   * wh * 3600;
 if(portView==='today') {
-// Today: hours logged today × hourly rate
+// How far through the standard workday are we?
+const sched = JSON.parse(localStorage.getItem('smt_'+biz.id+'_schedule')||'null')||{startTime:'08:00',endTime:'17:00'};
+const [sh,sm]=sched.startTime.split(':').map(Number);
+const [eh,em]=sched.endTime.split(':').map(Number);
+const dayStartSecs = sh*3600+sm*60;
+const dayEndSecs   = eh*3600+em*60;
+const nowSecs      = now.getHours()*3600+now.getMinutes()*60+now.getSeconds();
+const elapsed      = Math.max(0, Math.min(nowSecs-dayStartSecs, dayEndSecs-dayStartSecs));
+expectedForPeriod  = (elapsed / totalWorkSecsPerDay) * netMonthly / 30.44;
+// earned
 const todayDs  = now.toISOString().slice(0,10);
 const attData  = JSON.parse(localStorage.getItem(lsAttKey(biz.id))||'{}');
 const todayRec = attData[todayDs];
 if(isOnShiftNow(biz.id)) {
-const recStart = todayRec?.startTime || '08:00';
-const [sh,sm]  = recStart.split(':').map(Number);
-const wS = new Date(now); wS.setHours(sh,sm,0,0);
+const recStart = todayRec?.startTime || sched.startTime;
+const [rsh,rsm]= recStart.split(':').map(Number);
+const wS = new Date(now); wS.setHours(rsh,rsm,0,0);
 earnedToNow = Math.max(0,(now-wS)/3600000) * hourly;
 } else if(todayRec?.status==='worked'||todayRec?.status==='custom') {
 earnedToNow = (todayRec.hours||0) * hourly;
 }
 } else if(portView==='year') {
-// Year: sum all attendance entries this year
+// Expected by now = proportion of year elapsed × annual salary
+const yearProgress = secsThisYr / secsFullYear;
+expectedForPeriod  = yearProgress * netMonthly * 12;
 const attData = JSON.parse(localStorage.getItem(lsAttKey(biz.id))||'{}');
 let hrs = 0;
 Object.entries(attData).forEach(([ds,rec]) => {
@@ -5036,25 +5232,31 @@ if(rec.status==='worked'||rec.status==='custom') hrs += rec.hours||0;
 });
 earnedToNow = hrs * hourly;
 } else {
-// Month: use calcScheduledSecsThisMonth
+// Month: expected = proportion of month elapsed × monthly salary
+const monthDays = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+const dayOfMonth = now.getDate() + (now.getHours()*3600+now.getMinutes()*60+now.getSeconds())/86400;
+expectedForPeriod  = (dayOfMonth / monthDays) * netMonthly;
 const schedInfo = calcScheduledSecsThisMonth(biz.id);
 earnedToNow = (schedInfo.totalSecs/3600) * hourly;
 }
 ratePerSec = isOnShiftNow(biz.id) ? hourly/3600 : 0;
 } else if(type === 'rental') {
-monthlyIncome = p.rent || 0;
-ratePerSec    = monthlyIncome / (30.44*24*3600);
-earnedToNow   = ratePerSec * secs;
+monthlyIncome     = p.rent || 0;
+ratePerSec        = monthlyIncome / (30.44*24*3600);
+earnedToNow       = ratePerSec * secs;
+expectedForPeriod = ratePerSec * secsTarget;
 } else if(type === 'fd') {
-const annualInt = (p.principal||0) * ((p.rate||0)/100);
-monthlyIncome   = annualInt / 12;
-ratePerSec      = annualInt / (365*24*3600);
-earnedToNow     = ratePerSec * secs;
+const annualInt   = (p.principal||0) * ((p.rate||0)/100);
+monthlyIncome     = annualInt / 12;
+ratePerSec        = annualInt / (365*24*3600);
+earnedToNow       = ratePerSec * secs;
+expectedForPeriod = ratePerSec * secsTarget;
 } else if(type === 'investment') {
-const gain    = (p.currentValue||0) - (p.invested||0);
-monthlyIncome = Math.max(0,gain) / 12;
-ratePerSec    = Math.max(0,gain) / (365*24*3600);
-earnedToNow   = ratePerSec * secs;
+const gain        = (p.currentValue||0) - (p.invested||0);
+monthlyIncome     = Math.max(0,gain) / 12;
+ratePerSec        = Math.max(0,gain) / (365*24*3600);
+earnedToNow       = ratePerSec * secs;
+expectedForPeriod = ratePerSec * secsTarget;
 } else if(type === 'farming') {
 const seasonDays  = p.seasonDays || 120;
 const seasonStart = p.seasonStart ? new Date(p.seasonStart) : startOfMo;
@@ -5066,13 +5268,15 @@ const periodStart = portView==='today' ? startOfDay : portView==='year' ? startO
 const accrualStart= seasonStart>periodStart ? seasonStart : periodStart;
 const accrualSecs = inSeason ? Math.max(0,Math.floor((now-accrualStart)/1000)) : 0;
 earnedToNow       = ratePerSec * accrualSecs;
+expectedForPeriod = ratePerSec * secsTarget;
 } else if(type === 'other') {
-monthlyIncome = p.income || 0;
-ratePerSec    = monthlyIncome / (30.44*24*3600);
-earnedToNow   = ratePerSec * secs;
+monthlyIncome     = p.income || 0;
+ratePerSec        = monthlyIncome / (30.44*24*3600);
+earnedToNow       = ratePerSec * secs;
+expectedForPeriod = ratePerSec * secsTarget;
 }
 if(monthlyIncome > 0 || type === 'business') {
-sources.push({ id:biz.id, name:biz.name, icon:biz.icon||meta.emoji, type, meta, monthlyIncome, earnedToNow, ratePerSec, color:meta.color });
+sources.push({ id:biz.id, name:biz.name, icon:biz.icon||meta.emoji, type, meta, monthlyIncome, earnedToNow, ratePerSec, color:meta.color, expectedForPeriod });
 }
 });
 return sources;
@@ -5248,17 +5452,24 @@ setText('port-per-hr',  '…');
 setText('port-per-day', '…');
 }
 setText('port-bk-total', curKeys.map(c=>`${byCur[c].sym} ${byCur[c].earned.toFixed(2)}`).join(' + '));
-// Source cards
+// Source cards — bar = progress toward expected amount for the period
 const list=document.getElementById('port-sources');
 if(!list) return;
 list.innerHTML = portSources.length===0
-? `<div style="text-align:center;padding:20px;color:var(--txt3);font-size:12px">No income sources yet</div>`
+? `<div style="text-align:center;padding:20px;color:var(--txt3);font-size:12px">No income sources yet — tap + to add one</div>`
 : portSources.map(s=>{
-const pct    = totalEarned>0?Math.round(s.earnedToNow/totalEarned*100):0;
+const expected = s.expectedForPeriod || 0;
+const pct      = expected > 0 ? Math.min(100, Math.round(s.earnedToNow / expected * 100)) : 0;
+// Colour: green ≥95%, amber 60–94%, red <60% (only when expected > 0)
+const barColor = expected===0 ? s.color
+: pct>=95  ? 'var(--green)'
+: pct>=60  ? 'var(--amber)'
+: s.earnedToNow===0 ? 'var(--bg3)' : 'var(--red)';
 const srcSym = SYMS[getBizCur(s.id)]||getBizCur(s.id);
 const active = s.ratePerSec>0;
 const firstTab = (TYPE_TABS[s.type]||TYPE_TABS.business)[0].id;
 const sw_ = s.type==='business' ? `sw('live',document.getElementById('nav-live'))` : `sw('${firstTab}',document.getElementById('nav-${firstTab}'))`;
+const pctLabel = expected>0 ? `${pct}%` : '—';
 return `<div class="port-src" onclick="switchBiz('${s.id}');${sw_}">
 <div style="display:flex;align-items:center;gap:8px">
 <span style="font-size:20px">${s.icon}</span>
@@ -5274,18 +5485,24 @@ return `<div class="port-src" onclick="switchBiz('${s.id}');${sw_}">
 <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${s.color}" id="ptot-${s.id}">${srcSym} ${s.earnedToNow.toFixed(2)}</div>
 </div>
 </div>
-<div class="port-src-bar"><div class="port-src-bar-fill" id="pbar-${s.id}" style="width:${pct}%;background:${s.color}"></div></div>
+<div style="display:flex;align-items:center;gap:6px;margin-top:6px">
+<div class="port-src-bar" style="flex:1"><div class="port-src-bar-fill" id="pbar-${s.id}" style="width:${pct}%;background:${barColor}"></div></div>
+<span style="font-size:9px;font-family:'DM Mono',monospace;color:${pct>=95?'var(--green-txt)':pct>=60?'var(--amber-txt)':'var(--txt3)'};width:26px;text-align:right;flex-shrink:0">${pctLabel}</span>
+</div>
+${expected>0?`<div style="font-size:9px;color:var(--txt3);margin-top:2px">of ${srcSym}${expected.toFixed(0)} expected</div>`:''}
 </div>`;
 }).join('');
-// Breakdown
+// Breakdown — bar = progress toward expected
 const bk=document.getElementById('port-breakdown');
 if(bk) bk.innerHTML=portSources.map(s=>{
-const pct=totalEarned>0?Math.round(s.earnedToNow/totalEarned*100):0;
+const expected = s.expectedForPeriod || 0;
+const pct = expected>0 ? Math.min(100,Math.round(s.earnedToNow/expected*100)) : Math.round(s.earnedToNow/(totalEarned||1)*100);
+const barColor = expected===0 ? s.color : pct>=95?'var(--green)':pct>=60?'var(--amber)':'var(--red)';
 const srcSym=SYMS[getBizCur(s.id)]||getBizCur(s.id);
 return `<div class="port-bk-row">
 <span style="font-size:14px;width:22px">${s.icon}</span>
 <span style="font-size:11px;flex:1;color:var(--txt2)">${s.name}</span>
-<div class="port-bk-bar-wrap"><div class="port-bk-bar" id="pbkbar-${s.id}" style="width:${pct}%;background:${s.color}"></div></div>
+<div class="port-bk-bar-wrap"><div class="port-bk-bar" id="pbkbar-${s.id}" style="width:${pct}%;background:${barColor}"></div></div>
 <span style="font-size:10px;font-family:'DM Mono',monospace;width:30px;text-align:right;color:var(--txt3)">${pct}%</span>
 <span style="font-size:11px;font-family:'DM Mono',monospace;width:90px;text-align:right;font-weight:500" id="pbkamt-${s.id}">${srcSym} ${s.earnedToNow.toFixed(2)}</span>
 </div>`;
@@ -5318,10 +5535,14 @@ setText('ptot-'+s.id, srcSym+' '+s.earnedToNow.toFixed(2));
 if(!byCur2[cur]) byCur2[cur]={sym:srcSym,total:0,rate:0};
 byCur2[cur].total+=s.earnedToNow;
 byCur2[cur].rate +=s.ratePerSec;
-const grand=portSources.reduce((a,ss)=>a+ss.earnedToNow,0);
-const pct=grand>0?Math.round(s.earnedToNow/grand*100):0;
-const bar=document.getElementById('pbar-'+s.id); if(bar) bar.style.width=pct+'%';
-const bkbar=document.getElementById('pbkbar-'+s.id); if(bkbar) bkbar.style.width=pct+'%';
+// Progress bar = earned / expected for period (not relative share)
+const expected = s.expectedForPeriod || 0;
+const pct = expected>0 ? Math.min(100,Math.round(s.earnedToNow/expected*100)) : 0;
+const barColor = expected===0 ? s.color : pct>=95?'var(--green)':pct>=60?'var(--amber)':'var(--red)';
+const bar=document.getElementById('pbar-'+s.id);
+if(bar) { bar.style.width=pct+'%'; bar.style.background=barColor; }
+const bkbar=document.getElementById('pbkbar-'+s.id);
+if(bkbar) { bkbar.style.width=pct+'%'; bkbar.style.background=barColor; }
 setText('pbkamt-'+s.id, srcSym+' '+s.earnedToNow.toFixed(2));
 });
 const ck=Object.keys(byCur2);
@@ -5770,7 +5991,13 @@ if(name==='manage'){renderManageBiz();checkGeminiStatus();}
 if(name==='loans')renderLoans();
 if(name==='portfolio'){stopTypeLiveTicker();renderPortfolio();}
 if(name!=='portfolio')stopPortTicker();
-if(name==='job-attendance') { attYear=new Date().getFullYear(); attMonth=new Date().getMonth(); renderSchedDefaults(); renderSchedCalendar(); }
+if(name==='job-attendance') {
+attYear=new Date().getFullYear();
+attMonth=new Date().getMonth();
+renderSchedDefaults();
+// Pull latest attendance from sheet first, then render
+loadAttFromSheet().then(()=>renderSchedCalendar()).catch(()=>renderSchedCalendar());
+}
 if(name==='farming-loans') { renderLoansInto('farming-loans-content'); }
 if(name==='fd-loans')      { renderLoansInto('fd-loans-content'); }
 if(name==='inv-loans')     { renderLoansInto('inv-loans-content'); }
@@ -6360,7 +6587,9 @@ msg.textContent = currentLang==='si'
 } else {
 // ── NEW USER: create fresh spreadsheet ──
 const biz = businesses.find(b=>b.id===currentBizId) || businesses[0] || {};
-const sheetTitle = (biz.name || 'Wealth') + ' — Wealth Tracker';
+const sheetTitle = 'Wealth Tracker — Master';
+// Ensure folder exists first
+const folderId = await ensureFolder(token);
 const createResp = await fetch(SHEETS_API, {
 method: 'POST',
 headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
@@ -6375,6 +6604,8 @@ throw new Error('Could not create spreadsheet (' + createResp.status + '): ' + e
 }
 const sheet = await createResp.json();
 spreadsheetId = sheet.spreadsheetId;
+// Move master sheet into Wealth Tracker folder
+await moveToFolder(token, spreadsheetId, folderId);
 localStorage.setItem('smt_spreadsheetId', spreadsheetId);
 localStorage.setItem('smt_googleToken',   token);
 localStorage.setItem('smt_useDirectApi',  '1');
@@ -6688,35 +6919,52 @@ localStorage.setItem(lsKey(biz.id,'portData'), JSON.stringify(pd));
 }
 }
 localStorage.setItem('smt_businesses', JSON.stringify(businesses));
-// ── 3. Sync current biz data ──
+// ── 3. Sync ALL data for current biz from its own sheet ──
 const bizId = currentBizId;
+const biz   = businesses.find(b=>b.id===bizId)||{};
+const type  = biz.type || 'business';
 const ssId  = localStorage.getItem('smt_sharedSheet_'+bizId) || localStorage.getItem(lsKey(bizId,'ssId')) || masterSsId;
-const [incRows, expRows, logRows, setRows, loanRows] = await Promise.all([
+// Always load: income, loans, settings
+const [incRows, loanRows, setRows] = await Promise.all([
 sheetsRead(token, ssId, bizId+'_income!A2:E').catch(()=>[]),
-sheetsRead(token, ssId, bizId+'_expenses!A2:E').catch(()=>[]),
-sheetsRead(token, ssId, bizId+'_log!A2:H').catch(()=>[]),
-sheetsRead(token, ssId, bizId+'_settings!A2:B').catch(()=>[]),
-sheetsRead(token, ssId, bizId+'_loans!A2:J').catch(()=>[]),
+sheetsRead(token, ssId, bizId+'_loans!A2:K').catch(()=>[]),
+sheetsRead(token, ssId, bizId+'_settings!A1:B').catch(()=>[]),
 ]);
 incomeLog = incRows.filter(r=>r[0]).map(r=>({id:r[0],date:r[1],amt:Number(r[2]),note:r[3]||''}));
-const newExp={};
-CATS.forEach(c=>{newExp[c.id]=[];});
-expRows.filter(r=>r[0]).forEach(r=>{if(!newExp[r[0]])newExp[r[0]]=[];newExp[r[0]].push({name:r[1],amt:Number(r[2]),freq:r[3]||'monthly'});});
-expenses = newExp;
-opsLog = logRows.filter(r=>r[0]).map(r=>({id:r[0],date:r[1],sales:Number(r[2]),target:Number(r[3]),breakeven:Number(r[4]),profit:Number(r[5]),net:Number(r[6]),hit:r[7]==='YES'}));
 if(loanRows.length>0) {
-loans = loanRows.filter(r=>r[0]).map(r=>({
+loans = loanRows.filter(r=>r[0]&&r[0]!=='ID').map(r=>({
 id:r[0],name:r[1],total:Number(r[2])||0,remaining:Number(r[3])||0,
 monthly:Number(r[4])||0,interest:Number(r[5])||0,lender:r[6]||'',
 paidOff:r[7]==='YES',createdAt:r[8]||'',paidAt:r[9]||'',payments:r[10]?JSON.parse(r[10]):{}
 }));
+localStorage.setItem(lsKey(bizId,'loans'), JSON.stringify(loans));
 }
-setRows.filter(r=>r[0]).forEach(r=>{
-if(r[0]==='margin'){document.getElementById('global-margin').value=r[1];document.getElementById('margin2').value=r[1];}
-if(r[0]==='tradingHours'){try{tradingHours=JSON.parse(r[1]);}catch(e){}}
-if(r[0]==='currency')document.getElementById('cur').value=r[1];
+setRows.filter(r=>r[0]&&r[0]!=='Key').forEach(r=>{
+if(r[0]==='margin'){document.getElementById('global-margin').value=r[1];document.getElementById('margin2').value=r[1];localStorage.setItem(lsKey(bizId,'margin'),r[1]);}
+if(r[0]==='tradingHours'){try{tradingHours=JSON.parse(r[1]);localStorage.setItem(lsKey(bizId,'hours'),r[1]);}catch(e){}}
+if(r[0]==='currency'){document.getElementById('cur').value=r[1];localStorage.setItem(lsKey(bizId,'cur'),r[1]);}
 });
-saveLocal();
+// Business-specific: expenses + ops log
+if(type==='business') {
+const [expRows, logRows] = await Promise.all([
+sheetsRead(token, ssId, bizId+'_expenses!A2:E').catch(()=>[]),
+sheetsRead(token, ssId, bizId+'_log!A2:H').catch(()=>[]),
+]);
+const newExp={};
+CATS.forEach(c=>{newExp[c.id]=[];});
+expRows.filter(r=>r[0]&&r[0]!=='Category').forEach(r=>{if(!newExp[r[0]])newExp[r[0]]=[];newExp[r[0]].push({name:r[1],amt:Number(r[2]),freq:r[3]||'monthly'});});
+expenses = newExp;
+localStorage.setItem(lsKey(bizId,'expenses'), JSON.stringify(expenses));
+opsLog = logRows.filter(r=>r[0]&&r[0]!=='ID').map(r=>({id:r[0],date:r[1],sales:Number(r[2]),target:Number(r[3]),breakeven:Number(r[4]),profit:Number(r[5]),net:Number(r[6]),hit:r[7]==='YES'}));
+localStorage.setItem(lsKey(bizId,'ops'), JSON.stringify(opsLog));
+}
+// Job: attendance
+if(type==='job') await loadAttFromSheet(bizId);
+// All non-business: also load attendance for any other job sources in background
+for(const b2 of businesses) {
+if(b2.type==='job' && b2.id!==bizId) loadAttFromSheet(b2.id).catch(()=>{});
+}
+saveLocal._sheetTimer && clearTimeout(saveLocal._sheetTimer); // don't re-save what we just loaded
 setSyncStatus('ok', 'Synced · ' + new Date().toLocaleTimeString());
 updateLastSync();
 renderAll(); renderExpenses(); renderIncome(); renderWeekSchedule(); renderLoans();
