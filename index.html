@@ -6290,11 +6290,58 @@ localStorage.setItem('smt_spreadsheetId', spreadsheetId);
 localStorage.setItem('smt_googleToken',   token);
 localStorage.setItem('smt_useDirectApi',  '1');
 setPStep('sheet', 'done', currentLang==='si' ? 'පෙර දත්ත හමු විය ✓' : 'Previous data found ✓');
-// Load businesses from the sheet
+// Load businesses from the sheet — read all 7 columns: id,name,icon,color,type,ssId,createdAt
 setPStep('tabs', 'active', currentLang==='si' ? 'දත්ත පූරණය වෙමින්...' : 'Loading your data...');
-const bizRows = await sheetsRead(token, spreadsheetId, '_businesses!A2:E');
+const bizRows = await sheetsRead(token, spreadsheetId, '_businesses!A2:G');
 if(bizRows.length > 0) {
-businesses = bizRows.filter(r=>r[0]).map(r=>({id:r[0],name:r[1],icon:r[2]||'🏪',color:r[3]||'#E6F1FB'}));
+businesses = bizRows.filter(r=>r[0]).map(r=>({
+id:    r[0],
+name:  r[1],
+icon:  r[2] || '🏪',
+color: r[3] || '#E6F1FB',
+type:  r[4] || 'business',
+}));
+// Restore per-source sheet IDs and portData
+for(const biz of businesses) {
+const rowSsId = bizRows.find(r=>r[0]===biz.id)?.[5];
+if(rowSsId) {
+localStorage.setItem('smt_sharedSheet_'+biz.id, rowSsId);
+localStorage.setItem(lsKey(biz.id,'ssId'), rowSsId);
+// Load portData from Overview sheet
+try {
+const ovRows = await sheetsRead(token, rowSsId, 'Overview!A1:B20');
+if(ovRows.length > 0) {
+const pd = {};
+ovRows.forEach(r=>{ if(r[0]&&r[1]) pd[r[0]]=isNaN(r[1])?r[1]:Number(r[1]); });
+// Map Overview keys back to portData fields
+const portData = {
+currency: pd['Currency'] || pd['currency'] || 'LKR',
+type: biz.type,
+};
+if(pd['Monthly income'])   portData.monthlyIncome = Number(pd['Monthly income']);
+if(pd['Gross monthly'])    portData.grossMonthly  = Number(pd['Gross monthly']);
+if(pd['Tax rate'])         portData.taxRate       = Number(pd['Tax rate']);
+if(pd['Work days'])        portData.workDays      = Number(pd['Work days']);
+if(pd['Work hours'])       portData.workHours     = Number(pd['Work hours']);
+if(pd['Pay day'])          portData.payDay        = pd['Pay day'];
+if(pd['Rent'])             portData.rent          = Number(pd['Rent']);
+if(pd['Due day'])          portData.dueDay        = Number(pd['Due day']);
+if(pd['Tenant'])           portData.tenant        = pd['Tenant'];
+if(pd['Principal'])        portData.principal     = Number(pd['Principal']);
+if(pd['Rate'])             portData.rate          = Number(pd['Rate']);
+if(pd['Start date'])       portData.startDate     = pd['Start date'];
+if(pd['End date'])         portData.endDate       = pd['End date'];
+if(pd['Invested'])         portData.invested      = Number(pd['Invested']);
+if(pd['Current value'])    portData.currentValue  = Number(pd['Current value']);
+if(pd['Harvest value'])    portData.harvestValue  = Number(pd['Harvest value']);
+if(pd['Season days'])      portData.seasonDays    = Number(pd['Season days']);
+if(pd['Income'])           portData.income        = Number(pd['Income']);
+biz.portData = portData;
+localStorage.setItem(lsKey(biz.id,'portData'), JSON.stringify(portData));
+}
+} catch(e) { console.log('portData load failed for', biz.id, e.message); }
+}
+}
 currentBizId = businesses[0].id;
 localStorage.setItem('smt_businesses', JSON.stringify(businesses));
 localStorage.setItem('smt_currentBiz', currentBizId);
@@ -6340,7 +6387,7 @@ setPStep('tabs', 'done', currentLang==='si' ? 'Tabs සාදන ලදී ✓' 
 setPStep('done', 'active', currentLang==='si' ? 'ව්‍යාපාරය සුරකිමින්...' : 'Saving your business...');
 const b = businesses[0] || { id:'biz1', name:'My Shop', icon:'🏪', color:'#E6F1FB' };
 const bizId = currentBizId || 'biz1';
-await sheetsAppend(token, spreadsheetId, '_businesses', [b.id, b.name, b.icon, b.color, new Date().toISOString()]);
+await sheetsAppend(token, spreadsheetId, '_businesses', [b.id, b.name, b.icon, b.color, b.type||'business', '', new Date().toISOString()]);
 await sheetsAppend(token, spreadsheetId, bizId+'_settings', ['margin', obMarginVal]);
 await sheetsAppend(token, spreadsheetId, bizId+'_settings', ['currency', 'LKR']);
 // Write default expenses so sheet isn't blank on first open
@@ -6570,16 +6617,85 @@ updateLastSync();
 // ── Sync: read all data from sheet ──
 async function syncFromSheetsDirect() {
 const token = await ensureToken();
-const ssId  = getSheetIdForBiz(currentBizId);
-if(!token || !ssId) return;
-const bizId = currentBizId;
+const masterSsId = localStorage.getItem('smt_spreadsheetId');
+if(!token || !masterSsId) return;
 try {
 setSyncStatus('pending', 'Syncing...');
+// ── 1. Re-read _businesses to pick up additions/deletions from other devices ──
+const bizRows = await sheetsRead(token, masterSsId, '_businesses!A2:G');
+if(bizRows.length > 0) {
+const freshBizIds = new Set(bizRows.filter(r=>r[0]).map(r=>r[0]));
+// Remove businesses deleted on another device
+businesses = businesses.filter(b => freshBizIds.has(b.id));
+// Update type, ssId, and add any new ones
+bizRows.filter(r=>r[0]).forEach(r => {
+const existing = businesses.find(b=>b.id===r[0]);
+const type = r[4] || 'business';
+const ssId = r[5] || '';
+if(existing) {
+// Update type and ssId (may have been missing before)
+existing.type = type;
+if(ssId) {
+localStorage.setItem('smt_sharedSheet_'+existing.id, ssId);
+localStorage.setItem(lsKey(existing.id,'ssId'), ssId);
+}
+} else {
+// New source added on another device
+businesses.push({id:r[0],name:r[1],icon:r[2]||'🏪',color:r[3]||'#E6F1FB',type});
+if(ssId) {
+localStorage.setItem('smt_sharedSheet_'+r[0], ssId);
+localStorage.setItem(lsKey(r[0],'ssId'), ssId);
+}
+}
+});
+localStorage.setItem('smt_businesses', JSON.stringify(businesses));
+// Make sure currentBizId is still valid
+if(!businesses.find(b=>b.id===currentBizId) && businesses.length > 0) {
+currentBizId = businesses[0].id;
+localStorage.setItem('smt_currentBiz', currentBizId);
+}
+}
+// ── 2. Load portData for each non-business source ──
+for(const biz of businesses) {
+if(biz.type && biz.type !== 'business') {
+const ssId = localStorage.getItem('smt_sharedSheet_'+biz.id) || localStorage.getItem(lsKey(biz.id,'ssId'));
+if(ssId && !localStorage.getItem(lsKey(biz.id,'portData'))) {
+try {
+const ovRows = await sheetsRead(token, ssId, 'Overview!A1:B20');
+if(ovRows.length > 0) {
+const pd = { type: biz.type, currency: 'LKR' };
+ovRows.forEach(r=>{ if(r[0]&&r[1]) pd[r[0].toLowerCase().replace(/ /g,'_')]=isNaN(r[1])?r[1]:Number(r[1]); });
+// Also try natural key names
+const raw = {};
+ovRows.forEach(r=>{ if(r[0]&&r[1]) raw[r[0]]=r[1]; });
+if(raw['Monthly income'])  pd.monthlyIncome = Number(raw['Monthly income']);
+if(raw['Gross monthly'])   pd.grossMonthly  = Number(raw['Gross monthly']);
+if(raw['Tax rate'])        pd.taxRate       = Number(raw['Tax rate']);
+if(raw['Work days'])       pd.workDays      = Number(raw['Work days']);
+if(raw['Work hours'])      pd.workHours     = Number(raw['Work hours']);
+if(raw['Rent'])            pd.rent          = Number(raw['Rent']);
+if(raw['Principal'])       pd.principal     = Number(raw['Principal']);
+if(raw['Rate'])            pd.rate          = Number(raw['Rate']);
+if(raw['Invested'])        pd.invested      = Number(raw['Invested']);
+if(raw['Current value'])   pd.currentValue  = Number(raw['Current value']);
+if(raw['Income'])          pd.income        = Number(raw['Income']);
+if(raw['Currency'])        pd.currency      = raw['Currency'];
+biz.portData = pd;
+localStorage.setItem(lsKey(biz.id,'portData'), JSON.stringify(pd));
+}
+} catch(e) {}
+}
+}
+}
+localStorage.setItem('smt_businesses', JSON.stringify(businesses));
+// ── 3. Sync current biz data ──
+const bizId = currentBizId;
+const ssId  = localStorage.getItem('smt_sharedSheet_'+bizId) || localStorage.getItem(lsKey(bizId,'ssId')) || masterSsId;
 const [incRows, expRows, logRows, setRows, loanRows] = await Promise.all([
-sheetsRead(token, ssId, bizId+'_income!A2:E'),
-sheetsRead(token, ssId, bizId+'_expenses!A2:E'),
-sheetsRead(token, ssId, bizId+'_log!A2:H'),
-sheetsRead(token, ssId, bizId+'_settings!A2:B'),
+sheetsRead(token, ssId, bizId+'_income!A2:E').catch(()=>[]),
+sheetsRead(token, ssId, bizId+'_expenses!A2:E').catch(()=>[]),
+sheetsRead(token, ssId, bizId+'_log!A2:H').catch(()=>[]),
+sheetsRead(token, ssId, bizId+'_settings!A2:B').catch(()=>[]),
 sheetsRead(token, ssId, bizId+'_loans!A2:J').catch(()=>[]),
 ]);
 incomeLog = incRows.filter(r=>r[0]).map(r=>({id:r[0],date:r[1],amt:Number(r[2]),note:r[3]||''}));
@@ -6604,6 +6720,7 @@ saveLocal();
 setSyncStatus('ok', 'Synced · ' + new Date().toLocaleTimeString());
 updateLastSync();
 renderAll(); renderExpenses(); renderIncome(); renderWeekSchedule(); renderLoans();
+renderBizDropdown(); renderManageBiz();
 } catch(e) { setSyncStatus('err','Sync failed: '+e.message); console.error(e); }
 }
 function obFinishAuth() {
