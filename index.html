@@ -42,6 +42,13 @@ body{font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;background:var(--
 body.si{font-family:'Noto Sans Sinhala',sans-serif}
 body.si .mono{font-family:'DM Mono',monospace}
 .app{max-width:920px;margin:0 auto;padding:12px}
+.drive-blocking-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+.drive-blocking-box{background:var(--bg1);border:1px solid var(--brd);border-radius:var(--r8);padding:28px 32px;min-width:280px;max-width:340px;text-align:center}
+.drive-blocking-title{font-size:15px;font-weight:600;color:var(--txt);margin-bottom:8px}
+.drive-blocking-sub{font-size:12px;color:var(--txt3);margin-bottom:16px;line-height:1.5}
+.drive-blocking-progress{width:100%;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-bottom:12px}
+.drive-blocking-progress-fill{height:100%;border-radius:2px;background:var(--blue);transition:width .3s ease}
+.drive-blocking-step{font-size:11px;color:var(--txt3);min-height:16px}
 
 
 .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px}
@@ -2820,60 +2827,65 @@ await writeIncomeSourceHeaders(token, ssId, biz.type||'business', name||biz.name
 }
 async function deleteBiz(bizId){
 const biz = businesses.find(b=>b.id===bizId);
-if(!confirm('Delete "'+biz?.name+'"?\n\nThis will permanently delete the Google Sheet from your Drive and all local data.')) return;
-// ── Get the sheet ID before we remove anything ──
+if(!biz) return;
+if(!confirm(`Delete "${biz.name}"?\n\nThis will:\n• Permanently delete its Google Sheet from Drive\n• Remove it from your income sources\n\nThis cannot be undone.`)) return;
 const ssId = localStorage.getItem('smt_sharedSheet_'+bizId) || localStorage.getItem(lsKey(bizId,'ssId'));
-businesses = businesses.filter(b=>b.id!==bizId);
-localStorage.setItem('smt_businesses', JSON.stringify(businesses));
-// Clean ALL local storage keys for this biz
-['expenses','income','ops','hours','margin','cur','loans','portData',
-'attendance','schedule','ssId'].forEach(k=>localStorage.removeItem(lsKey(bizId,k)));
-localStorage.removeItem('smt_sharedSheet_'+bizId);
-localStorage.removeItem('smt_sharedAccessKey_'+bizId);
-// ── Delete the Google Sheet from Drive ──
-if(ssId) {
+// ── 1. Delete from Drive immediately (blocking overlay) ──
+showDriveBlock('Deleting from Google Drive…', `Removing ${biz.name}'s sheet from your Drive`);
+updateDriveBlock(20, 'Getting token…');
 const token = await ensureToken();
-if(token) {
-setSyncStatus('pending','Deleting from Drive…');
-try {
-// First check it's not the master spreadsheet
+if(token && ssId) {
 const masterSsId = localStorage.getItem('smt_spreadsheetId');
 if(ssId !== masterSsId) {
+// Delete the whole sheet file from Drive
+updateDriveBlock(40, 'Deleting sheet from Drive…');
+try {
 const r = await fetch('https://www.googleapis.com/drive/v3/files/'+ssId, {
 method: 'DELETE',
 headers: { Authorization: 'Bearer '+token }
 });
-if(r.ok || r.status===204) {
-setSyncStatus('ok','✓ Deleted from Drive');
-} else if(r.status===404) {
-setSyncStatus('ok','Sheet already removed');
+if(r.ok || r.status===204 || r.status===404) {
+updateDriveBlock(70, 'Sheet deleted ✓');
 } else {
 const e = await r.json().catch(()=>({}));
-setSyncStatus('err','Drive delete failed: '+(e.error?.message||r.status));
+console.error('Drive delete:', e.error?.message||r.status);
+updateDriveBlock(70, 'Drive delete failed — removing locally');
 }
-} else {
-// Master sheet — just remove the biz tab rows, don't delete whole sheet
+} catch(e) { console.error('Drive delete:', e.message); }
+}
+// ── 2. Remove row from _businesses master sheet ──
+updateDriveBlock(80, 'Updating master sheet…');
 try {
-const rows = await sheetsRead(token, masterSsId, '_businesses!A:A');
+const rows = await sheetsRead(token, masterSsId, '_businesses!A:G');
 const idx = rows.findIndex(r=>r[0]===bizId);
 if(idx>=0) {
 await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${masterSsId}:batchUpdate`,{
 method:'POST',
 headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
-body:JSON.stringify({requests:[{deleteDimension:{range:{sheetId:0,dimension:'ROWS',startIndex:idx+1,endIndex:idx+2}}}]})
+body:JSON.stringify({requests:[{deleteDimension:{range:{sheetId:0,dimension:'ROWS',startIndex:idx,endIndex:idx+1}}}]})
 });
 }
-} catch(e2){}
-setSyncStatus('ok','Removed from sheet');
+} catch(e) { console.error('_businesses remove row:', e.message); }
 }
-} catch(e){ setSyncStatus('err','Delete error: '+e.message); }
-setTimeout(()=>setSyncStatus('ok',''),3000);
-}
-}
-// Switch to another business
+updateDriveBlock(100, 'Done ✓');
+await new Promise(r=>setTimeout(r,400));
+hideDriveBlock();
+// ── 3. Remove from local state ──
+businesses = businesses.filter(b=>b.id!==bizId);
+localStorage.setItem('smt_businesses', JSON.stringify(businesses));
+// Wipe all localStorage keys for this biz
+['expenses','income','ops','hours','margin','cur','loans','portData','attendance','schedule','ssId']
+.forEach(k=>localStorage.removeItem(lsKey(bizId,k)));
+localStorage.removeItem('smt_sharedSheet_'+bizId);
+localStorage.removeItem('smt_sharedAccessKey_'+bizId);
+// ── 4. Switch to another source ──
 if(businesses.length===0){ await addFirstBusiness(); }
 renderManageBiz();
+renderBizDropdown();
 if(currentBizId===bizId) switchBiz(businesses[0].id);
+renderPortfolio();
+setSyncStatus('ok','Deleted · '+biz.name);
+setTimeout(()=>setSyncStatus('ok',''),3000);
 }
 // ═══════════════════════════════════════════════════
 // LOANS
@@ -4694,6 +4706,7 @@ const masterSsId = localStorage.getItem('smt_spreadsheetId');
 if(!token || !masterSsId) return;
 try {
 setSyncStatus('pending','Syncing all sources...');
+updateDriveBlock(10, 'Reading your income sources…');
 // 1. Read _businesses master list
 const bizRows = await sheetsRead(token, masterSsId, '_businesses!A2:G');
 if(bizRows.length > 0) {
@@ -4726,8 +4739,10 @@ localStorage.setItem('smt_currentBiz', currentBizId);
 // 2. Load portData for ALL sources in parallel
 await Promise.all(businesses.map(biz => loadPortDataFromSheet(token, biz)));
 localStorage.setItem('smt_businesses', JSON.stringify(businesses));
+updateDriveBlock(30, 'Loading source settings…');
 // 3. Load attendance for all job sources in parallel
 await Promise.all(businesses.filter(b=>b.type==='job').map(b=>loadAttFromSheet(b.id).catch(()=>{})));
+updateDriveBlock(50, 'Loading income & transactions…');
 // 4. Load full data for current biz
 const bizId = currentBizId;
 const biz   = businesses.find(b=>b.id===bizId)||{};
@@ -4775,6 +4790,7 @@ localStorage.setItem(lsKey(bizId,'expenses'), JSON.stringify(expenses));
 opsLog = logR.filter(r=>r[0]&&r[0]!=='ID').map(r=>({id:r[0],date:r[1],sales:Number(r[2]),target:Number(r[3]),breakeven:Number(r[4]),profit:Number(r[5]),net:Number(r[6]),hit:r[7]==='YES'}));
 localStorage.setItem(lsKey(bizId,'ops'), JSON.stringify(opsLog));
 }
+updateDriveBlock(90, 'Finalising…');
 // 6. Reload current biz local data into memory
 loadLocalForBiz(currentBizId);
 setSyncStatus('ok','All synced · '+new Date().toLocaleTimeString());
@@ -7217,14 +7233,72 @@ syncNow();
 client.requestAccessToken({ prompt: 'select_account' });
 }
 }
-function signOutAndReset() {
+// ── Drive blocking overlay helpers ──
+function showDriveBlock(title, sub) {
+const el = document.getElementById('drive-blocking');
+if(el) el.style.display = 'flex';
+const t = document.getElementById('dbo-title');
+const s = document.getElementById('dbo-sub');
+const b = document.getElementById('dbo-bar');
+const st = document.getElementById('dbo-step');
+if(t) t.textContent = title || 'Working…';
+if(s) s.textContent = sub || 'Please wait';
+if(b) b.style.width = '0%';
+if(st) st.textContent = '';
+}
+function updateDriveBlock(pct, step) {
+const b = document.getElementById('dbo-bar');
+const st = document.getElementById('dbo-step');
+if(b) b.style.width = Math.min(100,pct)+'%';
+if(st) st.textContent = step || '';
+}
+function hideDriveBlock() {
+const el = document.getElementById('drive-blocking');
+if(el) el.style.display = 'none';
+}
+
+// ── Save ALL sources to Drive, with progress ──
+async function saveAllToDrive() {
+const token = await ensureToken();
+if(!token) return false;
+const masterSsId = localStorage.getItem('smt_spreadsheetId');
+if(!masterSsId) return false;
+const total = businesses.length;
+for(let i=0; i<businesses.length; i++) {
+const b = businesses[i];
+updateDriveBlock(Math.round((i/total)*90), `Saving ${b.name}…`);
+await saveCurrentBizToSheet(b.id).catch(e=>console.error('save',b.id,e.message));
+}
+// Also update _businesses registry
+try {
+const rows = [['ID','Name','Icon','Color','Type','SheetID','Updated']];
+for(const b of businesses) {
+const ssId = localStorage.getItem('smt_sharedSheet_'+b.id) || localStorage.getItem(lsKey(b.id,'ssId')) || '';
+rows.push([b.id, b.name, b.icon||'🏪', b.color||'#E6F1FB', b.type||'business', ssId, new Date().toISOString()]);
+}
+await sheetsWrite(token, masterSsId, '_businesses!A1', rows);
+} catch(e) { console.error('saveAllToDrive _businesses:', e.message); }
+updateDriveBlock(100, 'All saved ✓');
+return true;
+}
+
+async function signOutAndReset() {
 closeAcctMenu();
-if(!confirm('Sign out and return to the sign-in screen?')) return;
-// Clear ONLY auth tokens — keep business data so it shows on next login
+if(!confirm('Sign out?\n\nAll your data will be saved to Google Drive first.')) return;
+// Step 1: Save everything to Drive
+showDriveBlock('Saving to Google Drive…', 'Saving all your data before signing out…');
+await saveAllToDrive().catch(()=>{});
+await new Promise(r=>setTimeout(r,400));
+hideDriveBlock();
+// Step 2: Clear auth tokens only — keep nothing local
 googleToken = null; googleUser = null; _tokenExpiry = 0;
-['smt_googleToken','smt_useDirectApi','smt_spreadsheetId',
-'smt_onboarded','smt_sheetUrl','smt_googleUser','smt_folderID'].forEach(k=>localStorage.removeItem(k));
-// Update account btn
+// Wipe ALL local data — Drive is the source of truth
+const keysToKeep = ['shopTheme','shopLang'];
+const allKeys = Object.keys(localStorage);
+allKeys.forEach(k=>{ if(!keysToKeep.includes(k)) localStorage.removeItem(k); });
+// Reset in-memory state
+businesses=[]; currentBizId=null; expenses={}; incomeLog=[]; opsLog=[]; loans=[];
+// Hide account btn
 const btn = document.getElementById('acct-btn');
 if(btn) btn.style.display = 'none';
 // Show sign-in screen
@@ -7290,11 +7364,16 @@ localStorage.setItem('smt_onboarded', '1');
 document.getElementById('ob-overlay').style.display = 'none';
 document.getElementById('main-app').style.display = 'block';
 initApp();
-// Always do a full sync on login — loads all sources + all portData
+// If connected to Drive — block UI and load ALL data before allowing edits
 const useApi = localStorage.getItem('smt_useDirectApi');
 if(useApi || sheetUrl) {
-setSyncStatus('pending','Loading all your data...');
-await syncAllSources();
+showDriveBlock('Loading your data…', 'Pulling all your income sources from Google Drive');
+updateDriveBlock(5, 'Connecting to Google Drive…');
+await syncAllSources().catch(e=>{
+console.error('syncAllSources on login:', e);
+setSyncStatus('err','Sync failed: '+e.message);
+});
+hideDriveBlock();
 }
 }
 // skipSetup defined earlier
@@ -7331,20 +7410,22 @@ if(isReturning){
 document.getElementById('ob-overlay').style.display='none';
 document.getElementById('main-app').style.display='block';
 try { initApp(); } catch(e) { console.error('initApp error:', e); }
-// ── Always sync from Google first for returning users ──
+// ── Always sync from Google first for returning users — block UI until done ──
 if(useDirectApi || savedUrl || hasToken) {
 setTimeout(async ()=>{
 try {
 const token = await ensureToken();
 if(token) {
-// Refresh user info and account button
 const user = await fetchGoogleUserInfo(token);
 if(user && (user.name||user.email)) { googleUser=user; updateAcctBtn(user); }
-// Full sync — loads ALL sources, not just current
-if(useDirectApi || hasSsId) await syncAllSources();
+if(useDirectApi || hasSsId) {
+showDriveBlock('Loading your data…','Pulling your latest data from Google Drive');
+await syncAllSources().catch(e=>console.error('sync error:',e));
+hideDriveBlock();
 }
-} catch(e) { console.log('Background sync:', e.message); }
-}, 600);
+}
+} catch(e) { hideDriveBlock(); console.log('Sync error:',e.message); }
+}, 300);
 }
 // Handle pending join code
 const pendingJoin = localStorage.getItem('smt_pendingJoinCode');
@@ -7498,6 +7579,16 @@ function openAddTransaction(){ setSyncStatus('ok','✦ Coming soon'); setTimeout
 <div class="emoji-picker-popup" id="emoji-picker" style="display:none">
   <input class="ep-search" id="ep-search" placeholder="Search emojis..." oninput="epFilter(this.value)">
   <div class="ep-scroll" id="ep-scroll"></div>
+</div>
+
+<!-- Drive blocking overlay — shown during save-before-signout and load-after-login -->
+<div id="drive-blocking" style="display:none" class="drive-blocking-overlay">
+  <div class="drive-blocking-box">
+    <div class="drive-blocking-title" id="dbo-title">Saving to Google Drive…</div>
+    <div class="drive-blocking-sub" id="dbo-sub">Please wait — do not close the app</div>
+    <div class="drive-blocking-progress"><div class="drive-blocking-progress-fill" id="dbo-bar" style="width:0%"></div></div>
+    <div class="drive-blocking-step" id="dbo-step"></div>
+  </div>
 </div>
 
 </body>
