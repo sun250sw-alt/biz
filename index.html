@@ -495,38 +495,11 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
   <div class="ob-body">
 
     <div class="ob-progress">
-      <div class="ob-dot active" id="ob-dot-0"></div>
-      <div class="ob-dot" id="ob-dot-1"></div>
+      <div class="ob-dot active" id="ob-dot-1"></div>
       <div class="ob-dot" id="ob-dot-2"></div>
     </div>
 
-    <div class="ob-slide active" id="ob-slide-0">
-      <span class="ob-emoji">💰</span>
-      <div class="ob-title" id="ob-welcome-title">Welcome to Wealth Tracker</div>
-      <div class="ob-desc" id="ob-welcome-desc">Track all your income sources — businesses, jobs, rentals, investments and more. See your total wealth growing in real time.</div>
-      <div class="ob-features">
-        <div class="ob-feat">
-          <div class="ob-feat-icon">⏱</div>
-          <div><div class="ob-feat-title" id="f1-title">Live wealth ticker</div><div class="ob-feat-desc" id="f1-desc">Watch your total income from all sources ticking up every second, in real time.</div></div>
-        </div>
-        <div class="ob-feat">
-          <div class="ob-feat-icon">📊</div>
-          <div><div class="ob-feat-title" id="f2-title">Charts & reports</div><div class="ob-feat-desc" id="f2-desc">Portfolio breakdown, income trends, expense analysis and performance heatmaps.</div></div>
-        </div>
-        <div class="ob-feat">
-          <div class="ob-feat-icon">🏢</div>
-          <div><div class="ob-feat-title" id="f3-title">Multiple income sources</div><div class="ob-feat-desc" id="f3-desc">Add businesses, jobs, rental properties, investments, fixed deposits and more.</div></div>
-        </div>
-        <div class="ob-feat">
-          <div class="ob-feat-icon">☁️</div>
-          <div><div class="ob-feat-title" id="f4-title">Google Sheets sync</div><div class="ob-feat-desc" id="f4-desc">All data saves to your own Google Sheet. Access from any device, anywhere.</div></div>
-        </div>
-      </div>
-      <button class="ob-btn" onclick="obNext()" id="ob-get-started">Get started →</button>
-      <div class="skip-lnk" onclick="skipSetup()" id="ob-skip-0">Use offline — skip Google sign-in</div>
-    </div>
-
-    <div class="ob-slide" id="ob-slide-1">
+    <div class="ob-slide active" id="ob-slide-1">
       <span class="ob-emoji">🔑</span>
       <div class="ob-title" id="ob-sheet-title">Sign in with Google</div>
       <div class="ob-desc" id="ob-sheet-desc">Your data is stored in your own Google Drive. Sign in to create a new account or reconnect to an existing one.</div>
@@ -1908,6 +1881,29 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
           <button class="btn-primary" onclick="saveGeminiKey()" id="gemini-save-btn" style="white-space:nowrap;padding:0 14px;height:36px" disabled>Activate ✦</button>
         </div>
         <div id="gemini-setup-msg" style="font-size:11px;margin-top:8px;min-height:16px"></div>
+      </div>
+    </div>
+
+    <!-- ── DANGER ZONE ── -->
+    <div class="card" style="border:1px solid var(--red);margin-top:8px">
+      <div class="card-title" style="color:var(--red-txt)">⚠ Danger zone</div>
+
+      <!-- Sign out -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--brd)">
+        <div>
+          <div style="font-size:13px;font-weight:500;color:var(--txt)">Sign out</div>
+          <div style="font-size:11px;color:var(--txt3);margin-top:2px">Saves all data to Drive then signs you out</div>
+        </div>
+        <button class="btn-sm" onclick="signOutAndReset()" style="white-space:nowrap;flex-shrink:0">Sign out</button>
+      </div>
+
+      <!-- Delete account -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0">
+        <div>
+          <div style="font-size:13px;font-weight:500;color:var(--red-txt)">Delete account &amp; all data</div>
+          <div style="font-size:11px;color:var(--txt3);margin-top:2px">Permanently deletes ALL sheets from Google Drive and resets the app. This cannot be undone.</div>
+        </div>
+        <button class="btn-danger" onclick="deleteAccount()" style="white-space:nowrap;flex-shrink:0;margin-left:12px">Delete all</button>
       </div>
     </div>
 
@@ -6336,10 +6332,10 @@ closeBizDrop();
 // ═══════════════════════════════
 // ONBOARDING LOGIC
 // ═══════════════════════════════
-let obStep = 0;
+let obStep = 1;
 let obBizColor = '#E6F1FB';
 let obMarginVal = 30;
-const OB_SLIDES = 3;
+const OB_SLIDES = 2;
 // Full Apps Script text for copy button
 const APPS_SCRIPT_CODE = ""; // removed to reduce file size
 function obSetLang(lang) {
@@ -6404,22 +6400,20 @@ document.getElementById('ob-sheet-url').placeholder = 'https://script.google.com
 }
 function obShowSlide(n) {
 document.querySelectorAll('.ob-slide').forEach(s=>s.classList.remove('active'));
-document.getElementById('ob-slide-'+n).classList.add('active');
-// Update dots (3 slides now)
-for(let i=0;i<OB_SLIDES;i++){
+const sl = document.getElementById('ob-slide-'+n);
+if(sl) sl.classList.add('active');
+// Dots are 1 and 2 matching slide IDs
+[1,2].forEach(i=>{
 const dot=document.getElementById('ob-dot-'+i);
-if(!dot)continue;
+if(!dot) return;
 if(i<n) dot.className='ob-dot done';
 else if(i===n) dot.className='ob-dot active';
 else dot.className='ob-dot';
-}
+});
 obStep=n;
 window.scrollTo(0,0);
 }
-function obNext() {
-// From welcome (0) → go straight to Google sign-in (1)
-obShowSlide(obStep + 1);
-}
+function obNext() { obShowSlide(obStep + 1); }
 function obPickColor(el) {
 document.querySelectorAll('.ob-color-swatch').forEach(s=>s.classList.remove('picked'));
 el.classList.add('picked');
@@ -7313,7 +7307,83 @@ document.getElementById('ob-auth-continue-btn').style.display = 'none';
 document.getElementById('ob-sheet-msg').textContent = '';
 obShowSlide(1);
 }
-// ── obFinishAndAddSource — called from done-slide source cards ──
+async function deleteAccount() {
+closeAcctMenu();
+// Double-confirm — this is irreversible
+const first = confirm('⚠ Delete your entire account?\n\nThis will permanently delete:\n• ALL your Google Sheets from Drive\n• ALL your income source data\n• Everything stored in this app\n\nThis CANNOT be undone.');
+if(!first) return;
+const second = confirm('Are you absolutely sure?\n\nType "DELETE" in the next prompt to confirm.');
+const typed = window.prompt('Type DELETE to confirm (all caps):');
+if(typed !== 'DELETE') { alert('Cancelled — nothing was deleted.'); return; }
+// Block UI
+showDriveBlock('Deleting all data…', 'Permanently removing all your sheets from Google Drive');
+updateDriveBlock(5, 'Getting access token…');
+const token = await ensureToken();
+const masterSsId = localStorage.getItem('smt_spreadsheetId');
+let deleted = 0;
+const total = businesses.length + 1; // +1 for master sheet
+if(token) {
+// 1. Delete every income source sheet
+for(let i=0; i<businesses.length; i++) {
+const b = businesses[i];
+updateDriveBlock(Math.round(5 + (i/total)*70), `Deleting ${b.name}…`);
+const ssId = localStorage.getItem('smt_sharedSheet_'+b.id) || localStorage.getItem(lsKey(b.id,'ssId'));
+if(ssId && ssId !== masterSsId) {
+try {
+await fetch('https://www.googleapis.com/drive/v3/files/'+ssId, {
+method:'DELETE', headers:{Authorization:'Bearer '+token}
+});
+deleted++;
+} catch(e) { console.error('delete sheet:', b.name, e.message); }
+}
+}
+// 2. Delete the Wealth Tracker folder (which contains all sheets)
+updateDriveBlock(80, 'Deleting Wealth Tracker folder…');
+const folderId = localStorage.getItem('smt_folderID');
+if(folderId) {
+try {
+await fetch('https://www.googleapis.com/drive/v3/files/'+folderId, {
+method:'DELETE', headers:{Authorization:'Bearer '+token}
+});
+} catch(e) { console.error('delete folder:', e.message); }
+}
+// 3. Delete master spreadsheet
+updateDriveBlock(90, 'Deleting master sheet…');
+if(masterSsId) {
+try {
+await fetch('https://www.googleapis.com/drive/v3/files/'+masterSsId, {
+method:'DELETE', headers:{Authorization:'Bearer '+token}
+});
+} catch(e) { console.error('delete master:', e.message); }
+}
+}
+updateDriveBlock(100, 'All data deleted ✓');
+await new Promise(r=>setTimeout(r,600));
+hideDriveBlock();
+// 4. Wipe ALL localStorage completely (except theme)
+const savedTheme = localStorage.getItem('shopTheme');
+const savedLang  = localStorage.getItem('shopLang');
+localStorage.clear();
+if(savedTheme) localStorage.setItem('shopTheme', savedTheme);
+if(savedLang)  localStorage.setItem('shopLang', savedLang);
+// 5. Reset all in-memory state
+googleToken=null; googleUser=null; _tokenExpiry=0;
+businesses=[]; currentBizId=null; expenses={}; incomeLog=[]; opsLog=[]; loans=[];
+// 6. Show fresh sign-in screen
+const btn = document.getElementById('acct-btn');
+if(btn) btn.style.display='none';
+document.getElementById('main-app').style.display='none';
+document.getElementById('ob-overlay').style.display='flex';
+document.getElementById('ob-user-card').style.display='none';
+document.getElementById('ob-google-btn').style.display='flex';
+document.getElementById('ob-google-btn').disabled=false;
+document.getElementById('ob-google-btn-txt').textContent='Continue with Google';
+document.getElementById('ob-setup-progress').style.display='none';
+document.getElementById('ob-auth-continue-btn').style.display='none';
+document.getElementById('ob-sheet-msg').textContent='';
+obShowSlide(1);
+alert(`All data deleted successfully (${deleted} sheets removed from Drive). You have been signed out.`);
+}
 function obFinishAndAddSource(type) {
 obFinish();
 setTimeout(()=>{
@@ -7444,7 +7514,7 @@ if(msg) { msg.style.color='var(--blue-txt)'; msg.textContent='✓ Code filled fr
 }, 1200);
 }
 } else {
-obShowSlide(0);
+obShowSlide(1);
 }
 });
 // ═══════════════════════════════════════════════════
