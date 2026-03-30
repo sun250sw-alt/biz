@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2236,6 +2235,19 @@ document.getElementById('biz-list-items').innerHTML = businesses.map(b=>`
 <div><div class="biz-row-name">${b.name}</div><div class="biz-row-sub">${lsKey(b.id,'cur')?' ':''}</div></div>
 ${b.id===currentBizId?`<div class="biz-row-active">${t('active')}</div>`:''}
 </div>`).join('');
+}
+// ── Helper: returns correct meta bar text for ANY income type ──
+function getBizMetaStr(bizId) {
+  const biz  = businesses.find(b => b.id === bizId) || {};
+  const type = biz.type || 'business';
+  const cur_ = getBizCur(bizId);
+  if(type === 'business')    return openDaysPerWeek() + ' ' + t('openDaysWeek') + ' · ' + cur_;
+  if(type === 'job')         { const p = JSON.parse(localStorage.getItem(lsKey(bizId,'portData'))||'null')||{}; return (p.workDays||5)+'d/wk · '+(p.workHours||8)+'h/day · '+cur_; }
+  if(type === 'rental')      { const p = JSON.parse(localStorage.getItem(lsKey(bizId,'portData'))||'null')||{}; return 'Rental · '+(p.tenant||'No tenant')+' · '+cur_; }
+  if(type === 'fd')          { const p = JSON.parse(localStorage.getItem(lsKey(bizId,'portData'))||'null')||{}; return 'FD · '+(p.rate||0)+'% p.a. · '+cur_; }
+  if(type === 'investment')  return 'Investment · ' + cur_;
+  if(type === 'farming')     return 'Farming · ' + cur_;
+  return (PORT_TYPE_META[type]||{label:type}).label + ' · ' + cur_;
 }
 async function switchBiz(bizId){
 if(currentBizId === bizId && expenses && Object.keys(expenses).length>0){ closeBizDrop(); return; }
@@ -4803,6 +4815,10 @@ updateLastSync();
 renderAll(); renderExpenses(); renderIncome(); renderWeekSchedule(); renderLoans();
 renderBizDropdown(); renderManageBiz();
 setTimeout(renderPortfolio, 100);
+// Refresh nav and meta bar so income type label is never stale after a pull
+const _syncBiz = businesses.find(b=>b.id===currentBizId)||{};
+renderNavForType(_syncBiz.type||'business');
+setText('biz-meta-bar', getBizMetaStr(currentBizId));
 } catch(e) { setSyncStatus('err','Sync failed: '+e.message); console.error(e); }
 }
 // ── Attendance → Google Sheet sync ──
@@ -5867,9 +5883,9 @@ if(en === '__icon__') return; // SVG icon button — don't overwrite
 const el = document.getElementById(id);
 if(el) el.textContent = currentLang==='si' ? si : en;
 });
-// Update biz bar meta
+// Update biz bar meta — use type-aware helper so non-business sources don't flash wrong text
 if(currentBizId){
-setText('biz-meta-bar', openDaysPerWeek()+' '+t('openDaysWeek')+' · '+getBizCur(currentBizId));
+setText('biz-meta-bar', getBizMetaStr(currentBizId));
 }
 }
 // Add missing translation keys
@@ -6262,7 +6278,7 @@ document.getElementById('biz-icon-bar').style.background=biz.color||'#E6F1FB';
 setText('biz-name-bar', biz.name);
 setText('app-logo', biz.icon||'🏪');
 document.getElementById('app-logo').style.background=biz.color||'#E6F1FB';
-setText('biz-meta-bar', openDaysPerWeek()+' '+t('openDaysWeek')+' · '+getBizCur(currentBizId));
+setText('biz-meta-bar', getBizMetaStr(currentBizId));
 renderAll();renderExpenses();renderIncome();renderWeekSchedule();
 startClock();
 startFxAutoRefresh(); // background FX rate refresh every 15 min
@@ -7149,6 +7165,10 @@ setSyncStatus('ok', 'Synced · ' + new Date().toLocaleTimeString());
 updateLastSync();
 renderAll(); renderExpenses(); renderIncome(); renderWeekSchedule(); renderLoans();
 renderBizDropdown(); renderManageBiz();
+// Refresh nav and meta bar so income type label is never stale after a pull
+const _postSyncBiz = businesses.find(b=>b.id===currentBizId)||{};
+renderNavForType(_postSyncBiz.type||'business');
+setText('biz-meta-bar', getBizMetaStr(currentBizId));
 } catch(e) { setSyncStatus('err','Sync failed: '+e.message); console.error(e); }
 }
 function obFinishAuth() {
