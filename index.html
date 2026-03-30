@@ -1986,9 +1986,11 @@ localStorage.setItem('smt_businesses', JSON.stringify(businesses));
 localStorage.setItem('smt_currentBiz', currentBizId);
 localStorage.setItem('smt_sheetUrl',   sheetUrl);
 }catch(e){}
-// Debounce full sheet save for current biz
+// Debounce full sheet save — capture bizId NOW so a source-switch during the
+// 1200 ms window doesn't redirect the write to the wrong income source
+const _saveBizSnapshot = currentBizId;
 clearTimeout(saveLocal._sheetTimer);
-saveLocal._sheetTimer = setTimeout(()=>saveCurrentBizToSheet(), 1200);
+saveLocal._sheetTimer = setTimeout(()=>saveCurrentBizToSheet(_saveBizSnapshot), 1200);
 }
 
 // ── Save ALL data for any biz to its own Google Sheet ──
@@ -3073,7 +3075,7 @@ if(loan) Object.assign(loan, { name, total, remaining, monthly, interest, term, 
 loans.push({ id:'loan_'+Date.now(), name, total, remaining, monthly, interest, term, lender, startDate, endDate, paidOff:false, createdAt:new Date().toISOString() });
 }
 saveLocal();
-saveLoanToSheet();
+saveLoanToSheet(currentBizId);
 closeLoanModal();
 renderLoans();
 renderAll();
@@ -3086,7 +3088,7 @@ loan.paidOff = true;
 loan.remaining = 0;
 loan.paidAt = new Date().toISOString();
 saveLocal();
-saveLoanToSheet();
+saveLoanToSheet(currentBizId);
 renderLoans();
 renderAll();
 }
@@ -3096,7 +3098,7 @@ if(!loan) return;
 loan.paidOff = false;
 delete loan.paidAt;
 saveLocal();
-saveLoanToSheet();
+saveLoanToSheet(currentBizId);
 renderLoans();
 renderAll();
 }
@@ -3106,7 +3108,7 @@ if(!loan) return;
 if(!confirm(`Delete "${loan.name}"? This cannot be undone.`)) return;
 loans = loans.filter(l=>l.id!==loanId);
 saveLocal();
-saveLoanToSheet();
+saveLoanToSheet(currentBizId);
 renderLoans();
 renderAll();
 }
@@ -3214,7 +3216,7 @@ loan.paidAt  = loan.paidAt || new Date().toISOString();
 if(loan.paidOff && newRemaining > 0) loan.paidOff = false;
 }
 saveLocal();
-saveLoanToSheet();
+saveLoanToSheet(currentBizId);
 // Re-render just the month row area without closing the panel
 renderLoanMonths(loanId);
 // Update the progress bar in the parent row
@@ -3398,20 +3400,25 @@ paidCard.style.display='none';
 }
 }
 // Save loans to Google Sheet (_loans tab)
-async function saveLoanToSheet() {
+async function saveLoanToSheet(bizId) {
+// Always use the explicitly supplied bizId (captured at call time) so a
+// source-switch mid-debounce never writes loans to the wrong sheet
+bizId = bizId || currentBizId;
 const token = await ensureToken();
-const ssId  = getSheetIdForBiz(currentBizId);
+const ssId  = getSheetIdForBiz(bizId);
 if(!token||!ssId) return;
 try {
 // Ensure _loans tab exists
 await fetch(`${SHEETS_API}/${ssId}:batchUpdate`, {
 method:'POST', headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
-body: JSON.stringify({requests:[{addSheet:{properties:{title:currentBizId+'_loans'}}}]})
+body: JSON.stringify({requests:[{addSheet:{properties:{title:bizId+'_loans'}}}]})
 });
-// Write header + all loans (include payments as JSON in column K)
+// Read loans from localStorage for this specific source (not the in-memory global)
+// so we always write the correct source's data even if currentBizId has changed
+const lns = JSON.parse(localStorage.getItem(lsKey(bizId,'loans'))||'[]');
 const rows = [['ID','Name','Total','Remaining','Monthly','Interest','Lender','PaidOff','CreatedAt','PaidAt','Payments']];
-loans.forEach(l=>rows.push([l.id,l.name,l.total||0,l.remaining||0,l.monthly||0,l.interest||0,l.lender||'',l.paidOff?'YES':'NO',l.createdAt||'',l.paidAt||'',l.payments?JSON.stringify(l.payments):'']));
-await sheetsWrite(token, ssId, currentBizId+'_loans!A1', rows);
+lns.forEach(l=>rows.push([l.id,l.name,l.total||0,l.remaining||0,l.monthly||0,l.interest||0,l.lender||'',l.paidOff?'YES':'NO',l.createdAt||'',l.paidAt||'',l.payments?JSON.stringify(l.payments):'']));
+await sheetsWrite(token, ssId, bizId+'_loans!A1', rows);
 } catch(e) { console.error('saveLoanToSheet:', e); }
 }
 // Load loans from Google Sheet
@@ -4373,21 +4380,24 @@ let attSelectedDate   = null;
 let attSelectedStatus = null;
 function lsAttKey(bizId)  { return 'smt_'+(bizId||currentBizId)+'_attendance'; }
 function lsSchedKey(bizId){ return 'smt_'+(bizId||currentBizId)+'_schedule'; }
-function loadAttData()    { return JSON.parse(localStorage.getItem(lsAttKey())||'{}'); }
+// Always pass currentBizId explicitly so two job sources never share the same attendance/schedule
+function loadAttData()    { return JSON.parse(localStorage.getItem(lsAttKey(currentBizId))||'{}'); }
 let _attSaveTimer = null;
+let _attSaveBizId = null;
 function saveAttData(d) {
-// Write to localStorage immediately (cache)
-localStorage.setItem(lsAttKey(), JSON.stringify(d));
-// Debounce sheet write — coalesces rapid bulk saves into one API call
+// Write to localStorage immediately — keyed to currentBizId so each job is isolated
+localStorage.setItem(lsAttKey(currentBizId), JSON.stringify(d));
+// Capture bizId NOW so a job-switch during the debounce window doesn't misdirect the sheet write
+_attSaveBizId = currentBizId;
 clearTimeout(_attSaveTimer);
-_attSaveTimer = setTimeout(()=>saveAttToSheet(), 800);
+_attSaveTimer = setTimeout(()=>saveAttToSheet(_attSaveBizId), 800);
 }
 function loadSchedData()  {
-return JSON.parse(localStorage.getItem(lsSchedKey())||'null') || {
+return JSON.parse(localStorage.getItem(lsSchedKey(currentBizId))||'null') || {
 workDays:[1,2,3,4,5], startTime:'08:00', endTime:'17:00', breakMins:60
 };
 }
-function saveSchedData(d) { localStorage.setItem(lsSchedKey(), JSON.stringify(d)); }
+function saveSchedData(d) { localStorage.setItem(lsSchedKey(currentBizId), JSON.stringify(d)); }
 function attChangeMonth(delta) {
 attMonth += delta;
 if(attMonth > 11){ attMonth=0; attYear++; }
@@ -6808,7 +6818,19 @@ msg.textContent = currentLang==='si'
 : '✓ Reconnected to your existing data!';
 } else {
 // ── NEW USER: create fresh spreadsheet ──
-const biz = businesses.find(b=>b.id===currentBizId) || businesses[0] || {};
+// Explicitly reset businesses and currentBizId — stale onboarding entries
+// from a previous account or the ob-slide-2 flow must not leak in here
+businesses = [];
+currentBizId = null;
+// Use the onboarding biz name/icon if the user filled it in, else a clean default
+const obName = document.getElementById('ob-biz-name')?.value?.trim() || 'My Shop';
+const obIcon = document.getElementById('ob-biz-icon')?.value?.trim() || '🏪';
+const freshBizId = 'biz_' + Date.now();
+const freshBiz = { id: freshBizId, name: obName, icon: obIcon, color: obBizColor || '#E6F1FB', type: 'business' };
+businesses = [freshBiz];
+currentBizId = freshBizId;
+localStorage.setItem('smt_businesses', JSON.stringify(businesses));
+localStorage.setItem('smt_currentBiz', currentBizId);
 const sheetTitle = 'Wealth Tracker — Master';
 // Ensure folder exists first
 const folderId = await ensureFolder(token);
@@ -6838,11 +6860,10 @@ await createBizTabs(token, spreadsheetId, currentBizId || 'biz1');
 setPStep('tabs', 'done', currentLang==='si' ? 'Tabs සාදන ලදී ✓' : 'Data tabs ready ✓');
 // Save business + settings + default expenses
 setPStep('done', 'active', currentLang==='si' ? 'ව්‍යාපාරය සුරකිමින්...' : 'Saving your business...');
-const b = businesses[0] || { id:'biz1', name:'My Shop', icon:'🏪', color:'#E6F1FB' };
-const bizId = currentBizId || 'biz1';
-await sheetsAppend(token, spreadsheetId, '_businesses', [b.id, b.name, b.icon, b.color, b.type||'business', '', new Date().toISOString()]);
-await sheetsAppend(token, spreadsheetId, bizId+'_settings', ['margin', obMarginVal]);
-await sheetsAppend(token, spreadsheetId, bizId+'_settings', ['currency', 'LKR']);
+// Use freshBiz/freshBizId — guaranteed clean, no stale state from previous account
+await sheetsAppend(token, spreadsheetId, '_businesses', [freshBiz.id, freshBiz.name, freshBiz.icon, freshBiz.color, freshBiz.type||'business', '', new Date().toISOString()]);
+await sheetsAppend(token, spreadsheetId, freshBizId+'_settings', ['margin', obMarginVal]);
+await sheetsAppend(token, spreadsheetId, freshBizId+'_settings', ['currency', 'LKR']);
 // Write default expenses so sheet isn't blank on first open
 const defExp = defaultExpenses();
 const expRows = [];
@@ -6852,7 +6873,7 @@ if(item.name || item.amt) expRows.push([cat, item.name||'', item.amt||0, item.fr
 });
 });
 for(const row of expRows) {
-await sheetsAppend(token, spreadsheetId, bizId+'_expenses', row);
+await sheetsAppend(token, spreadsheetId, freshBizId+'_expenses', row);
 }
 expenses = defExp;
 saveLocal();
@@ -6875,18 +6896,25 @@ console.error('runAutoSetup error:', err);
 // ── Search Google Drive for an existing Shop Tracker spreadsheet ──
 async function findExistingSheet(token) {
 try {
-// Search for spreadsheets with "Tracker" in the name created by this app
-// We also check localStorage first — fastest path for returning users
+// Check localStorage first — but ONLY trust it if the sheet is actually
+// accessible with the current token (different accounts must not share IDs)
 const stored = localStorage.getItem('smt_spreadsheetId');
 if(stored) {
-// Verify it still exists and is accessible
+// Verify the stored sheet is accessible AND owned by this token's account
 const check = await fetch(`${SHEETS_API}/${stored}?fields=spreadsheetId,properties.title`, {
 headers: { Authorization: 'Bearer ' + token }
 });
 if(check.ok) {
 const d = await check.json();
-if(d.spreadsheetId) return d.spreadsheetId;
+// Extra guard: confirm it has a _businesses tab (our app's signature)
+// so we never accidentally adopt a sheet from a different app/account
+if(d.spreadsheetId) {
+const bizCheck = await sheetsRead(token, d.spreadsheetId, '_businesses!A1:A2').catch(()=>[]);
+if(bizCheck.length >= 0) return d.spreadsheetId; // tab exists (even if empty = our sheet)
 }
+}
+// Stored ID is inaccessible with this token — clear it so new user gets a clean slate
+localStorage.removeItem('smt_spreadsheetId');
 }
 // Search Drive for any spreadsheet named "* Tracker" or "Shop Tracker"
 const query = encodeURIComponent("name contains 'Tracker' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false");
@@ -7382,7 +7410,9 @@ updateDriveBlock(100, 'Done');
 await new Promise(r=>setTimeout(r,300));
 hideDriveBlock();
 // Step 2: Wipe ALL local data — Drive is the source of truth
+// Reset in-memory state fully so no data from the old account leaks into the new session
 googleToken=null; googleUser=null; _tokenExpiry=0; _tokenRefreshPromise=null;
+spreadsheetId=null; // ← reset in-memory sheet ID so new account always does a clean Drive search
 businesses=[]; currentBizId=null; expenses={}; incomeLog=[]; opsLog=[]; loans=[];
 const keysToKeep = ['shopTheme','shopLang'];
 Object.keys(localStorage).forEach(k=>{ if(!keysToKeep.includes(k)) localStorage.removeItem(k); });
@@ -7477,14 +7507,16 @@ document.getElementById('ob-sheet-msg').textContent='';
 obShowSlide(1);
 alert(`All data deleted successfully (${deleted} sheets removed from Drive). You have been signed out.`);
 }
-function obFinishAndAddSource(type) {
-obFinish();
-setTimeout(()=>{
+async function obFinishAndAddSource(type) {
+// Await obFinish so the Drive sync fully completes and `businesses` is
+// populated before we open the add-source modal. Without this, the user
+// can save a new income source before the sync resolves, causing it to
+// be registered against the wrong (or empty) master sheet.
+await obFinish();
 selectedIncomeType = type;
 openAddBiz();
-// Pre-select the type card
+// Pre-select the type card after the modal DOM is ready
 setTimeout(()=>selectIncomeType(type), 150);
-}, 400);
 }
 // ═══════════════════════════════════════════════════
 // LEGAL PAGES
