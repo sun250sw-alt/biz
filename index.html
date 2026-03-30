@@ -906,7 +906,11 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
       <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle dark/light mode">
         <div class="theme-toggle-knob" id="theme-knob">☀️</div>
       </button>
-      <select id="cur" class="cur-sel" onchange="onCurChange()">
+      <!-- Currency control:
+           • Portfolio/home tab  → editable dropdown (sets the base display currency for the combined view)
+           • Any income-source tab → read-only badge showing that source's own currency
+           Both are styled identically so the topbar doesn't jump. -->
+      <select id="cur" class="cur-sel" onchange="onCurChange()" title="Portfolio display currency">
         <option value="LKR">LKR රු</option>
         <option value="USD">USD $</option>
         <option value="EUR">EUR €</option>
@@ -925,6 +929,14 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
         <option value="QAR">QAR ر.ق</option>
         <option value="KWD">KWD د.ك</option>
       </select>
+      <!-- Read-only badge shown instead of the dropdown when viewing an individual income source.
+           Clicking it opens that source's Edit modal so the user can change its currency there. -->
+      <div id="cur-badge" title="This source's currency — click Edit details to change it"
+        style="display:none;height:28px;padding:0 9px;font-size:11px;font-weight:500;
+               background:var(--bg2);border:1px solid var(--brd);border-radius:var(--r6);
+               color:var(--txt2);cursor:default;align-items:center;gap:4px;white-space:nowrap">
+        <span id="cur-badge-txt">LKR</span>
+      </div>
 
       <div style="position:relative">
         <div class="acct-btn" id="acct-btn" onclick="toggleAcctMenu()" title="Account" style="display:none">
@@ -1980,7 +1992,11 @@ localStorage.setItem(lsKey(currentBizId,'income'),   JSON.stringify(incomeLog));
 localStorage.setItem(lsKey(currentBizId,'ops'),      JSON.stringify(opsLog));
 localStorage.setItem(lsKey(currentBizId,'hours'),    JSON.stringify(tradingHours));
 localStorage.setItem(lsKey(currentBizId,'margin'),   getMargin());
-localStorage.setItem(lsKey(currentBizId,'cur'),      document.getElementById('cur').value);
+// Do NOT use the topbar #cur value here — that dropdown is the portfolio display currency only.
+// Each source's currency is set in the Edit modal and stored separately via lsKey(id,'cur').
+// We only write it back if it's already been set (preserving whatever the source was given).
+const srcCur = localStorage.getItem(lsKey(currentBizId,'cur'));
+if(srcCur) localStorage.setItem(lsKey(currentBizId,'cur'), srcCur); // no-op rewrite keeps key fresh
 localStorage.setItem(lsKey(currentBizId,'loans'),    JSON.stringify(loans));
 localStorage.setItem('smt_businesses', JSON.stringify(businesses));
 localStorage.setItem('smt_currentBiz', currentBizId);
@@ -2061,8 +2077,9 @@ loans        = JSON.parse(localStorage.getItem(lsKey(bizId,'loans'))    || '[]')
 tradingHours = JSON.parse(localStorage.getItem(lsKey(bizId,'hours'))    || 'null') || tradingHours;
 const m = localStorage.getItem(lsKey(bizId,'margin'));
 if(m){ document.getElementById('global-margin').value=m; document.getElementById('margin2').value=m; }
-const c = localStorage.getItem(lsKey(bizId,'cur'));
-if(c) document.getElementById('cur').value=c;
+// Source currency is stored in lsKey(bizId,'cur') but is NOT reflected in the
+// topbar #cur dropdown (which is the portfolio display currency). getBizCur() reads
+// directly from localStorage so no dropdown sync is needed here.
 }
 function save(){
 saveLocal();
@@ -2072,7 +2089,8 @@ if(!sheetUrl||!currentBizId) return;
 pushToSheet('saveExpenses',{data:expenses});
 pushToSheet('saveSetting',{key:'tradingHours',value:tradingHours});
 pushToSheet('saveSetting',{key:'margin',value:getMargin()});
-pushToSheet('saveSetting',{key:'currency',value:document.getElementById('cur').value});
+// Use source's own currency (not the portfolio display dropdown)
+pushToSheet('saveSetting',{key:'currency',value:getBizCur(currentBizId)});
 }, 1500);
 }
 let _renderDebTimer = null;
@@ -2151,7 +2169,8 @@ if(d.opsLog)   opsLog = d.opsLog.map(x=>({...x,sales:Number(x.sales),target:Numb
 if(d.settings){
 if(d.settings.tradingHours) tradingHours=d.settings.tradingHours;
 if(d.settings.margin){ document.getElementById('global-margin').value=d.settings.margin; document.getElementById('margin2').value=d.settings.margin; }
-if(d.settings.currency) document.getElementById('cur').value=d.settings.currency;
+// Store source currency in its own key — don't push it into the portfolio dropdown
+if(d.settings.currency) localStorage.setItem(lsKey(currentBizId,'cur'), d.settings.currency);
 }
 if(d.businesses && d.businesses.length>0){
 businesses = d.businesses;
@@ -2207,13 +2226,26 @@ const v = document.getElementById('sheet-url-manage')?.value?.trim();
 if(v){ document.getElementById('sheet-url').value=v; connectSheet(); }
 }
 function onCurChange(){
+// The topbar dropdown is the PORTFOLIO display currency only.
+// It sets the base currency used on the home/portfolio screen.
+// Individual source currencies are set exclusively in the Edit source modal.
 const cur = document.getElementById('cur').value;
-localStorage.setItem(lsKey(currentBizId,'cur'), cur);
-const biz = businesses.find(b=>b.id===currentBizId);
-if(biz) {
-if(!biz.portData) biz.portData = {};
-biz.portData.currency = cur;
-localStorage.setItem('smt_businesses', JSON.stringify(businesses));
+localStorage.setItem('smt_portfolioCur', cur);
+// Also update currentBizId's currency ONLY if we are on the portfolio/home tab
+// (where there is no single active source — the dropdown is meaningful).
+// On any other tab the dropdown is hidden, so this branch won't be reached.
+if(aT === 'portfolio') {
+  // Update all sources that don't already have an explicit currency set
+  // so a fresh account gets a sensible default across the board.
+  businesses.forEach(b => {
+    const existing = localStorage.getItem(lsKey(b.id,'cur'));
+    if(!existing) {
+      localStorage.setItem(lsKey(b.id,'cur'), cur);
+      if(!b.portData) b.portData = {};
+      b.portData.currency = cur;
+    }
+  });
+  localStorage.setItem('smt_businesses', JSON.stringify(businesses));
 }
 save();
 renderSummary();
@@ -2278,12 +2310,23 @@ else if(type==='investment'){ metaStr = 'Investment · '+cur_; }
 else if(type==='farming')  { metaStr = 'Farming · '+cur_; }
 else                    { metaStr = (PORT_TYPE_META[type]||{label:type}).label+' · '+cur_; }
 setText('biz-meta-bar', metaStr);
-// Load this biz's currency into the dropdown
+// Update currency display — dropdown (portfolio tab) or badge (source tab)
 const bizCurLoaded = getBizCur(bizId);
-const curDropdown = document.getElementById('cur');
-if(curDropdown && bizCurLoaded) {
-curDropdown.value = bizCurLoaded;
-if(curDropdown.value !== bizCurLoaded) curDropdown.value = 'LKR';
+const curDropdown  = document.getElementById('cur');
+const curBadge     = document.getElementById('cur-badge');
+const curBadgeTxt  = document.getElementById('cur-badge-txt');
+if(aT === 'portfolio') {
+  // On portfolio: keep dropdown visible, restore portfolio currency
+  const portfolioCur = localStorage.getItem('smt_portfolioCur') || bizCurLoaded || 'LKR';
+  if(curDropdown) { curDropdown.style.display=''; curDropdown.value = portfolioCur; }
+  if(curBadge)    curBadge.style.display = 'none';
+} else {
+  // On source tab: show read-only badge with this source's currency
+  if(curDropdown) curDropdown.style.display = 'none';
+  if(curBadge && curBadgeTxt) {
+    curBadgeTxt.textContent = bizCurLoaded || 'LKR';
+    curBadge.style.display  = 'flex';
+  }
 }
 if(type==='business') { renderAll(); renderExpenses(); renderIncome(); renderWeekSchedule(); }
 renderNavForType(type);
@@ -2330,7 +2373,7 @@ localStorage.setItem(lsKey(bizId,'loans'), JSON.stringify(loans));
 setR.filter(r=>r[0]&&r[0]!=='Key').forEach(r=>{
 if(r[0]==='margin'){document.getElementById('global-margin').value=r[1];document.getElementById('margin2').value=r[1];}
 if(r[0]==='tradingHours'){try{tradingHours=JSON.parse(r[1]);}catch(e){}}
-if(r[0]==='currency'){document.getElementById('cur').value=r[1];}
+if(r[0]==='currency'){ localStorage.setItem(lsKey(bizId,'cur'), r[1]); } // source currency — never goes to topbar
 });
 if(type==='business') {
 const [expR, logR] = await Promise.all([
@@ -2630,6 +2673,10 @@ businesses.push(biz);
 localStorage.setItem('smt_businesses', JSON.stringify(businesses));
 // Save portData separately for quick access
 if(newPortData) localStorage.setItem(lsKey(id,'portData'), JSON.stringify(newPortData));
+// Explicitly save the source's own currency so getBizCur() always finds it
+// independently of the portfolio display currency in the topbar dropdown
+const newSourceCur = document.getElementById('m-currency')?.value || newPortData?.currency || 'LKR';
+localStorage.setItem(lsKey(id,'cur'), newSourceCur);
 // Create Google Sheet — each income source gets its OWN sheet in a folder
 const useDirectApi = localStorage.getItem('smt_useDirectApi');
 const token = await ensureToken();
@@ -3920,7 +3967,9 @@ function getBizCur(bizId) {
 const stored = localStorage.getItem(lsKey(bizId||currentBizId,'cur'));
 if(stored) return stored;
 const biz = businesses.find(b=>b.id===(bizId||currentBizId));
-return biz?.portData?.currency || biz?.currency || document.getElementById('cur')?.value || 'LKR';
+// Do NOT fall back to document.getElementById('cur').value —
+// that element is now the portfolio display currency, not a source currency.
+return biz?.portData?.currency || biz?.currency || 'LKR';
 }
 function sym(bizId) {
 const cur = getBizCur(bizId);
@@ -4280,7 +4329,7 @@ Analysing your business data...
 </div>`;
 try {
 const biz      = businesses.find(b=>b.id===currentBizId) || {};
-const cur      = document.getElementById('cur')?.value || 'LKR';
+const cur      = getBizCur(currentBizId) || 'LKR';
 const margin   = getMargin();
 const dailyTgt = dailyWithMargin();
 const breakeven= dailyBreakEven();
@@ -6211,6 +6260,26 @@ document.querySelectorAll('.tc').forEach(t=>t.classList.remove('active'));
 document.querySelectorAll('.ntab').forEach(t=>t.classList.remove('active'));
 document.getElementById('tab-'+name).classList.add('active');
 if(el)el.classList.add('active');
+// ── Currency control visibility ──
+// Portfolio/home tab → show the dropdown (sets portfolio display currency)
+// All other tabs     → show the read-only badge for this source's own currency
+const curDrop  = document.getElementById('cur');
+const curBadge = document.getElementById('cur-badge');
+const curBadgeTxt = document.getElementById('cur-badge-txt');
+if(name === 'portfolio') {
+  if(curDrop)  { curDrop.style.display  = ''; }
+  if(curBadge) { curBadge.style.display = 'none'; }
+  // Restore portfolio display currency
+  const portfolioCur = localStorage.getItem('smt_portfolioCur') || getBizCur(currentBizId) || 'LKR';
+  if(curDrop && portfolioCur) curDrop.value = portfolioCur;
+} else {
+  if(curDrop)  { curDrop.style.display  = 'none'; }
+  if(curBadge) {
+    const srcCur = getBizCur(currentBizId) || 'LKR';
+    if(curBadgeTxt) curBadgeTxt.textContent = srcCur;
+    curBadge.style.display = 'flex';
+  }
+}
 if(name==='expenses')renderExpenses();
 if(name==='income')renderIncome();
 if(name==='ops')renderOpsLog();
@@ -6289,6 +6358,14 @@ setText('biz-name-bar', biz.name);
 setText('app-logo', biz.icon||'🏪');
 document.getElementById('app-logo').style.background=biz.color||'#E6F1FB';
 setText('biz-meta-bar', getBizMetaStr(currentBizId));
+// ── Currency control init ──
+// App always starts on portfolio tab — show dropdown, hide badge
+// Restore the portfolio display currency (separate from any source's own currency)
+const portfolioCurInit = localStorage.getItem('smt_portfolioCur') || getBizCur(currentBizId) || 'LKR';
+const curDropInit  = document.getElementById('cur');
+const curBadgeInit = document.getElementById('cur-badge');
+if(curDropInit)  { curDropInit.style.display = ''; curDropInit.value = portfolioCurInit; }
+if(curBadgeInit) curBadgeInit.style.display = 'none';
 renderAll();renderExpenses();renderIncome();renderWeekSchedule();
 startClock();
 startFxAutoRefresh(); // background FX rate refresh every 15 min
@@ -7166,7 +7243,7 @@ localStorage.setItem(lsKey(bizId,'loans'), JSON.stringify(loans));
 setRows.filter(r=>r[0]&&r[0]!=='Key').forEach(r=>{
 if(r[0]==='margin'){document.getElementById('global-margin').value=r[1];document.getElementById('margin2').value=r[1];localStorage.setItem(lsKey(bizId,'margin'),r[1]);}
 if(r[0]==='tradingHours'){try{tradingHours=JSON.parse(r[1]);localStorage.setItem(lsKey(bizId,'hours'),r[1]);}catch(e){}}
-if(r[0]==='currency'){document.getElementById('cur').value=r[1];localStorage.setItem(lsKey(bizId,'cur'),r[1]);}
+if(r[0]==='currency'){ localStorage.setItem(lsKey(bizId,'cur'),r[1]); } // source currency — never goes to topbar
 });
 // Business-specific: expenses + ops log
 if(type==='business') {
