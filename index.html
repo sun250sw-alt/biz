@@ -2226,30 +2226,14 @@ const v = document.getElementById('sheet-url-manage')?.value?.trim();
 if(v){ document.getElementById('sheet-url').value=v; connectSheet(); }
 }
 function onCurChange(){
-// The topbar dropdown is the PORTFOLIO display currency only.
-// It sets the base currency used on the home/portfolio screen.
-// Individual source currencies are set exclusively in the Edit source modal.
+// The topbar dropdown controls ONLY the portfolio hero display currency.
+// It converts the combined hero total into whatever currency the user picks.
+// It never touches individual source currencies — those are set in the Edit modal.
 const cur = document.getElementById('cur').value;
 localStorage.setItem('smt_portfolioCur', cur);
-// Also update currentBizId's currency ONLY if we are on the portfolio/home tab
-// (where there is no single active source — the dropdown is meaningful).
-// On any other tab the dropdown is hidden, so this branch won't be reached.
-if(aT === 'portfolio') {
-  // Update all sources that don't already have an explicit currency set
-  // so a fresh account gets a sensible default across the board.
-  businesses.forEach(b => {
-    const existing = localStorage.getItem(lsKey(b.id,'cur'));
-    if(!existing) {
-      localStorage.setItem(lsKey(b.id,'cur'), cur);
-      if(!b.portData) b.portData = {};
-      b.portData.currency = cur;
-    }
-  });
-  localStorage.setItem('smt_businesses', JSON.stringify(businesses));
-}
-save();
-renderSummary();
-if(aT==='portfolio') renderPortfolio();
+_fxBaseCur = cur;
+// Re-render portfolio so the hero total updates to the new currency immediately
+if(aT === 'portfolio') renderPortfolio();
 }
 function toggleBizDrop(){
 bizDropOpen = !bizDropOpen;
@@ -5683,11 +5667,15 @@ setText('port-per-day', baseSym2+' '+Math.round(fxRatePerSec*86400).toLocaleStri
 }
 function renderPortfolio() {
 portSources = calcPortSources();
-// Determine base currency = most-used or first source's currency
-const curCount = {};
-portSources.forEach(s => { const c=getBizCur(s.id); curCount[c]=(curCount[c]||0)+1; });
-const baseCur = Object.keys(curCount).sort((a,b)=>curCount[b]-curCount[a])[0] || 'USD';
-_fxBaseCur = baseCur;
+// Hero base currency = whatever the user set in the topbar dropdown (portfolio display currency).
+// This is the ONLY thing that dropdown controls — the combined hero total conversion.
+// Each source card always shows its own currency regardless.
+const portfolioCur = localStorage.getItem('smt_portfolioCur') ||
+  (()=>{ const el=document.getElementById('cur'); return el?el.value:'LKR'; })();
+// Sync the dropdown to the stored portfolio currency
+const curDropEl = document.getElementById('cur');
+if(curDropEl && portfolioCur) curDropEl.value = portfolioCur;
+_fxBaseCur = portfolioCur;
 // Restore cached FX rates immediately, then fetch fresh
 const cachedRates = localStorage.getItem('smt_fxRates');
 if(cachedRates) _fxRates = JSON.parse(cachedRates);
@@ -5709,7 +5697,14 @@ const fxBar = document.getElementById('port-fx-bar');
 if(fxBar) fxBar.style.display = curKeys.length>1 ? 'block' : 'none';
 const totalRate = portSources.reduce((a,s)=>a+s.ratePerSec,0);
 // Hero total: single currency = direct, multi = FX-converted to base
-if(curKeys.length===1){
+// Hero total always shown in portfolio display currency (topbar dropdown)
+// If portfolio currency matches the single source currency — no FX needed
+// If they differ — FX convert. Per-source cards always use their own currency.
+const heroSym   = SYMS[portfolioCur] || portfolioCur;
+const hasRates  = Object.keys(_fxRates).length > 0;
+const allSameCur = curKeys.length === 1 && curKeys[0] === portfolioCur;
+if(allSameCur){
+// All sources share the portfolio currency — simple direct total
 const c=byCur[curKeys[0]];
 setText('port-hero-total', c.sym+' '+c.earned.toFixed(2));
 setText('port-per-sec', totalRate>0?'+'+c.sym+' '+totalRate.toFixed(2):'⏸ Paused');
@@ -5717,19 +5712,16 @@ setText('port-per-min', c.sym+' '+(totalRate*60).toFixed(2));
 setText('port-per-hr',  c.sym+' '+Math.round(totalRate*3600).toLocaleString());
 setText('port-per-day', c.sym+' '+Math.round(totalRate*86400).toLocaleString());
 } else {
-// Multi-currency: show loading until FX rates arrive
-const baseSym2 = SYMS[baseCur]||baseCur;
-const hasRates = Object.keys(_fxRates).length > 0;
+// Currencies differ OR portfolio currency differs — always FX-convert to portfolioCur
 if(hasRates) {
-calcAndSetFxHero(byCur, curKeys, baseCur, baseSym2);
+calcAndSetFxHero(byCur, curKeys, portfolioCur, heroSym);
 } else {
 setText('port-hero-total', '…');
-}
-// Per-sec always in base sym (will be updated by updateFxBar after fetch)
 setText('port-per-sec', '…');
 setText('port-per-min', '…');
 setText('port-per-hr',  '…');
 setText('port-per-day', '…');
+}
 }
 setText('port-bk-total', curKeys.map(c=>`${byCur[c].sym} ${byCur[c].earned.toFixed(2)}`).join(' + '));
 // Source cards — bar = progress toward expected amount for the period
@@ -5794,7 +5786,7 @@ updateFxAgeLabel();
 // Force fresh fetch if rates are older than 15 min or missing
 const STALE_MS = 15 * 60 * 1000;
 const isStale = !_fxFetched || (Date.now() - _fxFetched > STALE_MS);
-fetchFxRates(baseCur, isStale).then(rates => {
+fetchFxRates(portfolioCur, isStale).then(rates => {
 _fxRates = rates;
 updateFxBar(portSources, rates);
 updateFxAgeLabel();
@@ -5826,26 +5818,28 @@ if(bkbar) { bkbar.style.width=pct+'%'; bkbar.style.background=barColor; }
 setText('pbkamt-'+s.id, srcSym+' '+s.earnedToNow.toFixed(2));
 });
 const ck=Object.keys(byCur2);
-if(ck.length===1){
+const heroBaseCur = _fxBaseCur || ck[0] || 'LKR';
+const heroBaseSym = SYMS[heroBaseCur] || heroBaseCur;
+if(ck.length===1 && ck[0]===heroBaseCur){
+// All sources share the same currency AND it matches the portfolio currency — no conversion needed
 const c=byCur2[ck[0]];
 setText('port-hero-total', c.sym+' '+c.total.toFixed(2));
 setText('port-sec-ticker', c.rate>0?'+'+c.sym+' '+c.rate.toFixed(2):'⏸ All paused');
 } else {
-// Multi-currency: always try FX conversion
-const baseSym=SYMS[_fxBaseCur]||_fxBaseCur;
+// Multi-currency OR portfolio currency differs from source currency — always FX-convert hero total
 if(Object.keys(_fxRates).length > 0) {
 let fxTotal=0, fxRate=0;
 portSources.forEach(s => {
 const cur=getBizCur(s.id);
 const rate=_fxRates[cur];
-const f=(cur===_fxBaseCur||!rate)?1:1/rate;
+const f=(cur===heroBaseCur||!rate)?1:1/rate;
 fxTotal+=s.earnedToNow*f;
 fxRate +=s.ratePerSec *f;
 });
-setText('port-hero-total', baseSym+' '+fxTotal.toFixed(2));
-setText('port-sec-ticker', fxRate>0?'+'+baseSym+' '+fxRate.toFixed(2):'⏸ All paused');
+setText('port-hero-total', heroBaseSym+' '+fxTotal.toFixed(2));
+setText('port-sec-ticker', fxRate>0?'+'+heroBaseSym+' '+fxRate.toFixed(2):'⏸ All paused');
 } else {
-// Rates not loaded yet — show individual totals until fetch completes
+// FX rates not loaded yet — show individual totals until fetch completes
 setText('port-hero-total', ck.map(c=>`${byCur2[c].sym} ${byCur2[c].total.toFixed(2)}`).join(' + '));
 }
 }
