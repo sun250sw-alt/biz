@@ -1489,8 +1489,61 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
   </div>
 
   <div class="tc" id="tab-job-charts">
-    <div class="card"><div class="card-title">Earnings trend</div><canvas id="job-chart-earnings" style="max-height:220px"></canvas></div>
-    <div class="card"><div class="card-title">Attendance rate</div><canvas id="job-chart-att" style="max-height:180px"></canvas></div>
+    <!-- Period toggle for all charts -->
+    <div style="display:flex;gap:6px;margin-bottom:10px;background:var(--bg2);border:1px solid var(--brd);border-radius:var(--r8);padding:4px">
+      <button id="jc-btn-day"   onclick="setJobChartPeriod('day')"   style="flex:1;height:28px;font-size:11px;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:500;background:var(--txt);color:#fff">Day</button>
+      <button id="jc-btn-week"  onclick="setJobChartPeriod('week')"  style="flex:1;height:28px;font-size:11px;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:500;background:transparent;color:var(--txt3)">Week</button>
+      <button id="jc-btn-month" onclick="setJobChartPeriod('month')" style="flex:1;height:28px;font-size:11px;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:500;background:transparent;color:var(--txt3)">Month</button>
+    </div>
+
+    <!-- Daily income bar chart (primary, toggleable) -->
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span class="card-title" style="margin:0" id="jc-income-title">Daily income — last 30 days</span>
+        <span id="jc-income-total" style="font-size:11px;font-weight:600;color:var(--green)">—</span>
+      </div>
+      <canvas id="jc-chart-income" style="max-height:200px"></canvas>
+    </div>
+
+    <!-- Hours worked bar chart -->
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span class="card-title" style="margin:0" id="jc-hours-title">Hours worked — last 30 days</span>
+        <span id="jc-hours-total" style="font-size:11px;font-weight:600;color:var(--blue-txt)">—</span>
+      </div>
+      <canvas id="jc-chart-hours" style="max-height:180px"></canvas>
+    </div>
+
+    <!-- Cumulative earnings vs expected line chart -->
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span class="card-title" style="margin:0">Earned vs expected this month</span>
+        <span id="jc-pace-label" style="font-size:10px;padding:2px 8px;border-radius:4px;font-weight:500">—</span>
+      </div>
+      <canvas id="jc-chart-pace" style="max-height:180px"></canvas>
+    </div>
+
+    <!-- Monthly summary bar chart -->
+    <div class="card">
+      <div class="card-title" id="jc-monthly-title">Monthly earnings — last 6 months</div>
+      <canvas id="jc-chart-monthly" style="max-height:180px"></canvas>
+    </div>
+
+    <!-- Stats row -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px">
+      <div class="sc" style="border-left-color:var(--green)">
+        <div class="sc-lbl">Avg daily hrs</div>
+        <div class="sc-val" id="jc-stat-avghrs" style="font-size:16px">—</div>
+      </div>
+      <div class="sc" style="border-left-color:var(--blue)">
+        <div class="sc-lbl">On-time days</div>
+        <div class="sc-val" id="jc-stat-ontimedays" style="font-size:16px">—</div>
+      </div>
+      <div class="sc" style="border-left-color:var(--amber)">
+        <div class="sc-lbl">Att. rate</div>
+        <div class="sc-val" id="jc-stat-attrate" style="font-size:16px">—</div>
+      </div>
+    </div>
   </div>
 
   <div class="tc" id="tab-job-payslips">
@@ -2463,17 +2516,22 @@ if(curEl2) curEl2.value = savedCur || 'LKR';
 // Pre-fill extra field values from portData
 const g = (id, val) => { const el=document.getElementById(id); if(el&&val!==undefined) el.value=val; };
 if(type==='job') {
-// Restore salary type
+// Restore salary type — must be set before filling the amount so the label is correct
 const st = p.salaryType || 'monthly';
 _salaryType = st;
 setTimeout(()=>setSalaryType(st), 50); // after DOM shown
-// Fill salary as the original input amount (not converted monthly)
-g('mx-salary',    p.salaryAmt || p.salary);
+// Fill the salary INPUT with the original entered amount (hourly/weekly/monthly)
+// NOT the converted monthly gross — that would show the wrong figure in edit mode
+// salaryAmt is the raw input; fall back to grossMonthly only when type is monthly
+const rawAmt = p.salaryAmt !== undefined
+  ? p.salaryAmt
+  : (st === 'monthly' ? (p.grossMonthly || p.salary || '') : '');
+g('mx-salary',    rawAmt);
 g('mx-workdays',  p.workDays);
 g('mx-workhours', p.workHours);
 g('mx-payday',    p.payDay);
 g('mx-taxrate',   p.taxRate);
-setTimeout(updateJobSalaryPreview, 50);
+setTimeout(updateJobSalaryPreview, 60);
 } else if(type==='rental') {
 g('mx-rent',    p.rent);
 g('mx-rentdue', p.dueDay);
@@ -2804,7 +2862,9 @@ const overviewData = [
 ];
 // Type-specific portData fields with readable keys
 if(type==='job') {
-if(p.grossMonthly)  overviewData.push(['Gross monthly',   p.grossMonthly]);
+if(p.salaryType)    overviewData.push(['Salary type',      p.salaryType]);
+if(p.salaryAmt)     overviewData.push(['Salary amount',    p.salaryAmt]);
+if(p.grossMonthly)  overviewData.push(['Gross monthly',    p.grossMonthly]);
 if(p.taxRate)       overviewData.push(['Tax rate',         p.taxRate]);
 if(p.monthlyIncome) overviewData.push(['Monthly income',   p.monthlyIncome]);
 if(p.workDays)      overviewData.push(['Work days',        p.workDays]);
@@ -4460,7 +4520,7 @@ const b   = parseInt(document.getElementById('bulk-break')?.value)||0;
 const [sh,sm]=s.split(':').map(Number);
 const [eh,em]=e.split(':').map(Number);
 const hrs = Math.max(0,((eh*60+em)-(sh*60+sm)-b)/60);
-setText('bulk-net-hrs', hrs.toFixed(1)+' hrs');
+setText('bulk-net-hrs', hrs.toFixed(2)+' hrs');
 // Rate preview
 const biz = businesses.find(b2=>b2.id===currentBizId)||{};
 const p   = JSON.parse(localStorage.getItem(lsKey(currentBizId,'portData'))||'null')||biz.portData||{};
@@ -4490,7 +4550,7 @@ if(new Date(ds+'T12:00:00').getDay()===targetDow){ attData[ds]={...rec}; count++
 }
 saveAttData(attData);
 renderSchedCalendar();
-setSyncStatus('ok',`✓ Added ${hrs.toFixed(1)}h to all ${dayNames[targetDow]} (${count} days)`);
+setSyncStatus('ok',`✓ Added ${hrs.toFixed(2)}h to all ${dayNames[targetDow]} (${count} days)`);
 setTimeout(()=>setSyncStatus('ok',''),2500);
 // Flash the button
 const btns=document.querySelectorAll('.bulk-day-btn');
@@ -4573,7 +4633,7 @@ if(status==='custom')  { bg='#FAEEDA'; col='#412402'; bdr='1.5px solid #F5D08A';
 if(status==='absent')  { bg='#FCEBEB'; col='#791F1F'; bdr='1.5px solid #F5ABAB'; }
 if(status==='holiday') { bg='#EEEDFE'; col='#26215C'; bdr='1.5px solid #AFA9EC'; }
 if(isToday) bdr='2px solid var(--blue)';
-const hrLabel = hours>0?`<div style="font-size:7px;margin-top:1px;opacity:.75">${hours%1===0?hours:hours.toFixed(1)}h</div>`:'';
+const hrLabel = hours>0?`<div style="font-size:7px;margin-top:1px;opacity:.75">${hours.toFixed(2)}h</div>`:'';
 cells.push(`<div onclick="openAttDay('${dateStr}')"
 style="aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
 border-radius:8px;background:${bg};color:${col};font-size:11px;font-weight:500;
@@ -4583,7 +4643,7 @@ border:${bdr};cursor:pointer;transition:all .12s;user-select:none">
 }
 cal.innerHTML=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">${cells.join('')}</div>`;
 setText('att-stat-days',   totalDays||0);
-setText('att-stat-hours',  totalHours.toFixed(1));
+setText('att-stat-hours',  totalHours.toFixed(2));
 setText('att-stat-rate',   sym_+Math.round(hourly).toLocaleString());
 setText('att-stat-earned', sym_+Math.round(totalEarned).toLocaleString());
 setText('sched-month-info',`${totalDays} days · ${totalHours.toFixed(0)}h · ${sym_}${Math.round(totalEarned).toLocaleString()}`);
@@ -4614,7 +4674,7 @@ if(el_b) el_b.value = rec?.break     ?? sched.breakMins;
 if(el_n) el_n.value = rec?.note      || '';
 // Update "Worked" subtitle
 const sub=document.getElementById('att-btn-worked-sub');
-if(sub) sub.textContent=`${sched.startTime}–${sched.endTime} (${defHrsFromSched(sched).toFixed(1)}h)`;
+if(sub) sub.textContent=`${sched.startTime}–${sched.endTime} (${defHrsFromSched(sched).toFixed(2)}h)`;
 const panel=document.getElementById('att-day-panel');
 if(panel){ panel.style.display='block'; setTimeout(()=>panel.scrollIntoView({behavior:'smooth',block:'nearest'}),50); }
 attCalcHours();
@@ -4727,6 +4787,8 @@ if(!ovRows.length) return;
 const raw = {};
 ovRows.forEach(r=>{ if(r[0]&&r[1]!==undefined) raw[r[0]] = r[1]; });
 const pd = { type: biz.type, currency: raw['Currency']||'LKR' };
+if(raw['Salary type'])     pd.salaryType    = raw['Salary type'];
+if(raw['Salary amount'])   pd.salaryAmt     = Number(raw['Salary amount']);
 if(raw['Monthly income'])  pd.monthlyIncome = Number(raw['Monthly income']);
 if(raw['Gross monthly'])   pd.grossMonthly  = Number(raw['Gross monthly']);
 if(raw['Tax rate'])        pd.taxRate       = Number(raw['Tax rate']);
@@ -5456,54 +5518,87 @@ expectedForPeriod = portView==='today' ? avgMonthly/30.44 : portView==='year' ? 
 } else if(type === 'job') {
 const netMonthly = p.monthlyIncome || ((p.grossMonthly||p.salary||0)*(1-(p.taxRate||0)/100)-(p.jobExpenses||0));
 monthlyIncome    = netMonthly;
-const wd = p.workDays||5, wh = p.workHours||8;
-const hourly = wd*(30.44/7)*wh > 0 ? netMonthly/(wd*(30.44/7)*wh) : 0;
-// Expected by now = hourly × hours that SHOULD have been worked by this time
-const totalWorkSecsPerDay  = wh * 3600;
-const totalWorkSecsPerMonth= wd * (30.44/7) * wh * 3600;
-const totalWorkSecsPerYear = wd * (365/7)   * wh * 3600;
-if(portView==='today') {
-// How far through the standard workday are we?
-const sched = JSON.parse(localStorage.getItem('smt_'+biz.id+'_schedule')||'null')||{startTime:'08:00',endTime:'17:00'};
-const [sh,sm]=sched.startTime.split(':').map(Number);
-const [eh,em]=sched.endTime.split(':').map(Number);
-const dayStartSecs = sh*3600+sm*60;
-const dayEndSecs   = eh*3600+em*60;
-const nowSecs      = now.getHours()*3600+now.getMinutes()*60+now.getSeconds();
-const elapsed      = Math.max(0, Math.min(nowSecs-dayStartSecs, dayEndSecs-dayStartSecs));
-expectedForPeriod  = (elapsed / totalWorkSecsPerDay) * netMonthly / 30.44;
-// earned
-const todayDs  = now.toISOString().slice(0,10);
-const attData  = JSON.parse(localStorage.getItem(lsAttKey(biz.id))||'{}');
-const todayRec = attData[todayDs];
-if(isOnShiftNow(biz.id)) {
-const recStart = todayRec?.startTime || sched.startTime;
-const [rsh,rsm]= recStart.split(':').map(Number);
-const wS = new Date(now); wS.setHours(rsh,rsm,0,0);
-earnedToNow = Math.max(0,(now-wS)/3600000) * hourly;
-} else if(todayRec?.status==='worked'||todayRec?.status==='custom') {
-earnedToNow = (todayRec.hours||0) * hourly;
-}
-} else if(portView==='year') {
-// Expected by now = proportion of year elapsed × annual salary
-const yearProgress = secsThisYr / secsFullYear;
-expectedForPeriod  = yearProgress * netMonthly * 12;
-const attData = JSON.parse(localStorage.getItem(lsAttKey(biz.id))||'{}');
-let hrs = 0;
-Object.entries(attData).forEach(([ds,rec]) => {
-if(!ds.startsWith(now.getFullYear()+'')) return;
-if(rec.status==='worked'||rec.status==='custom') hrs += rec.hours||0;
-});
-earnedToNow = hrs * hourly;
+const wd = p.workDays  || 5;
+const wh = p.workHours || 8;
+// Hourly rate = net monthly ÷ (average work hours per month)
+// Use wd*(30.44/7) for the average work days per month — consistent with how salary is set
+const avgWorkDaysPerMonth = wd * (30.44 / 7);
+const hourly = avgWorkDaysPerMonth * wh > 0 ? netMonthly / (avgWorkDaysPerMonth * wh) : 0;
+// Daily net pay (per work day, not per calendar day)
+const dailyNet = wh > 0 ? hourly * wh : 0;
+
+if(portView === 'today') {
+  // Actual work schedule for this job
+  const sched = getSchedForBiz(biz.id);
+  const [sh,sm] = (sched.startTime||'08:00').split(':').map(Number);
+  const [eh,em] = (sched.endTime  ||'17:00').split(':').map(Number);
+  const breakMins = sched.breakMins || 0;
+  // Net work seconds in a full shift (after break)
+  const shiftNetSecs = Math.max(0, ((eh*60+em) - (sh*60+sm) - breakMins) * 60);
+  const dayStartSecs = sh*3600 + sm*60;
+  const dayEndSecs   = eh*3600 + em*60;
+  const nowSecs      = now.getHours()*3600 + now.getMinutes()*60 + now.getSeconds();
+  // How far through the shift are we right now (clamped to shift window)
+  const elapsedInShift = Math.max(0, Math.min(nowSecs - dayStartSecs, dayEndSecs - dayStartSecs));
+  // Expected = proportion of shift elapsed × daily net pay
+  // Use shiftNetSecs as denominator so expected matches actual pay for a full day
+  expectedForPeriod = shiftNetSecs > 0 ? (elapsedInShift / shiftNetSecs) * dailyNet : 0;
+  // Earned = actual worked time × hourly rate
+  const todayDs  = now.toISOString().slice(0,10);
+  const attData  = JSON.parse(localStorage.getItem(lsAttKey(biz.id))||'{}');
+  const todayRec = attData[todayDs];
+  if(isOnShiftNow(biz.id)) {
+    const recStart = todayRec?.startTime || sched.startTime;
+    const [rsh,rsm] = recStart.split(':').map(Number);
+    const wS = new Date(now); wS.setHours(rsh,rsm,0,0);
+    earnedToNow = Math.max(0,(now-wS)/3600000) * hourly;
+  } else if(todayRec?.status==='worked' || todayRec?.status==='custom') {
+    earnedToNow = (todayRec.hours||0) * hourly;
+  }
+
+} else if(portView === 'year') {
+  // Expected = proportion of year elapsed × annual salary
+  const yearProgress = secsThisYr / secsFullYear;
+  expectedForPeriod  = yearProgress * netMonthly * 12;
+  // Earned = sum of actual logged hours this year × hourly rate
+  const attData = JSON.parse(localStorage.getItem(lsAttKey(biz.id))||'{}');
+  let hrs = 0;
+  Object.entries(attData).forEach(([ds,rec]) => {
+    if(!ds.startsWith(now.getFullYear()+'')) return;
+    if(rec.status==='worked'||rec.status==='custom') hrs += rec.hours||0;
+  });
+  earnedToNow = hrs * hourly;
+
 } else {
-// Month: expected = proportion of month elapsed × monthly salary
-const monthDays = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
-const dayOfMonth = now.getDate() + (now.getHours()*3600+now.getMinutes()*60+now.getSeconds())/86400;
-expectedForPeriod  = (dayOfMonth / monthDays) * netMonthly;
-const schedInfo = calcScheduledSecsThisMonth(biz.id);
-earnedToNow = (schedInfo.totalSecs/3600) * hourly;
+  // Month view
+  // Count actual scheduled work days this month up to (but not including) today
+  // so expected matches the real work calendar, not calendar-day proportion
+  const monthDays = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  const sched     = getSchedForBiz(biz.id);
+  let scheduledWorkDaysThisMonth = 0;  // total work days in this calendar month
+  let workDaysElapsed            = 0;  // work days that have fully passed before today
+  for(let d = 1; d <= monthDays; d++) {
+    const ds  = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dow = new Date(ds+'T12:00:00').getDay(); // 0=Sun,6=Sat
+    // A work day is any day in the schedule's workDays array (defaults to Mon-Fri)
+    const workDaysArr = sched.workDays || [1,2,3,4,5];
+    if(workDaysArr.includes(dow)) {
+      scheduledWorkDaysThisMonth++;
+      if(d < now.getDate()) workDaysElapsed++;
+    }
+  }
+  // Fraction of the month that has elapsed in terms of work days
+  // Add today's partial day (hours elapsed / work hours) as a fraction of a work day
+  const todayFraction = Math.min(1, (now.getHours()*3600+now.getMinutes()*60+now.getSeconds()) / (wh*3600));
+  const workDaysProgress = workDaysElapsed + todayFraction;
+  expectedForPeriod = scheduledWorkDaysThisMonth > 0
+    ? (workDaysProgress / scheduledWorkDaysThisMonth) * netMonthly
+    : 0;
+  // Earned = actual logged attendance hours × hourly rate
+  const schedInfo = calcScheduledSecsThisMonth(biz.id);
+  earnedToNow = (schedInfo.totalSecs / 3600) * hourly;
 }
-ratePerSec = isOnShiftNow(biz.id) ? hourly/3600 : 0;
+ratePerSec = isOnShiftNow(biz.id) ? hourly / 3600 : 0;
 } else if(type === 'rental') {
 monthlyIncome     = p.rent || 0;
 ratePerSec        = monthlyIncome / (30.44*24*3600);
@@ -6076,7 +6171,7 @@ document.getElementById('hourly-targets').innerHTML=`<table class="ops-table">
 <tbody>${tradingHours.map((h,i)=>{
 if(!h.open)return`<tr><td style="color:#888780">${DAYS[i]}</td><td colspan="5" style="color:#888780;font-size:11px">${t('closedLabel')}</td></tr>`;
 const mins=totalOpenMinsDay(i),hrs=mins/60;
-return`<tr><td style="font-weight:500">${DAYS[i]}</td><td style="color:#888780">${h.from}–${h.to} (${hrs.toFixed(1)}h)</td><td class="r" style="font-weight:500">${fmtF(dwm)}</td><td class="r">${fmtF(hrs>0?dwm/hrs:0)}</td><td class="r">${fmtDec(mins>0?dwm/mins:0,1)}</td><td class="r" style="color:#D85A30;font-weight:500">${fmtDec(mins>0?dwm/(mins*60):0,4)}</td></tr>`;
+return`<tr><td style="font-weight:500">${DAYS[i]}</td><td style="color:#888780">${h.from}–${h.to} (${hrs.toFixed(2)}h)</td><td class="r" style="font-weight:500">${fmtF(dwm)}</td><td class="r">${fmtF(hrs>0?dwm/hrs:0)}</td><td class="r">${fmtDec(mins>0?dwm/mins:0,1)}</td><td class="r" style="color:#D85A30;font-weight:500">${fmtDec(mins>0?dwm/(mins*60):0,4)}</td></tr>`;
 }).join('')}</tbody></table>`;
 }
 // ═══════════════════════════════
@@ -6292,6 +6387,10 @@ renderSchedDefaults();
 // Pull latest attendance from sheet first, then render
 loadAttFromSheet().then(()=>renderSchedCalendar()).catch(()=>renderSchedCalendar());
 }
+if(name==='job-charts') {
+// Load latest attendance then render all job charts
+loadAttFromSheet(currentBizId).then(()=>renderJobCharts()).catch(()=>renderJobCharts());
+}
 if(name==='farming-loans') { renderLoansInto('farming-loans-content'); }
 if(name==='fd-loans')      { renderLoansInto('fd-loans-content'); }
 if(name==='inv-loans')     { renderLoansInto('inv-loans-content'); }
@@ -6308,6 +6407,267 @@ else if(aT==='report')renderReport();
 else if(aT==='hours'){renderHoursEditor();renderHourlyTargets();}
 else if(aT==='charts')renderCharts();
 else if(aT==='manage')renderManageBiz();
+}
+// ═══════════════════════════════════════════════════
+// JOB CHARTS
+// ═══════════════════════════════════════════════════
+let _jobChartPeriod = 'day'; // 'day' | 'week' | 'month'
+let _jcInstances = {}; // store Chart.js instances so we can destroy before redraw
+
+function setJobChartPeriod(period) {
+  _jobChartPeriod = period;
+  ['day','week','month'].forEach(p => {
+    const btn = document.getElementById('jc-btn-'+p);
+    if(!btn) return;
+    const on = p === period;
+    btn.style.background  = on ? 'var(--txt)'  : 'transparent';
+    btn.style.color       = on ? '#fff'         : 'var(--txt3)';
+    btn.style.fontWeight  = on ? '600'          : '500';
+  });
+  renderJobCharts();
+}
+
+function _destroyJc(id) {
+  if(_jcInstances[id]) { try { _jcInstances[id].destroy(); } catch(e){} delete _jcInstances[id]; }
+}
+
+function renderJobCharts() {
+  const bizId = currentBizId;
+  const biz   = businesses.find(b=>b.id===bizId)||{};
+  const p     = JSON.parse(localStorage.getItem(lsKey(bizId,'portData'))||'null')||biz.portData||{};
+  const attData = JSON.parse(localStorage.getItem(lsAttKey(bizId))||'{}');
+  const sym   = SYMS[getBizCur(bizId)] || getBizCur(bizId);
+  const period = _jobChartPeriod;
+
+  const grossMonthly = p.grossMonthly || p.salary || 0;
+  const taxAmt       = p.taxAmt || Math.round(grossMonthly*(p.taxRate||0)/100);
+  const netMonthly   = p.monthlyIncome || (grossMonthly - taxAmt - (p.jobExpenses||0));
+  const wd = p.workDays || 5;
+  const wh = p.workHours || 8;
+  const hourly = wd*(30.44/7)*wh > 0 ? netMonthly/(wd*(30.44/7)*wh) : 0;
+
+  const now = new Date();
+
+  // ── Build data buckets depending on period ──────────────────────
+  let labels = [], incomeData = [], hoursData = [];
+
+  if(period === 'day') {
+    // Last 30 days
+    setText('jc-income-title', 'Daily income — last 30 days');
+    setText('jc-hours-title',  'Hours worked — last 30 days');
+    for(let i=29; i>=0; i--) {
+      const d = new Date(now); d.setDate(d.getDate()-i);
+      const ds = d.toISOString().slice(0,10);
+      const rec = attData[ds];
+      const hrs = (rec?.status==='worked'||rec?.status==='custom') ? (rec.hours||0) : 0;
+      labels.push(d.toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
+      hoursData.push(+hrs.toFixed(2));
+      incomeData.push(+(hrs*hourly).toFixed(2));
+    }
+  } else if(period === 'week') {
+    // Last 12 weeks
+    setText('jc-income-title', 'Weekly income — last 12 weeks');
+    setText('jc-hours-title',  'Hours worked — last 12 weeks');
+    for(let w=11; w>=0; w--) {
+      const weekStart = new Date(now);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1 - w*7); // Mon
+      const weekEnd   = new Date(weekStart); weekEnd.setDate(weekEnd.getDate()+6);
+      let wHrs=0, wInc=0;
+      for(let d=0; d<7; d++) {
+        const day = new Date(weekStart); day.setDate(day.getDate()+d);
+        const ds  = day.toISOString().slice(0,10);
+        const rec = attData[ds];
+        const hrs = (rec?.status==='worked'||rec?.status==='custom') ? (rec.hours||0) : 0;
+        wHrs += hrs; wInc += hrs*hourly;
+      }
+      labels.push('W'+weekStart.toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
+      hoursData.push(+wHrs.toFixed(2));
+      incomeData.push(+wInc.toFixed(2));
+    }
+  } else {
+    // Last 6 months
+    setText('jc-income-title', 'Monthly income — last 6 months');
+    setText('jc-hours-title',  'Hours worked — last 6 months');
+    for(let m=5; m>=0; m--) {
+      const d = new Date(now.getFullYear(), now.getMonth()-m, 1);
+      const yr = d.getFullYear(), mo = d.getMonth();
+      const prefix = `${yr}-${String(mo+1).padStart(2,'0')}`;
+      let mHrs=0, mInc=0;
+      Object.entries(attData).forEach(([ds,rec])=>{
+        if(!ds.startsWith(prefix)) return;
+        const hrs=(rec?.status==='worked'||rec?.status==='custom')?(rec.hours||0):0;
+        mHrs+=hrs; mInc+=hrs*hourly;
+      });
+      labels.push(d.toLocaleDateString('en-GB',{month:'short',year:'2-digit'}));
+      hoursData.push(+mHrs.toFixed(2));
+      incomeData.push(+mInc.toFixed(2));
+    }
+  }
+
+  // Totals
+  const totalInc  = incomeData.reduce((a,v)=>a+v,0);
+  const totalHrs  = hoursData.reduce((a,v)=>a+v,0);
+  setText('jc-income-total', sym+' '+Math.round(totalInc).toLocaleString());
+  setText('jc-hours-total',  totalHrs.toFixed(2)+' hrs');
+
+  // ── Colour helpers ──────────────────────────────────────────────
+  const isDark = document.body.classList.contains('dark');
+  const gridCol = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+  const txtCol  = isDark ? '#6e6d68' : '#888780';
+  const green   = '#1D9E75';
+  const blue    = '#378ADD';
+  const amber   = '#BA7517';
+
+  const baseOpts = (yLabel) => ({
+    responsive:true, maintainAspectRatio:true,
+    plugins:{ legend:{display:false}, tooltip:{
+      backgroundColor: isDark?'#2a2a2d':'#fff',
+      titleColor: isDark?'#f0ede6':'#1a1a18',
+      bodyColor:  isDark?'#b8b5ae':'#555d40',
+      borderColor: isDark?'#38383c':'#d3d1c7', borderWidth:1,
+      padding:10, cornerRadius:6
+    }},
+    scales:{
+      x:{ grid:{color:gridCol}, ticks:{color:txtCol, font:{size:10}, maxRotation:45, minRotation:30} },
+      y:{ grid:{color:gridCol}, ticks:{color:txtCol, font:{size:10}}, beginAtZero:true,
+          title:{display:!!yLabel, text:yLabel||'', color:txtCol, font:{size:10}} }
+    }
+  });
+
+  // ── Chart 1: Daily/weekly/monthly income bar ────────────────────
+  _destroyJc('income');
+  const ctxInc = document.getElementById('jc-chart-income');
+  if(ctxInc) {
+    const opts = baseOpts(sym);
+    opts.plugins.tooltip.callbacks = { label: ctx => sym+' '+ctx.parsed.y.toFixed(2) };
+    _jcInstances.income = new Chart(ctxInc, {
+      type:'bar',
+      data:{ labels, datasets:[{
+        label:'Income', data:incomeData,
+        backgroundColor: incomeData.map(v=>v>0?green+'99':gridCol),
+        borderColor:     incomeData.map(v=>v>0?green:gridCol),
+        borderWidth:1, borderRadius:3
+      }]},
+      options: opts
+    });
+  }
+
+  // ── Chart 2: Hours worked bar ───────────────────────────────────
+  _destroyJc('hours');
+  const ctxHrs = document.getElementById('jc-chart-hours');
+  if(ctxHrs) {
+    const targetHrs = period==='day' ? wh : period==='week' ? wh*wd : wh*wd*(30.44/7)*4;
+    const opts = baseOpts('hrs');
+    opts.plugins.tooltip.callbacks = { label: ctx => ctx.parsed.y.toFixed(2)+' hrs' };
+    _jcInstances.hours = new Chart(ctxHrs, {
+      type:'bar',
+      data:{ labels, datasets:[
+        { label:'Hours', data:hoursData,
+          backgroundColor: hoursData.map(v=>v>=targetHrs?blue+'99':v>0?amber+'99':gridCol),
+          borderColor:     hoursData.map(v=>v>=targetHrs?blue:v>0?amber:gridCol),
+          borderWidth:1, borderRadius:3 }
+      ]},
+      options: opts
+    });
+  }
+
+  // ── Chart 3: Cumulative earned vs expected this month ──────────
+  _destroyJc('pace');
+  const ctxPace = document.getElementById('jc-chart-pace');
+  if(ctxPace) {
+    const monthDays = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+    const sched = getSchedForBiz(bizId);
+    const workDaysArr = sched.workDays || [1,2,3,4,5];
+    // Count total work days this month
+    let totalWorkDays = 0;
+    for(let d=1;d<=monthDays;d++){
+      const dow = new Date(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}T12:00:00`).getDay();
+      if(workDaysArr.includes(dow)) totalWorkDays++;
+    }
+    const paceLabels=[], earnedLine=[], expectedLine=[];
+    let cumEarned=0, workDaysGone=0;
+    for(let d=1;d<=Math.min(monthDays, now.getDate()); d++){
+      const ds=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const dow=new Date(ds+'T12:00:00').getDay();
+      const rec=attData[ds];
+      const hrs=(rec?.status==='worked'||rec?.status==='custom')?(rec.hours||0):0;
+      cumEarned+=hrs*hourly;
+      if(workDaysArr.includes(dow)) workDaysGone++;
+      const expectedSoFar = totalWorkDays>0 ? (workDaysGone/totalWorkDays)*netMonthly : 0;
+      paceLabels.push(d+'');
+      earnedLine.push(+cumEarned.toFixed(2));
+      expectedLine.push(+expectedSoFar.toFixed(2));
+    }
+    const lastEarned   = earnedLine[earnedLine.length-1]||0;
+    const lastExpected = expectedLine[expectedLine.length-1]||1;
+    const pace = lastEarned/lastExpected;
+    const paceEl = document.getElementById('jc-pace-label');
+    if(paceEl) {
+      if(pace>=0.95){ paceEl.textContent='On track ✓'; paceEl.style.background='var(--green-bg)'; paceEl.style.color='var(--green-txt)'; }
+      else if(pace>=0.7){ paceEl.textContent='Slightly behind'; paceEl.style.background='var(--amber-bg)'; paceEl.style.color='var(--amber-txt)'; }
+      else { paceEl.textContent='Behind pace'; paceEl.style.background='var(--red-bg)'; paceEl.style.color='var(--red-txt)'; }
+    }
+    const opts = baseOpts(sym);
+    opts.plugins.legend = { display:true, position:'top', labels:{color:txtCol,font:{size:10},boxWidth:10,padding:10} };
+    opts.plugins.tooltip.callbacks = { label: ctx => ctx.dataset.label+': '+sym+' '+ctx.parsed.y.toFixed(2) };
+    _jcInstances.pace = new Chart(ctxPace, {
+      type:'line',
+      data:{ labels:paceLabels, datasets:[
+        { label:'Earned', data:earnedLine,   borderColor:green, backgroundColor:green+'22', fill:true, tension:0.3, pointRadius:2, borderWidth:2 },
+        { label:'Expected', data:expectedLine, borderColor:amber, backgroundColor:'transparent', fill:false, tension:0.3, pointRadius:0, borderWidth:2, borderDash:[5,4] }
+      ]},
+      options: opts
+    });
+  }
+
+  // ── Chart 4: Monthly earnings summary bar ───────────────────────
+  _destroyJc('monthly');
+  const ctxMo = document.getElementById('jc-chart-monthly');
+  if(ctxMo) {
+    const moLabels=[], moIncome=[], moExpected=[];
+    for(let m=5; m>=0; m--){
+      const d=new Date(now.getFullYear(), now.getMonth()-m, 1);
+      const prefix=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      let mHrs=0;
+      Object.entries(attData).forEach(([ds,rec])=>{
+        if(!ds.startsWith(prefix)) return;
+        mHrs+=(rec?.status==='worked'||rec?.status==='custom')?(rec.hours||0):0;
+      });
+      moLabels.push(d.toLocaleDateString('en-GB',{month:'short',year:'2-digit'}));
+      moIncome.push(+(mHrs*hourly).toFixed(2));
+      moExpected.push(netMonthly);
+    }
+    setText('jc-monthly-title', 'Monthly earnings vs target — last 6 months');
+    const opts = baseOpts(sym);
+    opts.plugins.legend = { display:true, position:'top', labels:{color:txtCol,font:{size:10},boxWidth:10,padding:10} };
+    opts.plugins.tooltip.callbacks = { label: ctx => ctx.dataset.label+': '+sym+' '+Math.round(ctx.parsed.y).toLocaleString() };
+    _jcInstances.monthly = new Chart(ctxMo, {
+      type:'bar',
+      data:{ labels:moLabels, datasets:[
+        { label:'Earned',   data:moIncome,   backgroundColor:green+'99', borderColor:green, borderWidth:1, borderRadius:3 },
+        { label:'Target',   data:moExpected,  backgroundColor:'transparent', borderColor:amber, borderWidth:2, borderRadius:3, type:'line', fill:false, tension:0, pointRadius:3 }
+      ]},
+      options: opts
+    });
+  }
+
+  // ── Stats row ───────────────────────────────────────────────────
+  // Look at last 30 days attendance
+  const last30=[]; 
+  for(let i=29;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);last30.push(d.toISOString().slice(0,10));}
+  const workedDays   = last30.filter(ds=>attData[ds]?.status==='worked'||attData[ds]?.status==='custom');
+  const scheduledDays= last30.filter(ds=>{const dow=new Date(ds+'T12:00:00').getDay();return (getSchedForBiz(bizId).workDays||[1,2,3,4,5]).includes(dow);});
+  const avgHrs = workedDays.length>0 ? workedDays.reduce((a,ds)=>a+(attData[ds]?.hours||0),0)/workedDays.length : 0;
+  const attRate = scheduledDays.length>0 ? Math.round(workedDays.length/scheduledDays.length*100) : 0;
+  const onTimeDays = workedDays.filter(ds=>{
+    const rec=attData[ds]; if(!rec||!rec.startTime) return false;
+    const [sh,sm]=getSchedForBiz(bizId).startTime.split(':').map(Number);
+    const [rh,rm]=rec.startTime.split(':').map(Number);
+    return rh*60+rm<=sh*60+sm+5; // within 5 min
+  }).length;
+  setText('jc-stat-avghrs',    avgHrs.toFixed(2)+'h');
+  setText('jc-stat-ontimedays', onTimeDays+' days');
+  setText('jc-stat-attrate',   attRate+'%');
 }
 // ═══════════════════════════════
 // INIT
@@ -6851,6 +7211,8 @@ type: biz.type,
 if(pd['Monthly income'])   portData.monthlyIncome = Number(pd['Monthly income']);
 if(pd['Gross monthly'])    portData.grossMonthly  = Number(pd['Gross monthly']);
 if(pd['Tax rate'])         portData.taxRate       = Number(pd['Tax rate']);
+if(pd['Salary type'])      portData.salaryType    = pd['Salary type'];
+if(pd['Salary amount'])    portData.salaryAmt     = Number(pd['Salary amount']);
 if(pd['Work days'])        portData.workDays      = Number(pd['Work days']);
 if(pd['Work hours'])       portData.workHours     = Number(pd['Work hours']);
 if(pd['Pay day'])          portData.payDay        = pd['Pay day'];
