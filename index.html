@@ -2475,7 +2475,7 @@ if(type==='hourly') gross = amt * workHrs * workDays * (30.44/7);
 else if(type==='weekly') gross = amt * (30.44/7);
 const tax = gross * taxRate/100;
 const net = gross - tax;
-const fmt_ = n => sym_+' '+Math.round(n).toLocaleString();
+const fmt_ = n => sym_+' '+Math.round(n).toLocaleString('en-US');
 setText('mx-salary-monthly', fmt_(gross)+'/mo gross');
 setText('mx-salary-net',     fmt_(net)+'/mo net'+(taxRate>0?` (after ${taxRate}% tax)`:''));
 }
@@ -4019,9 +4019,25 @@ function sym(bizId) {
 const cur = getBizCur(bizId);
 return SYMS[cur] || cur || 'රු';
 }
-function fmt(n, bizId){ const v=Math.round(n); if(v>=1000000)return sym(bizId)+(v/1000000).toFixed(2)+'M'; if(v>=1000)return sym(bizId)+(v/1000).toFixed(1)+'K'; return sym(bizId)+v.toLocaleString(); }
-function fmtF(n, bizId){ return sym(bizId)+Math.round(n).toLocaleString(); }
-function fmtDec(n,d=2,bizId){ return sym(bizId)+n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function fmt(n, bizId){
+  // Always comma-separated, no K/M abbreviation — every cash amount shows full value
+  const v = Math.round(n);
+  return sym(bizId) + v.toLocaleString('en-US');
+}
+function fmtF(n, bizId){
+  return sym(bizId) + Math.round(n).toLocaleString('en-US');
+}
+function fmtDec(n, d=2, bizId){
+  return sym(bizId) + Number(n).toLocaleString('en-US', {minimumFractionDigits:d, maximumFractionDigits:d});
+}
+// fmtHr — hourly rate at exactly 2 decimal places with comma separator
+function fmtHr(n, bizId){
+  return sym(bizId) + Number(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+// fmtAmt — cash amount with 2 decimal places and comma separator (for live tickers)
+function fmtAmt(n, bizId){
+  return sym(bizId) + Number(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
 function fmtDate(s){ const d=new Date(s); return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
 function getWeek(s){ const d=new Date(s),jan=new Date(d.getFullYear(),0,1); return Math.ceil(((d-jan)/86400000+jan.getDay()+1)/7); }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
@@ -4530,7 +4546,7 @@ const pdWh  = p.workHours || 8;
 const wdpm  = pdWd*(30.44/7);
 const hourly= wdpm*pdWh>0 ? netMo/(wdpm*pdWh) : 0;
 const sym_  = SYMS[getBizCur(currentBizId)]||getBizCur(currentBizId);
-setText('bulk-rate-preview', sym_+Math.round(hourly).toLocaleString()+'/hr');
+setText('bulk-rate-preview', fmtHr(hourly));
 }
 // Apply bulk hours to all occurrences of a weekday in current month
 function bulkApply(targetDow) {
@@ -4644,9 +4660,9 @@ border:${bdr};cursor:pointer;transition:all .12s;user-select:none">
 cal.innerHTML=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">${cells.join('')}</div>`;
 setText('att-stat-days',   totalDays||0);
 setText('att-stat-hours',  totalHours.toFixed(2));
-setText('att-stat-rate',   sym_+Math.round(hourly).toLocaleString());
-setText('att-stat-earned', sym_+Math.round(totalEarned).toLocaleString());
-setText('sched-month-info',`${totalDays} days · ${totalHours.toFixed(0)}h · ${sym_}${Math.round(totalEarned).toLocaleString()}`);
+setText('att-stat-rate',   fmtHr(hourly));
+setText('att-stat-earned', fmtAmt(totalEarned));
+setText('sched-month-info',`${totalDays} days · ${totalHours.toFixed(0)}h · ${fmtAmt(totalEarned)}`);
 setText('sched-summary-hrs', totalDays>0?`${totalDays} days logged this month`:'Tap "Set hours ▾" to bulk add work days');
 }
 // ── Day panel ──
@@ -4735,7 +4751,7 @@ const wdpm=pdWorkDays*(30.44/7);
 const hourly=wdpm*pdWorkHours>0?netMo/(wdpm*pdWorkHours):0;
 const sym_=SYMS[getBizCur(currentBizId)]||getBizCur(currentBizId);
 setText('att-net-hours',hrs.toFixed(2)+' hrs');
-setText('att-day-earned',sym_+Math.round(hrs*hourly).toLocaleString());
+setText('att-day-earned',fmtAmt(hrs*hourly));
 }
 function saveAttDay() {
 if(!attSelectedDate||!attSelectedStatus) return;
@@ -5177,8 +5193,8 @@ _typeLiveElapsed = 0;
 const biz = businesses.find(b=>b.id===currentBizId)||{};
 const sym = SYMS[getBizCur(currentBizId)] || getBizCur(currentBizId);
 const p   = portData || {};
-const fmt  = n => sym+' '+Math.round(n).toLocaleString();
-const fmt4 = n => sym+' '+n.toFixed(2);
+const fmt  = n => sym+' '+Math.round(n).toLocaleString('en-US');
+const fmt4 = n => fmtAmt(n);
 let ratePerSec = 0;
 let todayBase  = 0;
 if(type === 'job') {
@@ -5192,8 +5208,8 @@ const workHrsPerMonth = workDays_ * workHours_ * (30.44/7);
 const hrRate       = workHrsPerMonth > 0 ? netMonthly / workHrsPerMonth : 0;
 ratePerSec         = hrRate / 3600;
 todayBase          = netMonthly / 30.44;
-setText('job-live-status', `${sym} ${Math.round(grossMonthly).toLocaleString()} gross · ${sym} ${Math.round(netMonthly).toLocaleString()} net/mo`);
-setText('job-live-hr',    fmt(hrRate));
+setText('job-live-status', `${fmtAmt(grossMonthly)} gross · ${fmtAmt(netMonthly)} net/mo`);
+setText('job-live-hr',    fmtHr(hrRate));
 setText('job-live-month', fmt(netMonthly));
 // Edit button wiring
 ['job','rental','fd','investment','farming','other'].forEach(t=>{
@@ -5206,10 +5222,10 @@ setHtml('job-summary-body', `
 <div><div style="font-size:10px;color:var(--txt3)">Tax (${p.taxRate||0}%)</div><div style="font-size:14px;font-weight:500;color:var(--red)">−${fmt(taxAmt)}/mo</div></div>
 ${p.jobExpenses>0?`<div><div style="font-size:10px;color:var(--txt3)">Job expenses</div><div style="font-size:14px;font-weight:500;color:var(--red)">−${fmt(p.jobExpenses)}/mo</div></div>`:'<div></div>'}
 <div><div style="font-size:10px;color:var(--txt3)">Net take-home</div><div style="font-size:14px;font-weight:500;color:var(--green)">${fmt(netMonthly)}/mo</div></div>
-<div><div style="font-size:10px;color:var(--txt3)">Hourly rate (net)</div><div style="font-size:14px;font-weight:500;color:var(--blue-txt)">${fmt(hrRate)}/hr</div></div>
+<div><div style="font-size:10px;color:var(--txt3)">Hourly rate (net)</div><div style="font-size:14px;font-weight:500;color:var(--blue-txt)">${fmtHr(hrRate)}/hr</div></div>
 <div><div style="font-size:10px;color:var(--txt3)">Work schedule</div><div style="font-size:14px;font-weight:500">${workDays_}d × ${workHours_}h/day</div></div>
 <div><div style="font-size:10px;color:var(--txt3)">Pay day</div><div style="font-size:14px;font-weight:500">${p.payDay||25}th</div></div>
-<div><div style="font-size:10px;color:var(--txt3)">Input type</div><div style="font-size:14px;font-weight:500">${p.salaryType||'monthly'}${p.salaryType==='hourly'?` (${sym}${(p.salaryAmt||0).toFixed(2)}/hr)`:p.salaryType==='weekly'?` (${sym}${Math.round(p.salaryAmt||0)}/wk)`:''}</div></div>
+<div><div style="font-size:10px;color:var(--txt3)">Input type</div><div style="font-size:14px;font-weight:500">${p.salaryType||'monthly'}${p.salaryType==='hourly'?` (${fmtHr(p.salaryAmt||0)}/hr)`:p.salaryType==='weekly'?` (${fmtAmt(p.salaryAmt||0)}/wk)`:''}</div></div>
 </div>`);
 } else if(type === 'rental') {
 ratePerSec = (p.rent||0) / (30.44*24*3600);
@@ -5217,7 +5233,7 @@ todayBase  = (p.rent||0) / 30.44;
 const dueDate = p.dueDay||1;
 const today   = new Date().getDate();
 const daysLeft = dueDate >= today ? dueDate - today : (30 - today + dueDate);
-setText('rental-live-sub', `${sym} ${Math.round((p.rent||0)/30.44).toLocaleString()}/day · Tenant: ${p.tenant||'Not set'}`);
+setText('rental-live-sub', `${fmtHr((p.rent||0)/30.44)}/day · Tenant: ${p.tenant||'Not set'}`);
 setText('rental-live-day',   fmt((p.rent||0)/30.44));
 setText('rental-live-month', fmt(p.rent||0));
 setText('rental-live-due',   daysLeft+' days');
@@ -5234,7 +5250,7 @@ ratePerSec = annualInterest / (365*24*3600);
 todayBase  = annualInterest / 365;
 const endDate  = p.endDate ? new Date(p.endDate) : null;
 const daysLeft = endDate ? Math.max(0,Math.ceil((endDate-new Date())/(1000*60*60*24))) : '—';
-setText('fd-live-sub', `${sym} ${Math.round(annualInterest/12).toLocaleString()}/month · ${p.rate||0}% p.a.`);
+setText('fd-live-sub', `${fmtAmt(annualInterest/12)}/month · ${p.rate||0}% p.a.`);
 setText('fd-live-day',     fmt(annualInterest/365));
 setText('fd-live-month',   fmt(annualInterest/12));
 setText('fd-live-matures', typeof daysLeft==='number'?daysLeft+' days':'—');
@@ -5267,7 +5283,7 @@ setText('farm-live-harvest', daysLeft+' days');
 } else if(type === 'other') {
 ratePerSec = (p.income||0) / (30.44*24*3600);
 todayBase  = (p.income||0) / 30.44;
-setText('other-live-sub',   `${sym} ${Math.round((p.income||0)/30.44).toLocaleString()}/day · ${p.freq||'monthly'}`);
+setText('other-live-sub',   `${fmtHr((p.income||0)/30.44)}/day · ${p.freq||'monthly'}`);
 setText('other-live-day',   fmt((p.income||0)/30.44));
 setText('other-live-month', fmt(p.income||0));
 setText('other-live-year',  fmt((p.income||0)*12));
@@ -5369,13 +5385,13 @@ setText('job-live-sec',   fmt4(jobBase));
 setText('job-live-month', fmt4(jobBase));
 const perSecEl2 = document.getElementById('job-live-per-sec');
 if(jobCurrentlyWorking) {
-setText('job-live-status', `⏱ On shift · ${sym} ${Math.round(jobHourlyRate).toLocaleString()}/hr`);
-if(perSecEl2) perSecEl2.textContent = `+${sym} ${(jobHourlyRate/3600).toFixed(2)} per second`;
+setText('job-live-status', `⏱ On shift · ${fmtHr(jobHourlyRate)}/hr`);
+if(perSecEl2) perSecEl2.textContent = `+${fmtAmt(jobHourlyRate/3600)} per second`;
 } else if(isAbsent2) {
 setText('job-live-status', `🔴 Absent today`);
 if(perSecEl2) perSecEl2.textContent = 'Absent / holiday today';
 } else {
-setText('job-live-status', `⏸ Off shift · ${sym} ${Math.round(jobHourlyRate).toLocaleString()}/hr`);
+setText('job-live-status', `⏸ Off shift · ${fmtHr(jobHourlyRate)}/hr`);
 if(perSecEl2) perSecEl2.textContent = 'Off shift — ticker paused';
 }
 // Today earned — use the already-computed init value
@@ -5419,13 +5435,13 @@ const todayRec   = attData3[todayDs];
 const isAbsent   = todayRec?.status==='absent'||todayRec?.status==='holiday';
 if(ticking) {
 jobBase += jobHourlyRate / 3600;
-if(perSecEl3) perSecEl3.textContent = `+${sym+" "+(jobHourlyRate/3600).toFixed(2)} per second`;
-setText('job-live-status', `⏱ On shift · ${sym} ${Math.round(jobHourlyRate).toLocaleString()}/hr`);
+if(perSecEl3) perSecEl3.textContent = `+${fmtAmt(jobHourlyRate/3600)} per second`;
+setText('job-live-status', `⏱ On shift · ${fmtHr(jobHourlyRate)}/hr`);
 } else {
 if(perSecEl3) perSecEl3.textContent = isAbsent ? '🔴 Absent / holiday today' : '⏸ Off shift — paused';
 setText('job-live-status', isAbsent
 ? `🔴 Absent today`
-: `⏸ Off shift · ${sym} ${Math.round(jobHourlyRate).toLocaleString()}/hr`);
+: `⏸ Off shift · ${fmtHr(jobHourlyRate)}/hr`);
 }
 // Big number = monthly earned to this exact second
 setText('job-live-sec',   fmt4(jobBase));
@@ -5533,31 +5549,31 @@ monthlyIncome    = netMonthly;
 const wd = p.workDays  || 5;
 const wh = p.workHours || 8;
 const avgWorkDaysPerMonth = wd * (30.44 / 7);
-const hourly = avgWorkDaysPerMonth * wh > 0 ? netMonthly / (avgWorkDaysPerMonth * wh) : 0;
-const dailyNet = hourly * wh;
+const hourly  = avgWorkDaysPerMonth * wh > 0 ? netMonthly / (avgWorkDaysPerMonth * wh) : 0;
+const dailyNet = hourly * wh; // one full work day's net pay
 const sched    = getSchedForBiz(biz.id);
-const workDaysArr = sched.workDays || [1,2,3,4,5];
-const todayDow    = now.getDay();
+const workDaysArr    = sched.workDays || [1,2,3,4,5];
+const todayDow       = now.getDay();
 const isTodayWorkDay = workDaysArr.includes(todayDow);
 
+// ── expectedForPeriod = FULL period salary target ──────────────────
+// This is what the progress bar divides into.
+// Month → full month salary; Today → one day's salary; Year → annual salary.
+// The bar fills as attendance accumulates toward that target.
 if(portView === 'today') {
-  const [sh,sm] = (sched.startTime||'08:00').split(':').map(Number);
-  const [eh,em] = (sched.endTime  ||'17:00').split(':').map(Number);
-  const breakMins    = sched.breakMins || 0;
-  const shiftNetSecs = Math.max(0, ((eh*60+em)-(sh*60+sm)-breakMins)*60);
-  const dayStartSecs = sh*3600+sm*60;
-  const dayEndSecs   = eh*3600+em*60;
-  const nowSecs      = now.getHours()*3600+now.getMinutes()*60+now.getSeconds();
-  // Expected only on a scheduled work day
-  const elapsedInShift = isTodayWorkDay
-    ? Math.max(0, Math.min(nowSecs-dayStartSecs, dayEndSecs-dayStartSecs))
-    : 0;
-  expectedForPeriod = (isTodayWorkDay && shiftNetSecs>0)
-    ? (elapsedInShift/shiftNetSecs)*dailyNet : 0;
-  // Earned = actual worked time today
+  expectedForPeriod = isTodayWorkDay ? dailyNet : 0;
+} else if(portView === 'year') {
+  expectedForPeriod = netMonthly * 12;
+} else {
+  expectedForPeriod = netMonthly; // full month salary
+}
+
+// ── earnedToNow = actual attendance-based earnings for the period ──
+const attDataJ = JSON.parse(localStorage.getItem(lsAttKey(biz.id))||'{}');
+
+if(portView === 'today') {
   const todayDs  = now.toISOString().slice(0,10);
-  const attData  = JSON.parse(localStorage.getItem(lsAttKey(biz.id))||'{}');
-  const todayRec = attData[todayDs];
+  const todayRec = attDataJ[todayDs];
   if(isOnShiftNow(biz.id)) {
     const recStart = todayRec?.startTime || sched.startTime;
     const [rsh,rsm] = recStart.split(':').map(Number);
@@ -5566,70 +5582,19 @@ if(portView === 'today') {
   } else if(todayRec?.status==='worked'||todayRec?.status==='custom') {
     earnedToNow = (todayRec.hours||0)*hourly;
   }
-
 } else if(portView === 'year') {
-  // Expected = work-day proportion of year elapsed × annual salary
-  // Count scheduled work days elapsed this year vs total scheduled this year
-  const yearStart = new Date(now.getFullYear(),0,1);
-  const yearEnd   = new Date(now.getFullYear(),11,31);
-  let totalWorkDaysYear=0, workDaysElapsedYear=0;
-  const tmpD = new Date(yearStart);
-  while(tmpD <= yearEnd) {
-    if(workDaysArr.includes(tmpD.getDay())) {
-      totalWorkDaysYear++;
-      if(tmpD < new Date(now.getFullYear(), now.getMonth(), now.getDate()))
-        workDaysElapsedYear++;
-    }
-    tmpD.setDate(tmpD.getDate()+1);
-  }
-  // Add today's partial fraction (shift-relative, not clock-relative)
-  const [sh_y,sm_y] = (sched.startTime||'08:00').split(':').map(Number);
-  const [eh_y,em_y] = (sched.endTime  ||'17:00').split(':').map(Number);
-  const shiftNetSecs_y = Math.max(0,((eh_y*60+em_y)-(sh_y*60+sm_y)-(sched.breakMins||0))*60);
-  const nowSecs_y = now.getHours()*3600+now.getMinutes()*60+now.getSeconds();
-  const elapsedInShift_y = isTodayWorkDay
-    ? Math.max(0,Math.min(nowSecs_y-sh_y*3600-sm_y*60, shiftNetSecs_y))
-    : 0;
-  const todayFraction_y = shiftNetSecs_y>0 ? elapsedInShift_y/shiftNetSecs_y : 0;
-  const workProgress_y  = workDaysElapsedYear + todayFraction_y;
-  expectedForPeriod = totalWorkDaysYear>0
-    ? (workProgress_y/totalWorkDaysYear)*netMonthly*12 : 0;
-  // Earned = all logged hours this year
-  const attDataY = JSON.parse(localStorage.getItem(lsAttKey(biz.id))||'{}');
-  let hrsY=0;
-  Object.entries(attDataY).forEach(([ds,rec])=>{
+  let hrsY = 0;
+  Object.entries(attDataJ).forEach(([ds,rec])=>{
     if(!ds.startsWith(now.getFullYear()+'')) return;
-    if(rec.status==='worked'||rec.status==='custom') hrsY+=rec.hours||0;
+    if(rec.status==='worked'||rec.status==='custom') hrsY += rec.hours||0;
   });
-  earnedToNow = hrsY*hourly;
-
+  earnedToNow = hrsY * hourly;
 } else {
-  // Month view — work-day proportion
-  const monthDays = new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
-  let scheduledWorkDaysThisMonth=0, workDaysElapsed=0;
-  for(let d=1;d<=monthDays;d++){
-    const dow=new Date(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}T12:00:00`).getDay();
-    if(workDaysArr.includes(dow)){
-      scheduledWorkDaysThisMonth++;
-      if(d<now.getDate()) workDaysElapsed++;
-    }
-  }
-  // Today's fraction: use shift-relative elapsed, not clock time from midnight
-  const [sh_m,sm_m] = (sched.startTime||'08:00').split(':').map(Number);
-  const [eh_m,em_m] = (sched.endTime  ||'17:00').split(':').map(Number);
-  const shiftNetSecs_m = Math.max(0,((eh_m*60+em_m)-(sh_m*60+sm_m)-(sched.breakMins||0))*60);
-  const nowSecs_m = now.getHours()*3600+now.getMinutes()*60+now.getSeconds();
-  const elapsedInShift_m = isTodayWorkDay
-    ? Math.max(0,Math.min(nowSecs_m-sh_m*3600-sm_m*60, shiftNetSecs_m))
-    : 0;
-  const todayFraction_m = shiftNetSecs_m>0 ? elapsedInShift_m/shiftNetSecs_m : 0;
-  const workDaysProgress = workDaysElapsed+todayFraction_m;
-  expectedForPeriod = scheduledWorkDaysThisMonth>0
-    ? (workDaysProgress/scheduledWorkDaysThisMonth)*netMonthly : 0;
-  // Earned = actual logged attendance
+  // Month: sum all logged attendance hours this month
   const schedInfo = calcScheduledSecsThisMonth(biz.id);
-  earnedToNow = (schedInfo.totalSecs/3600)*hourly;
+  earnedToNow = (schedInfo.totalSecs / 3600) * hourly;
 }
+
 ratePerSec = isOnShiftNow(biz.id) ? hourly/3600 : 0;
 } else if(type === 'rental') {
 monthlyIncome     = p.rent || 0;
@@ -5779,7 +5744,7 @@ curKeys.forEach(c => {
 const rate = _fxRates[c];
 fxTotal2 += c===baseCur ? byCur[c].earned : (rate ? byCur[c].earned/rate : 0);
 });
-setText('port-hero-total', baseSym2+' '+fxTotal2.toFixed(2));
+setText('port-hero-total', fmtAmt(fxTotal2));
 // Per-sec
 let fxRatePerSec = 0;
 portSources.forEach(s => {
@@ -5787,10 +5752,10 @@ const cur  = getBizCur(s.id);
 const rate = _fxRates[cur];
 fxRatePerSec += cur===baseCur ? s.ratePerSec : (rate ? s.ratePerSec/rate : 0);
 });
-setText('port-per-sec', fxRatePerSec>0?'+'+baseSym2+' '+fxRatePerSec.toFixed(2):'⏸ Paused');
-setText('port-per-min', baseSym2+' '+(fxRatePerSec*60).toFixed(2));
-setText('port-per-hr',  baseSym2+' '+Math.round(fxRatePerSec*3600).toLocaleString());
-setText('port-per-day', baseSym2+' '+Math.round(fxRatePerSec*86400).toLocaleString());
+setText('port-per-sec', fxRatePerSec>0?'+'+fmtAmt(fxRatePerSec):'⏸ Paused');
+setText('port-per-min', fmtAmt(fxRatePerSec*60));
+setText('port-per-hr',  fmtAmt(fxRatePerSec*3600));
+setText('port-per-day', fmtAmt(fxRatePerSec*86400));
 }
 function renderPortfolio() {
 portSources = calcPortSources();
@@ -5833,11 +5798,11 @@ const allSameCur = curKeys.length === 1 && curKeys[0] === portfolioCur;
 if(allSameCur){
 // All sources share the portfolio currency — simple direct total
 const c=byCur[curKeys[0]];
-setText('port-hero-total', c.sym+' '+c.earned.toFixed(2));
-setText('port-per-sec', totalRate>0?'+'+c.sym+' '+totalRate.toFixed(2):'⏸ Paused');
-setText('port-per-min', c.sym+' '+(totalRate*60).toFixed(2));
-setText('port-per-hr',  c.sym+' '+Math.round(totalRate*3600).toLocaleString());
-setText('port-per-day', c.sym+' '+Math.round(totalRate*86400).toLocaleString());
+setText('port-hero-total', fmtAmt(c.earned));
+setText('port-per-sec', totalRate>0?'+'+fmtAmt(totalRate):'⏸ Paused');
+setText('port-per-min', fmtAmt(totalRate*60));
+setText('port-per-hr',  fmtAmt(totalRate*3600));
+setText('port-per-day', fmtAmt(totalRate*86400));
 } else {
 // Currencies differ OR portfolio currency differs — always FX-convert to portfolioCur
 if(hasRates) {
@@ -5850,7 +5815,7 @@ setText('port-per-hr',  '…');
 setText('port-per-day', '…');
 }
 }
-setText('port-bk-total', curKeys.map(c=>`${byCur[c].sym} ${byCur[c].earned.toFixed(2)}`).join(' + '));
+setText('port-bk-total', curKeys.map(c=>`${fmtAmt(byCur[c].earned)}`).join(' + '));
 // Source cards — bar = progress toward expected amount for the period
 const list=document.getElementById('port-sources');
 if(!list) return;
@@ -5869,6 +5834,10 @@ const active = s.ratePerSec>0;
 const firstTab = (TYPE_TABS[s.type]||TYPE_TABS.business)[0].id;
 const sw_ = s.type==='business' ? `sw('live',document.getElementById('nav-live'))` : `sw('${firstTab}',document.getElementById('nav-${firstTab}'))`;
 const pctLabel = expected>0 ? `${pct}%` : '—';
+// Build the "of X expected" sub-label — for jobs show what the period target means
+const periodLabel = s.type==='job'
+  ? (portView==='today' ? 'day salary' : portView==='year' ? 'annual salary' : 'month salary')
+  : 'expected';
 return `<div class="port-src" onclick="switchBiz('${s.id}');${sw_}">
 <div style="display:flex;align-items:center;gap:8px">
 <span style="font-size:20px">${s.icon}</span>
@@ -5880,15 +5849,15 @@ return `<div class="port-src" onclick="switchBiz('${s.id}');${sw_}">
 </div>
 </div>
 <div style="text-align:right;flex-shrink:0">
-<div style="font-size:10px;color:var(--txt3);font-family:'DM Mono',monospace" id="psec-${s.id}">${active?'+'+srcSym+s.ratePerSec.toFixed(2)+'/s':'⏸'}</div>
-<div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${s.color}" id="ptot-${s.id}">${srcSym} ${s.earnedToNow.toFixed(2)}</div>
+<div style="font-size:10px;color:var(--txt3);font-family:'DM Mono',monospace" id="psec-${s.id}">${active?'+'+fmtAmt(s.ratePerSec)+'/s':'⏸'}</div>
+<div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${s.color}" id="ptot-${s.id}">${fmtAmt(s.earnedToNow)}</div>
 </div>
 </div>
 <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
 <div class="port-src-bar" style="flex:1"><div class="port-src-bar-fill" id="pbar-${s.id}" style="width:${pct}%;background:${barColor}"></div></div>
 <span style="font-size:9px;font-family:'DM Mono',monospace;color:${pct>=95?'var(--green-txt)':pct>=60?'var(--amber-txt)':'var(--txt3)'};width:26px;text-align:right;flex-shrink:0">${pctLabel}</span>
 </div>
-${expected>0?`<div style="font-size:9px;color:var(--txt3);margin-top:2px">of ${srcSym}${expected.toFixed(0)} expected</div>`:''}
+${expected>0?`<div style="font-size:9px;color:var(--txt3);margin-top:2px">of ${srcSym}${expected.toFixed(0)} ${periodLabel}</div>`:''}
 </div>`;
 }).join('');
 // Breakdown — bar = progress toward expected
@@ -5903,7 +5872,7 @@ return `<div class="port-bk-row">
 <span style="font-size:11px;flex:1;color:var(--txt2)">${s.name}</span>
 <div class="port-bk-bar-wrap"><div class="port-bk-bar" id="pbkbar-${s.id}" style="width:${pct}%;background:${barColor}"></div></div>
 <span style="font-size:10px;font-family:'DM Mono',monospace;width:30px;text-align:right;color:var(--txt3)">${pct}%</span>
-<span style="font-size:11px;font-family:'DM Mono',monospace;width:90px;text-align:right;font-weight:500" id="pbkamt-${s.id}">${srcSym} ${s.earnedToNow.toFixed(2)}</span>
+<span style="font-size:11px;font-family:'DM Mono',monospace;width:90px;text-align:right;font-weight:500" id="pbkamt-${s.id}">${fmtAmt(s.earnedToNow)}</span>
 </div>`;
 }).join('')||`<div style="font-size:12px;color:var(--txt3);text-align:center;padding:10px 0">No data yet</div>`;
 startPortTicker(portSources);
@@ -5930,7 +5899,7 @@ portSources.forEach(s=>{
 const cur=getBizCur(s.id);
 const srcSym=SYMS[cur]||cur;
 if(s.ratePerSec>0) s.earnedToNow+=s.ratePerSec; // tick only active sources
-setText('ptot-'+s.id, srcSym+' '+s.earnedToNow.toFixed(2));
+setText('ptot-'+s.id, fmtAmt(s.earnedToNow));
 if(!byCur2[cur]) byCur2[cur]={sym:srcSym,total:0,rate:0};
 byCur2[cur].total+=s.earnedToNow;
 byCur2[cur].rate +=s.ratePerSec;
@@ -5942,7 +5911,7 @@ const bar=document.getElementById('pbar-'+s.id);
 if(bar) { bar.style.width=pct+'%'; bar.style.background=barColor; }
 const bkbar=document.getElementById('pbkbar-'+s.id);
 if(bkbar) { bkbar.style.width=pct+'%'; bkbar.style.background=barColor; }
-setText('pbkamt-'+s.id, srcSym+' '+s.earnedToNow.toFixed(2));
+setText('pbkamt-'+s.id, fmtAmt(s.earnedToNow));
 });
 const ck=Object.keys(byCur2);
 const heroBaseCur = _fxBaseCur || ck[0] || 'LKR';
@@ -5950,8 +5919,8 @@ const heroBaseSym = SYMS[heroBaseCur] || heroBaseCur;
 if(ck.length===1 && ck[0]===heroBaseCur){
 // All sources share the same currency AND it matches the portfolio currency — no conversion needed
 const c=byCur2[ck[0]];
-setText('port-hero-total', c.sym+' '+c.total.toFixed(2));
-setText('port-sec-ticker', c.rate>0?'+'+c.sym+' '+c.rate.toFixed(2):'⏸ All paused');
+setText('port-hero-total', fmtAmt(c.total));
+setText('port-sec-ticker', c.rate>0?'+'+fmtAmt(c.rate):'⏸ All paused');
 } else {
 // Multi-currency OR portfolio currency differs from source currency — always FX-convert hero total
 if(Object.keys(_fxRates).length > 0) {
@@ -5963,11 +5932,11 @@ const f=(cur===heroBaseCur||!rate)?1:1/rate;
 fxTotal+=s.earnedToNow*f;
 fxRate +=s.ratePerSec *f;
 });
-setText('port-hero-total', heroBaseSym+' '+fxTotal.toFixed(2));
-setText('port-sec-ticker', fxRate>0?'+'+heroBaseSym+' '+fxRate.toFixed(2):'⏸ All paused');
+setText('port-hero-total', fmtAmt(fxTotal));
+setText('port-sec-ticker', fxRate>0?'+'+fmtAmt(fxRate):'⏸ All paused');
 } else {
 // FX rates not loaded yet — show individual totals until fetch completes
-setText('port-hero-total', ck.map(c=>`${byCur2[c].sym} ${byCur2[c].total.toFixed(2)}`).join(' + '));
+setText('port-hero-total', ck.map(c=>`${fmtAmt(byCur2[c].total)}`).join(' + '));
 }
 }
 },1000);
@@ -6539,7 +6508,7 @@ function renderJobCharts() {
   // Totals
   const totalInc  = incomeData.reduce((a,v)=>a+v,0);
   const totalHrs  = hoursData.reduce((a,v)=>a+v,0);
-  setText('jc-income-total', sym+' '+Math.round(totalInc).toLocaleString());
+  setText('jc-income-total', fmtAmt(totalInc));
   setText('jc-hours-total',  totalHrs.toFixed(2)+' hrs');
 
   // ── Colour helpers — use app's existing theme-aware functions ──
@@ -6561,7 +6530,7 @@ function renderJobCharts() {
     scales:{
       x:{ grid:{color:gridCol}, ticks:{color:txtCol, font:{size:10}, maxRotation:45, minRotation:0} },
       y:{ grid:{color:gridCol}, ticks:{color:txtCol, font:{size:10},
-          callback: yLabel===sym ? (v=>sym+' '+Math.round(v).toLocaleString()) : undefined },
+          callback: yLabel===sym ? (v=>fmtAmt(v)) : undefined },
           beginAtZero:true }
     }
   });
@@ -6571,7 +6540,7 @@ function renderJobCharts() {
   const ctxInc = document.getElementById('jc-chart-income');
   if(ctxInc) {
     const opts = baseOpts(sym);
-    opts.plugins.tooltip.callbacks = { label: ctx => sym+' '+ctx.parsed.y.toFixed(2) };
+    opts.plugins.tooltip.callbacks = { label: ctx => fmtAmt(ctx.parsed.y) };
     _jcInstances.income = new Chart(ctxInc, {
       type:'bar',
       data:{ labels, datasets:[{
@@ -6641,7 +6610,7 @@ function renderJobCharts() {
     }
     const opts = baseOpts(sym);
     opts.plugins.legend = { display:true, position:'top', labels:{color:txtCol,font:{size:10},boxWidth:10,padding:10} };
-    opts.plugins.tooltip.callbacks = { label: ctx => ctx.dataset.label+': '+sym+' '+ctx.parsed.y.toFixed(2) };
+    opts.plugins.tooltip.callbacks = { label: ctx => ctx.dataset.label+': '+fmtAmt(ctx.parsed.y) };
     _jcInstances.pace = new Chart(ctxPace, {
       type:'line',
       data:{ labels:paceLabels, datasets:[
@@ -6672,7 +6641,7 @@ function renderJobCharts() {
     setText('jc-monthly-title', 'Monthly earnings vs target — last 6 months');
     const opts = baseOpts(sym);
     opts.plugins.legend = { display:true, position:'top', labels:{color:txtCol,font:{size:10},boxWidth:10,padding:10} };
-    opts.plugins.tooltip.callbacks = { label: ctx => ctx.dataset.label+': '+sym+' '+Math.round(ctx.parsed.y).toLocaleString() };
+    opts.plugins.tooltip.callbacks = { label: ctx => ctx.dataset.label+': '+fmtAmt(ctx.parsed.y) };
     _jcInstances.monthly = new Chart(ctxMo, {
       type:'bar',
       data:{ labels:moLabels, datasets:[
