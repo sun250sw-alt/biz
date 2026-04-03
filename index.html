@@ -1502,7 +1502,7 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
         <span class="card-title" style="margin:0" id="jc-income-title">Daily income — last 30 days</span>
         <span id="jc-income-total" style="font-size:11px;font-weight:600;color:var(--green)">—</span>
       </div>
-      <canvas id="jc-chart-income" style="max-height:200px"></canvas>
+      <canvas id="jc-chart-income" style="height:200px;max-height:200px"></canvas>
     </div>
 
     <!-- Hours worked bar chart -->
@@ -1511,7 +1511,7 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
         <span class="card-title" style="margin:0" id="jc-hours-title">Hours worked — last 30 days</span>
         <span id="jc-hours-total" style="font-size:11px;font-weight:600;color:var(--blue-txt)">—</span>
       </div>
-      <canvas id="jc-chart-hours" style="max-height:180px"></canvas>
+      <canvas id="jc-chart-hours" style="height:180px;max-height:180px"></canvas>
     </div>
 
     <!-- Cumulative earnings vs expected line chart -->
@@ -1520,13 +1520,13 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
         <span class="card-title" style="margin:0">Earned vs expected this month</span>
         <span id="jc-pace-label" style="font-size:10px;padding:2px 8px;border-radius:4px;font-weight:500">—</span>
       </div>
-      <canvas id="jc-chart-pace" style="max-height:180px"></canvas>
+      <canvas id="jc-chart-pace" style="height:180px;max-height:180px"></canvas>
     </div>
 
     <!-- Monthly summary bar chart -->
     <div class="card">
       <div class="card-title" id="jc-monthly-title">Monthly earnings — last 6 months</div>
-      <canvas id="jc-chart-monthly" style="max-height:180px"></canvas>
+      <canvas id="jc-chart-monthly" style="height:180px;max-height:180px"></canvas>
     </div>
 
     <!-- Stats row -->
@@ -5278,37 +5278,31 @@ const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 const secsElapsedThisMonth = Math.floor((now - startOfMonth) / 1000);
 // ── For JOB: calculate actual worked seconds this month from attendance ──
 function calcJobWorkedSecsThisMonth() {
-const attData  = JSON.parse(localStorage.getItem(lsAttKey(currentBizId)) || '{}');
-const prefix   = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-const stdHrs   = p.workHours || 8;
-const workDays = p.workDays  || 5;
-const netSalary= p.monthlyIncome || ((p.grossMonthly||p.salary||0) * (1-(p.taxRate||0)/100) - (p.jobExpenses||0));
-const workSecsPerMonth = workDays * stdHrs * 3600 * (30.44/7);
-const hourlyRate = workSecsPerMonth > 0 ? netSalary / (workSecsPerMonth/3600) : 0;
-let totalWorkedSecs = 0;
-let totalEarned = 0;
-// Sum up all logged days this month
-Object.entries(attData).forEach(([date, rec]) => {
-if(!date.startsWith(prefix) || !rec.hours) return;
-totalWorkedSecs += rec.hours * 3600;
-totalEarned     += rec.hours * hourlyRate;
+const attData    = JSON.parse(localStorage.getItem(lsAttKey(currentBizId)) || '{}');
+const prefix     = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+const sched_     = getSchedForBiz(currentBizId);
+const workDaysArr_ = sched_.workDays || [1,2,3,4,5];
+const netSalary  = p.monthlyIncome || ((p.grossMonthly||p.salary||0)*(1-(p.taxRate||0)/100)-(p.jobExpenses||0));
+const stdHrs     = p.workHours || 8;
+const workDaysPerMo = (p.workDays||5)*(30.44/7);
+const workSecsPerMonth = workDaysPerMo * stdHrs * 3600;
+const hourlyRate = workSecsPerMonth>0 ? netSalary/(workSecsPerMonth/3600) : 0;
+let totalWorkedSecs=0, totalEarned=0;
+Object.entries(attData).forEach(([date,rec])=>{
+  if(!date.startsWith(prefix)||!rec.hours) return;
+  totalWorkedSecs += rec.hours*3600;
+  totalEarned     += rec.hours*hourlyRate;
 });
-// Add today's in-progress hours if currently in a work window
-const todayStr   = now.toISOString().slice(0,10);
-const todayRec   = attData[todayStr];
-const isWorkDay  = now.getDay() !== 0 && now.getDay() !== 6; // not weekend
-if(isWorkDay) {
-const startTime = p.startTime || '08:00';
-const [sh, sm]  = startTime.split(':').map(Number);
-const workStart = new Date(now); workStart.setHours(sh, sm, 0, 0);
-const workEnd   = new Date(workStart); workEnd.setHours(sh + (p.workHours||8), sm, 0, 0);
-const isInWork  = now >= workStart && now < workEnd;
-if(isInWork && !todayRec) {
-// Currently at work, not yet logged — count live progress
-const liveSecs = Math.floor((now - workStart) / 1000);
-totalWorkedSecs += liveSecs;
-totalEarned     += (liveSecs / 3600) * hourlyRate;
-}
+// Add today's live progress if currently on shift and no completed record yet
+const todayStr = now.toISOString().slice(0,10);
+const todayRec_ = attData[todayStr];
+const isTodayWork_ = workDaysArr_.includes(now.getDay());
+if(isTodayWork_ && isOnShiftNow(currentBizId) && !todayRec_) {
+  const [sh_,sm_] = (sched_.startTime||'08:00').split(':').map(Number);
+  const workStart_ = new Date(now); workStart_.setHours(sh_,sm_,0,0);
+  const liveSecs   = Math.max(0,Math.floor((now-workStart_)/1000));
+  totalWorkedSecs += liveSecs;
+  totalEarned     += (liveSecs/3600)*hourlyRate;
 }
 return { totalWorkedSecs, totalEarned, hourlyRate };
 }
@@ -5334,14 +5328,41 @@ const workHours_    = p.workHours || 8;
 // Hourly = net monthly ÷ total work hours per month
 const workHrsPerMonth_ = workDays_ * workHours_ * (30.44/7);
 jobHourlyRate = workHrsPerMonth_ > 0 ? netMonthly / workHrsPerMonth_ : 0;
-// Get actual worked seconds this month from attendance
+// Seed jobBase from PAST days only (not today), so the interval can
+// accumulate today's seconds cleanly without double-counting
 const schedInfo2 = calcScheduledSecsThisMonth(currentBizId);
-const totalSecs2 = schedInfo2.totalSecs;
-jobBase = (totalSecs2/3600) * jobHourlyRate;
-jobCurrentlyWorking = isOnShiftNow(currentBizId);
+// calcScheduledSecsThisMonth includes today's in-progress seconds.
+// Subtract today's contribution so the ticker can add them second-by-second.
 const todayDs2   = now.toISOString().slice(0,10);
 const attData2   = JSON.parse(localStorage.getItem(lsAttKey(currentBizId))||'{}');
 const todayRec2  = attData2[todayDs2];
+// Past months' earned (excludes today's live seconds)
+let pastSecs2 = schedInfo2.totalSecs;
+// If today has a completed record, it's already in schedInfo2 as a fixed number — keep it
+// If today is live (on shift now, no completed record), schedInfo2 included live secs — remove them
+jobCurrentlyWorking = isOnShiftNow(currentBizId);
+if(jobCurrentlyWorking && !(todayRec2?.status==='worked'||todayRec2?.status==='custom')) {
+  const sched2_ = getSchedForBiz(currentBizId);
+  const recStart2_ = todayRec2?.startTime || sched2_.startTime;
+  const [tsh_,tsm_] = recStart2_.split(':').map(Number);
+  const wS_ = new Date(now); wS_.setHours(tsh_,tsm_,0,0);
+  const liveSecsToday = Math.max(0,Math.floor((now-wS_)/1000));
+  pastSecs2 = Math.max(0, pastSecs2 - liveSecsToday);
+}
+jobBase = (pastSecs2/3600) * jobHourlyRate;
+// Now add today's already-worked portion (completed record or current shift so far)
+let todayHrs2Init = 0;
+if(jobCurrentlyWorking) {
+  const sched2   = getSchedForBiz(currentBizId);
+  const recStart2 = todayRec2?.startTime || sched2.startTime;
+  const [tsh2,tsm2] = recStart2.split(':').map(Number);
+  const wS2 = new Date(now); wS2.setHours(tsh2,tsm2,0,0);
+  todayHrs2Init = Math.max(0,(now-wS2)/3600000);
+} else if(todayRec2?.status==='worked'||todayRec2?.status==='custom') {
+  todayHrs2Init = todayRec2.hours||0;
+}
+// Accumulate today into jobBase so the display starts correct
+jobBase += todayHrs2Init * jobHourlyRate;
 const isAbsent2  = todayRec2?.status==='absent'||todayRec2?.status==='holiday';
 // Show immediately — big number = earned this month to this second
 setText('job-live-sec',   fmt4(jobBase));
@@ -5357,17 +5378,8 @@ if(perSecEl2) perSecEl2.textContent = 'Absent / holiday today';
 setText('job-live-status', `⏸ Off shift · ${sym} ${Math.round(jobHourlyRate).toLocaleString()}/hr`);
 if(perSecEl2) perSecEl2.textContent = 'Off shift — ticker paused';
 }
-// Today earned
-let todayHrs2 = 0;
-if(jobCurrentlyWorking) {
-const sched2   = getSchedForBiz(currentBizId);
-const recStart2 = todayRec2?.startTime || sched2.startTime;
-const [tsh2,tsm2] = recStart2.split(':').map(Number);
-const wS2 = new Date(now); wS2.setHours(tsh2,tsm2,0,0);
-todayHrs2 = Math.max(0,(now-wS2)/3600000);
-} else if(todayRec2?.status==='worked'||todayRec2?.status==='custom') {
-todayHrs2 = todayRec2.hours || 0;
-}
+// Today earned — use the already-computed init value
+let todayHrs2 = todayHrs2Init;
 setText('job-live-day', fmt(todayHrs2 * jobHourlyRate));
 }
 // ── Farming: pre-compute ──
@@ -5520,30 +5532,29 @@ const netMonthly = p.monthlyIncome || ((p.grossMonthly||p.salary||0)*(1-(p.taxRa
 monthlyIncome    = netMonthly;
 const wd = p.workDays  || 5;
 const wh = p.workHours || 8;
-// Hourly rate = net monthly ÷ (average work hours per month)
-// Use wd*(30.44/7) for the average work days per month — consistent with how salary is set
 const avgWorkDaysPerMonth = wd * (30.44 / 7);
 const hourly = avgWorkDaysPerMonth * wh > 0 ? netMonthly / (avgWorkDaysPerMonth * wh) : 0;
-// Daily net pay (per work day, not per calendar day)
-const dailyNet = wh > 0 ? hourly * wh : 0;
+const dailyNet = hourly * wh;
+const sched    = getSchedForBiz(biz.id);
+const workDaysArr = sched.workDays || [1,2,3,4,5];
+const todayDow    = now.getDay();
+const isTodayWorkDay = workDaysArr.includes(todayDow);
 
 if(portView === 'today') {
-  // Actual work schedule for this job
-  const sched = getSchedForBiz(biz.id);
   const [sh,sm] = (sched.startTime||'08:00').split(':').map(Number);
   const [eh,em] = (sched.endTime  ||'17:00').split(':').map(Number);
-  const breakMins = sched.breakMins || 0;
-  // Net work seconds in a full shift (after break)
-  const shiftNetSecs = Math.max(0, ((eh*60+em) - (sh*60+sm) - breakMins) * 60);
-  const dayStartSecs = sh*3600 + sm*60;
-  const dayEndSecs   = eh*3600 + em*60;
-  const nowSecs      = now.getHours()*3600 + now.getMinutes()*60 + now.getSeconds();
-  // How far through the shift are we right now (clamped to shift window)
-  const elapsedInShift = Math.max(0, Math.min(nowSecs - dayStartSecs, dayEndSecs - dayStartSecs));
-  // Expected = proportion of shift elapsed × daily net pay
-  // Use shiftNetSecs as denominator so expected matches actual pay for a full day
-  expectedForPeriod = shiftNetSecs > 0 ? (elapsedInShift / shiftNetSecs) * dailyNet : 0;
-  // Earned = actual worked time × hourly rate
+  const breakMins    = sched.breakMins || 0;
+  const shiftNetSecs = Math.max(0, ((eh*60+em)-(sh*60+sm)-breakMins)*60);
+  const dayStartSecs = sh*3600+sm*60;
+  const dayEndSecs   = eh*3600+em*60;
+  const nowSecs      = now.getHours()*3600+now.getMinutes()*60+now.getSeconds();
+  // Expected only on a scheduled work day
+  const elapsedInShift = isTodayWorkDay
+    ? Math.max(0, Math.min(nowSecs-dayStartSecs, dayEndSecs-dayStartSecs))
+    : 0;
+  expectedForPeriod = (isTodayWorkDay && shiftNetSecs>0)
+    ? (elapsedInShift/shiftNetSecs)*dailyNet : 0;
+  // Earned = actual worked time today
   const todayDs  = now.toISOString().slice(0,10);
   const attData  = JSON.parse(localStorage.getItem(lsAttKey(biz.id))||'{}');
   const todayRec = attData[todayDs];
@@ -5551,54 +5562,75 @@ if(portView === 'today') {
     const recStart = todayRec?.startTime || sched.startTime;
     const [rsh,rsm] = recStart.split(':').map(Number);
     const wS = new Date(now); wS.setHours(rsh,rsm,0,0);
-    earnedToNow = Math.max(0,(now-wS)/3600000) * hourly;
-  } else if(todayRec?.status==='worked' || todayRec?.status==='custom') {
-    earnedToNow = (todayRec.hours||0) * hourly;
+    earnedToNow = Math.max(0,(now-wS)/3600000)*hourly;
+  } else if(todayRec?.status==='worked'||todayRec?.status==='custom') {
+    earnedToNow = (todayRec.hours||0)*hourly;
   }
 
 } else if(portView === 'year') {
-  // Expected = proportion of year elapsed × annual salary
-  const yearProgress = secsThisYr / secsFullYear;
-  expectedForPeriod  = yearProgress * netMonthly * 12;
-  // Earned = sum of actual logged hours this year × hourly rate
-  const attData = JSON.parse(localStorage.getItem(lsAttKey(biz.id))||'{}');
-  let hrs = 0;
-  Object.entries(attData).forEach(([ds,rec]) => {
+  // Expected = work-day proportion of year elapsed × annual salary
+  // Count scheduled work days elapsed this year vs total scheduled this year
+  const yearStart = new Date(now.getFullYear(),0,1);
+  const yearEnd   = new Date(now.getFullYear(),11,31);
+  let totalWorkDaysYear=0, workDaysElapsedYear=0;
+  const tmpD = new Date(yearStart);
+  while(tmpD <= yearEnd) {
+    if(workDaysArr.includes(tmpD.getDay())) {
+      totalWorkDaysYear++;
+      if(tmpD < new Date(now.getFullYear(), now.getMonth(), now.getDate()))
+        workDaysElapsedYear++;
+    }
+    tmpD.setDate(tmpD.getDate()+1);
+  }
+  // Add today's partial fraction (shift-relative, not clock-relative)
+  const [sh_y,sm_y] = (sched.startTime||'08:00').split(':').map(Number);
+  const [eh_y,em_y] = (sched.endTime  ||'17:00').split(':').map(Number);
+  const shiftNetSecs_y = Math.max(0,((eh_y*60+em_y)-(sh_y*60+sm_y)-(sched.breakMins||0))*60);
+  const nowSecs_y = now.getHours()*3600+now.getMinutes()*60+now.getSeconds();
+  const elapsedInShift_y = isTodayWorkDay
+    ? Math.max(0,Math.min(nowSecs_y-sh_y*3600-sm_y*60, shiftNetSecs_y))
+    : 0;
+  const todayFraction_y = shiftNetSecs_y>0 ? elapsedInShift_y/shiftNetSecs_y : 0;
+  const workProgress_y  = workDaysElapsedYear + todayFraction_y;
+  expectedForPeriod = totalWorkDaysYear>0
+    ? (workProgress_y/totalWorkDaysYear)*netMonthly*12 : 0;
+  // Earned = all logged hours this year
+  const attDataY = JSON.parse(localStorage.getItem(lsAttKey(biz.id))||'{}');
+  let hrsY=0;
+  Object.entries(attDataY).forEach(([ds,rec])=>{
     if(!ds.startsWith(now.getFullYear()+'')) return;
-    if(rec.status==='worked'||rec.status==='custom') hrs += rec.hours||0;
+    if(rec.status==='worked'||rec.status==='custom') hrsY+=rec.hours||0;
   });
-  earnedToNow = hrs * hourly;
+  earnedToNow = hrsY*hourly;
 
 } else {
-  // Month view
-  // Count actual scheduled work days this month up to (but not including) today
-  // so expected matches the real work calendar, not calendar-day proportion
-  const monthDays = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
-  const sched     = getSchedForBiz(biz.id);
-  let scheduledWorkDaysThisMonth = 0;  // total work days in this calendar month
-  let workDaysElapsed            = 0;  // work days that have fully passed before today
-  for(let d = 1; d <= monthDays; d++) {
-    const ds  = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const dow = new Date(ds+'T12:00:00').getDay(); // 0=Sun,6=Sat
-    // A work day is any day in the schedule's workDays array (defaults to Mon-Fri)
-    const workDaysArr = sched.workDays || [1,2,3,4,5];
-    if(workDaysArr.includes(dow)) {
+  // Month view — work-day proportion
+  const monthDays = new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+  let scheduledWorkDaysThisMonth=0, workDaysElapsed=0;
+  for(let d=1;d<=monthDays;d++){
+    const dow=new Date(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}T12:00:00`).getDay();
+    if(workDaysArr.includes(dow)){
       scheduledWorkDaysThisMonth++;
-      if(d < now.getDate()) workDaysElapsed++;
+      if(d<now.getDate()) workDaysElapsed++;
     }
   }
-  // Fraction of the month that has elapsed in terms of work days
-  // Add today's partial day (hours elapsed / work hours) as a fraction of a work day
-  const todayFraction = Math.min(1, (now.getHours()*3600+now.getMinutes()*60+now.getSeconds()) / (wh*3600));
-  const workDaysProgress = workDaysElapsed + todayFraction;
-  expectedForPeriod = scheduledWorkDaysThisMonth > 0
-    ? (workDaysProgress / scheduledWorkDaysThisMonth) * netMonthly
+  // Today's fraction: use shift-relative elapsed, not clock time from midnight
+  const [sh_m,sm_m] = (sched.startTime||'08:00').split(':').map(Number);
+  const [eh_m,em_m] = (sched.endTime  ||'17:00').split(':').map(Number);
+  const shiftNetSecs_m = Math.max(0,((eh_m*60+em_m)-(sh_m*60+sm_m)-(sched.breakMins||0))*60);
+  const nowSecs_m = now.getHours()*3600+now.getMinutes()*60+now.getSeconds();
+  const elapsedInShift_m = isTodayWorkDay
+    ? Math.max(0,Math.min(nowSecs_m-sh_m*3600-sm_m*60, shiftNetSecs_m))
     : 0;
-  // Earned = actual logged attendance hours × hourly rate
+  const todayFraction_m = shiftNetSecs_m>0 ? elapsedInShift_m/shiftNetSecs_m : 0;
+  const workDaysProgress = workDaysElapsed+todayFraction_m;
+  expectedForPeriod = scheduledWorkDaysThisMonth>0
+    ? (workDaysProgress/scheduledWorkDaysThisMonth)*netMonthly : 0;
+  // Earned = actual logged attendance
   const schedInfo = calcScheduledSecsThisMonth(biz.id);
-  earnedToNow = (schedInfo.totalSecs / 3600) * hourly;
+  earnedToNow = (schedInfo.totalSecs/3600)*hourly;
 }
-ratePerSec = isOnShiftNow(biz.id) ? hourly / 3600 : 0;
+ratePerSec = isOnShiftNow(biz.id) ? hourly/3600 : 0;
 } else if(type === 'rental') {
 monthlyIncome     = p.rent || 0;
 ratePerSec        = monthlyIncome / (30.44*24*3600);
@@ -6143,7 +6175,7 @@ const today=dayIdx();
 document.getElementById('week-schedule').innerHTML=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">
 ${tradingHours.map((h,i)=>`<div style="background:${i===today?'#E6F1FB':h.open?'#f1efe8':'#e8e6de'};border:1px solid ${i===today?'#B5D4F4':'#d3d1c7'};border-radius:6px;padding:7px 4px;text-align:center">
 <div style="font-size:10px;font-weight:500;color:${i===today?'#0C447C':'#888780'};margin-bottom:3px">${SHORT[i]}</div>
-${h.open?`<div style="font-size:10px">${h.from}</div><div style="font-size:9px;color:#888780">–</div><div style="font-size:10px">${h.to}</div><div style="font-size:9px;color:#1D9E75;margin-top:1px">${(totalOpenMinsDay(i)/60).toFixed(1)}h</div>`:`<div style="font-size:10px;color:#888780">${t('closedLabel')}</div>`}
+${h.open?`<div style="font-size:10px">${h.from}</div><div style="font-size:9px;color:#888780">–</div><div style="font-size:10px">${h.to}</div><div style="font-size:9px;color:#1D9E75;margin-top:1px">${(totalOpenMinsDay(i)/60).toFixed(2)}h</div>`:`<div style="font-size:10px;color:#888780">${t('closedLabel')}</div>`}
 </div>`).join('')}
 </div>`;
 }
@@ -6510,27 +6542,27 @@ function renderJobCharts() {
   setText('jc-income-total', sym+' '+Math.round(totalInc).toLocaleString());
   setText('jc-hours-total',  totalHrs.toFixed(2)+' hrs');
 
-  // ── Colour helpers ──────────────────────────────────────────────
-  const isDark = document.body.classList.contains('dark');
-  const gridCol = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
-  const txtCol  = isDark ? '#6e6d68' : '#888780';
+  // ── Colour helpers — use app's existing theme-aware functions ──
+  const gridCol = chartGridColor();
+  const txtCol  = chartTickColor();
   const green   = '#1D9E75';
   const blue    = '#378ADD';
   const amber   = '#BA7517';
 
   const baseOpts = (yLabel) => ({
-    responsive:true, maintainAspectRatio:true,
+    responsive:true, maintainAspectRatio:false,
     plugins:{ legend:{display:false}, tooltip:{
-      backgroundColor: isDark?'#2a2a2d':'#fff',
-      titleColor: isDark?'#f0ede6':'#1a1a18',
-      bodyColor:  isDark?'#b8b5ae':'#555d40',
-      borderColor: isDark?'#38383c':'#d3d1c7', borderWidth:1,
+      backgroundColor: chartGridColor()==='rgba(255,255,255,.06)' ? '#2a2a2d':'#fff',
+      titleColor: document.body.classList.contains('dark')?'#f0ede6':'#1a1a18',
+      bodyColor:  txtCol,
+      borderColor: gridCol, borderWidth:1,
       padding:10, cornerRadius:6
     }},
     scales:{
-      x:{ grid:{color:gridCol}, ticks:{color:txtCol, font:{size:10}, maxRotation:45, minRotation:30} },
-      y:{ grid:{color:gridCol}, ticks:{color:txtCol, font:{size:10}}, beginAtZero:true,
-          title:{display:!!yLabel, text:yLabel||'', color:txtCol, font:{size:10}} }
+      x:{ grid:{color:gridCol}, ticks:{color:txtCol, font:{size:10}, maxRotation:45, minRotation:0} },
+      y:{ grid:{color:gridCol}, ticks:{color:txtCol, font:{size:10},
+          callback: yLabel===sym ? (v=>sym+' '+Math.round(v).toLocaleString()) : undefined },
+          beginAtZero:true }
     }
   });
 
