@@ -1600,8 +1600,29 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
   </div>
 
   <div class="tc" id="tab-rental-charts">
-    <div class="card"><div class="card-title">Rental income trend</div><canvas id="rental-chart-income" style="max-height:220px"></canvas></div>
-    <div class="card"><div class="card-title">Income vs maintenance</div><canvas id="rental-chart-costs" style="max-height:180px"></canvas></div>
+    <!-- Stats row -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+      <div class="sc" style="border-left-color:var(--green)"><div class="sc-lbl">Annual income</div><div class="sc-val" id="rc-stat-annual" style="font-size:15px">—</div></div>
+      <div class="sc" style="border-left-color:var(--blue)"><div class="sc-lbl">Daily rate</div><div class="sc-val" id="rc-stat-daily" style="font-size:15px">—</div></div>
+      <div class="sc" style="border-left-color:var(--amber)"><div class="sc-lbl">Yield</div><div class="sc-val" id="rc-stat-yield" style="font-size:15px">—</div></div>
+    </div>
+    <!-- Monthly income trend -->
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span class="card-title" style="margin:0">Monthly rent income — last 12 months</span>
+      </div>
+      <canvas id="rc-chart-monthly" style="height:200px;max-height:200px"></canvas>
+    </div>
+    <!-- Cumulative income line -->
+    <div class="card">
+      <div class="card-title">Cumulative income this year</div>
+      <canvas id="rc-chart-cumulative" style="height:170px;max-height:170px"></canvas>
+    </div>
+    <!-- Income vs daily cost breakdown -->
+    <div class="card">
+      <div class="card-title">Income vs running cost (daily)</div>
+      <canvas id="rc-chart-breakdown" style="height:170px;max-height:170px"></canvas>
+    </div>
   </div>
 
   <div class="tc" id="tab-rental-report">
@@ -1661,7 +1682,27 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
   </div>
 
   <div class="tc" id="tab-fd-charts">
-    <div class="card"><div class="card-title">Interest earned over time</div><canvas id="fd-chart" style="max-height:220px"></canvas></div>
+    <!-- Stats row -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+      <div class="sc" style="border-left-color:var(--amber)"><div class="sc-lbl">Annual interest</div><div class="sc-val" id="fdc-stat-annual" style="font-size:15px">—</div></div>
+      <div class="sc" style="border-left-color:var(--green)"><div class="sc-lbl">Daily interest</div><div class="sc-val" id="fdc-stat-daily" style="font-size:15px">—</div></div>
+      <div class="sc" style="border-left-color:var(--blue)"><div class="sc-lbl">Days to maturity</div><div class="sc-val" id="fdc-stat-days" style="font-size:15px">—</div></div>
+    </div>
+    <!-- Interest accrual over full term -->
+    <div class="card">
+      <div class="card-title">Interest accrual — monthly projection</div>
+      <canvas id="fdc-chart-accrual" style="height:200px;max-height:200px"></canvas>
+    </div>
+    <!-- Principal vs maturity value -->
+    <div class="card">
+      <div class="card-title">Principal vs maturity value</div>
+      <canvas id="fdc-chart-growth" style="height:170px;max-height:170px"></canvas>
+    </div>
+    <!-- Monthly interest bar -->
+    <div class="card">
+      <div class="card-title">Monthly interest — last 12 months</div>
+      <canvas id="fdc-chart-monthly" style="height:170px;max-height:170px"></canvas>
+    </div>
   </div>
 
   <div class="tc" id="tab-fd-loans">
@@ -1715,7 +1756,27 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
   </div>
 
   <div class="tc" id="tab-inv-charts">
-    <div class="card"><div class="card-title">Portfolio growth</div><canvas id="inv-chart" style="max-height:220px"></canvas></div>
+    <!-- Stats row -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+      <div class="sc" style="border-left-color:var(--purple)"><div class="sc-lbl">Total return</div><div class="sc-val" id="ic-stat-return" style="font-size:15px">—</div></div>
+      <div class="sc" style="border-left-color:var(--green)"><div class="sc-lbl">Return %</div><div class="sc-val" id="ic-stat-pct" style="font-size:15px">—</div></div>
+      <div class="sc" style="border-left-color:var(--blue)"><div class="sc-lbl">Annualised</div><div class="sc-val" id="ic-stat-ann" style="font-size:15px">—</div></div>
+    </div>
+    <!-- Portfolio value doughnut -->
+    <div class="card">
+      <div class="card-title">Capital breakdown</div>
+      <canvas id="ic-chart-donut" style="height:200px;max-height:200px"></canvas>
+    </div>
+    <!-- Value vs invested bar -->
+    <div class="card">
+      <div class="card-title">Current value vs invested</div>
+      <canvas id="ic-chart-compare" style="height:180px;max-height:180px"></canvas>
+    </div>
+    <!-- Gain/loss gauge -->
+    <div class="card">
+      <div class="card-title">Return performance</div>
+      <canvas id="ic-chart-gain" style="height:160px;max-height:160px"></canvas>
+    </div>
   </div>
 
   <div class="tc" id="tab-inv-loans">
@@ -1784,7 +1845,27 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
   </div>
 
   <div class="tc" id="tab-farming-charts">
-    <div class="card"><div class="card-title">Harvest vs costs</div><canvas id="farm-chart" style="max-height:220px"></canvas></div>
+    <!-- Stats row -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+      <div class="sc" style="border-left-color:var(--green)"><div class="sc-lbl">Harvest value</div><div class="sc-val" id="fc-stat-harvest" style="font-size:15px">—</div></div>
+      <div class="sc" style="border-left-color:var(--blue)"><div class="sc-lbl">Daily rate</div><div class="sc-val" id="fc-stat-daily" style="font-size:15px">—</div></div>
+      <div class="sc" style="border-left-color:var(--amber)"><div class="sc-lbl">Season days</div><div class="sc-val" id="fc-stat-days" style="font-size:15px">—</div></div>
+    </div>
+    <!-- Season accrual progress -->
+    <div class="card">
+      <div class="card-title">Season accrual progress</div>
+      <canvas id="fc-chart-progress" style="height:200px;max-height:200px"></canvas>
+    </div>
+    <!-- Daily accrual bar -->
+    <div class="card">
+      <div class="card-title">Daily accrual — this season</div>
+      <canvas id="fc-chart-daily" style="height:170px;max-height:170px"></canvas>
+    </div>
+    <!-- Season timeline -->
+    <div class="card">
+      <div class="card-title">Season timeline</div>
+      <div id="fc-timeline" style="padding:8px 0;font-size:12px;color:var(--txt2)">—</div>
+    </div>
   </div>
 
   <div class="tc" id="tab-farming-report">
@@ -1825,7 +1906,27 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
   </div>
 
   <div class="tc" id="tab-other-trends">
-    <div class="card"><div class="card-title">Income trend</div><canvas id="other-chart" style="max-height:220px"></canvas></div>
+    <!-- Stats row -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+      <div class="sc" style="border-left-color:var(--red)"><div class="sc-lbl">Monthly income</div><div class="sc-val" id="oc-stat-monthly" style="font-size:15px">—</div></div>
+      <div class="sc" style="border-left-color:var(--green)"><div class="sc-lbl">Annual income</div><div class="sc-val" id="oc-stat-annual" style="font-size:15px">—</div></div>
+      <div class="sc" style="border-left-color:var(--blue)"><div class="sc-lbl">Daily rate</div><div class="sc-val" id="oc-stat-daily" style="font-size:15px">—</div></div>
+    </div>
+    <!-- Monthly trend bar -->
+    <div class="card">
+      <div class="card-title">Monthly income trend — last 12 months</div>
+      <canvas id="oc-chart-monthly" style="height:200px;max-height:200px"></canvas>
+    </div>
+    <!-- Cumulative this year -->
+    <div class="card">
+      <div class="card-title">Cumulative income this year</div>
+      <canvas id="oc-chart-cumulative" style="height:170px;max-height:170px"></canvas>
+    </div>
+    <!-- Daily breakdown -->
+    <div class="card">
+      <div class="card-title">Daily income — last 30 days</div>
+      <canvas id="oc-chart-daily" style="height:170px;max-height:170px"></canvas>
+    </div>
   </div>
 
   <div class="tc" id="tab-manage">
@@ -2045,9 +2146,11 @@ localStorage.setItem(lsKey(currentBizId,'income'),   JSON.stringify(incomeLog));
 localStorage.setItem(lsKey(currentBizId,'ops'),      JSON.stringify(opsLog));
 localStorage.setItem(lsKey(currentBizId,'hours'),    JSON.stringify(tradingHours));
 localStorage.setItem(lsKey(currentBizId,'margin'),   getMargin());
-// Always persist the source currency so getBizCur reliably finds it on any reload.
-// getBizCur() resolves from all fallbacks, so writing it here keeps lsKey('cur') fresh.
-localStorage.setItem(lsKey(currentBizId,'cur'), getBizCur(currentBizId));
+// Do NOT use the topbar #cur value here — that dropdown is the portfolio display currency only.
+// Each source's currency is set in the Edit modal and stored separately via lsKey(id,'cur').
+// We only write it back if it's already been set (preserving whatever the source was given).
+const srcCur = localStorage.getItem(lsKey(currentBizId,'cur'));
+if(srcCur) localStorage.setItem(lsKey(currentBizId,'cur'), srcCur); // no-op rewrite keeps key fresh
 localStorage.setItem(lsKey(currentBizId,'loans'),    JSON.stringify(loans));
 localStorage.setItem('smt_businesses', JSON.stringify(businesses));
 localStorage.setItem('smt_currentBiz', currentBizId);
@@ -4006,27 +4109,12 @@ SGD:'S$', JPY:'¥', CNY:'¥', INR:'₹', AED:'د.إ', SAR:'ر.س',
 MYR:'RM', THB:'฿', KRW:'₩', QAR:'ر.ق', KWD:'د.ك'
 };
 function getBizCur(bizId) {
-  const id = bizId || currentBizId;
-  // 1. Dedicated per-source key (most reliable, written on every saveLocal/edit/sync)
-  const stored = localStorage.getItem(lsKey(id, 'cur'));
-  if(stored) return stored;
-  // 2. portData in localStorage (survives page reload even if memory is stale)
-  try {
-    const pd = JSON.parse(localStorage.getItem(lsKey(id, 'portData')) || 'null');
-    if(pd?.currency) return pd.currency;
-  } catch(e) {}
-  // 3. businesses array in memory
-  const biz = businesses.find(b => b.id === id);
-  if(biz?.portData?.currency) return biz.portData.currency;
-  if(biz?.currency) return biz.currency;
-  // 4. smt_businesses in localStorage (for cross-biz reads when memory may be stale)
-  try {
-    const allBiz = JSON.parse(localStorage.getItem('smt_businesses') || '[]');
-    const b2 = allBiz.find(b => b.id === id);
-    if(b2?.portData?.currency) return b2.portData.currency;
-    if(b2?.currency) return b2.currency;
-  } catch(e) {}
-  return 'LKR';
+const stored = localStorage.getItem(lsKey(bizId||currentBizId,'cur'));
+if(stored) return stored;
+const biz = businesses.find(b=>b.id===(bizId||currentBizId));
+// Do NOT fall back to document.getElementById('cur').value —
+// that element is now the portfolio display currency, not a source currency.
+return biz?.portData?.currency || biz?.currency || 'LKR';
 }
 function sym(bizId) {
 const cur = getBizCur(bizId);
@@ -5809,30 +5897,26 @@ const heroSym   = SYMS[portfolioCur] || portfolioCur;
 const hasRates  = Object.keys(_fxRates).length > 0;
 const allSameCur = curKeys.length === 1 && curKeys[0] === portfolioCur;
 if(allSameCur){
-// All sources share the portfolio currency — simple direct total, use heroSym explicitly
+// All sources share the portfolio currency — simple direct total
 const c=byCur[curKeys[0]];
-setText('port-hero-total', heroSym+' '+Number(c.earned).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}));
-setText('port-per-sec', totalRate>0?'+'+heroSym+' '+totalRate.toFixed(2):'⏸ Paused');
-setText('port-per-min', heroSym+' '+Number(totalRate*60).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}));
-setText('port-per-hr',  heroSym+' '+Math.round(totalRate*3600).toLocaleString('en-US'));
-setText('port-per-day', heroSym+' '+Math.round(totalRate*86400).toLocaleString('en-US'));
+setText('port-hero-total', fmtAmt(c.earned));
+setText('port-per-sec', totalRate>0?'+'+fmtAmt(totalRate):'⏸ Paused');
+setText('port-per-min', fmtAmt(totalRate*60));
+setText('port-per-hr',  fmtAmt(totalRate*3600));
+setText('port-per-day', fmtAmt(totalRate*86400));
 } else {
-// Currencies differ OR portfolio currency differs — FX-convert to portfolioCur
+// Currencies differ OR portfolio currency differs — always FX-convert to portfolioCur
 if(hasRates) {
 calcAndSetFxHero(byCur, curKeys, portfolioCur, heroSym);
 } else {
-// FX rates not yet loaded — show source totals in their own currencies (never blank)
-const fallback = curKeys.map(c=>byCur[c].sym+' '+Number(byCur[c].earned).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})).join(' + ');
-setText('port-hero-total', fallback || '—');
-const firstSym = byCur[curKeys[0]]?.sym || heroSym;
-setText('port-per-sec', totalRate>0?'+'+firstSym+' '+totalRate.toFixed(2):'⏸ Paused');
-setText('port-per-min', firstSym+' '+Number(totalRate*60).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}));
-setText('port-per-hr',  firstSym+' '+Math.round(totalRate*3600).toLocaleString('en-US'));
-setText('port-per-day', firstSym+' '+Math.round(totalRate*86400).toLocaleString('en-US'));
+setText('port-hero-total', '…');
+setText('port-per-sec', '…');
+setText('port-per-min', '…');
+setText('port-per-hr',  '…');
+setText('port-per-day', '…');
 }
 }
-// Breakdown totals — show each source's own currency with proper symbol
-setText('port-bk-total', curKeys.map(c=>byCur[c].sym+' '+Number(byCur[c].earned).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})).join(' + '));
+setText('port-bk-total', curKeys.map(c=>`${fmtAmt(byCur[c].earned)}`).join(' + '));
 // Source cards — bar = progress toward expected amount for the period
 const list=document.getElementById('port-sources');
 if(!list) return;
@@ -5866,15 +5950,15 @@ return `<div class="port-src" onclick="switchBiz('${s.id}');${sw_}">
 </div>
 </div>
 <div style="text-align:right;flex-shrink:0">
-<div style="font-size:10px;color:var(--txt3);font-family:'DM Mono',monospace" id="psec-${s.id}">${active?'+'+srcSym+' '+s.ratePerSec.toFixed(2)+'/s':'⏸'}</div>
-<div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${s.color}" id="ptot-${s.id}">${srcSym} ${Number(s.earnedToNow).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+<div style="font-size:10px;color:var(--txt3);font-family:'DM Mono',monospace" id="psec-${s.id}">${active?'+'+fmtAmt(s.ratePerSec)+'/s':'⏸'}</div>
+<div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${s.color}" id="ptot-${s.id}">${fmtAmt(s.earnedToNow)}</div>
 </div>
 </div>
 <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
 <div class="port-src-bar" style="flex:1"><div class="port-src-bar-fill" id="pbar-${s.id}" style="width:${pct}%;background:${barColor}"></div></div>
 <span style="font-size:9px;font-family:'DM Mono',monospace;color:${pct>=95?'var(--green-txt)':pct>=60?'var(--amber-txt)':'var(--txt3)'};width:26px;text-align:right;flex-shrink:0">${pctLabel}</span>
 </div>
-${expected>0?`<div style="font-size:9px;color:var(--txt3);margin-top:2px">of ${srcSym} ${Math.round(expected).toLocaleString('en-US')} ${periodLabel}</div>`:''}
+${expected>0?`<div style="font-size:9px;color:var(--txt3);margin-top:2px">of ${srcSym}${expected.toFixed(0)} ${periodLabel}</div>`:''}
 </div>`;
 }).join('');
 // Breakdown — bar = progress toward expected
@@ -5889,7 +5973,7 @@ return `<div class="port-bk-row">
 <span style="font-size:11px;flex:1;color:var(--txt2)">${s.name}</span>
 <div class="port-bk-bar-wrap"><div class="port-bk-bar" id="pbkbar-${s.id}" style="width:${pct}%;background:${barColor}"></div></div>
 <span style="font-size:10px;font-family:'DM Mono',monospace;width:30px;text-align:right;color:var(--txt3)">${pct}%</span>
-<span style="font-size:11px;font-family:'DM Mono',monospace;width:90px;text-align:right;font-weight:500" id="pbkamt-${s.id}">${srcSym} ${Number(s.earnedToNow).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+<span style="font-size:11px;font-family:'DM Mono',monospace;width:90px;text-align:right;font-weight:500" id="pbkamt-${s.id}">${fmtAmt(s.earnedToNow)}</span>
 </div>`;
 }).join('')||`<div style="font-size:12px;color:var(--txt3);text-align:center;padding:10px 0">No data yet</div>`;
 startPortTicker(portSources);
@@ -5916,12 +6000,11 @@ portSources.forEach(s=>{
 const cur=getBizCur(s.id);
 const srcSym=SYMS[cur]||cur;
 if(s.ratePerSec>0) s.earnedToNow+=s.ratePerSec; // tick only active sources
-// Always use srcSym for per-source amounts — never use currentBizId's currency
-setText('ptot-'+s.id, srcSym+' '+Number(s.earnedToNow).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}));
+setText('ptot-'+s.id, fmtAmt(s.earnedToNow));
 if(!byCur2[cur]) byCur2[cur]={sym:srcSym,total:0,rate:0};
 byCur2[cur].total+=s.earnedToNow;
 byCur2[cur].rate +=s.ratePerSec;
-// Progress bar
+// Progress bar = earned / expected for period (not relative share)
 const expected = s.expectedForPeriod || 0;
 const pct = expected>0 ? Math.min(100,Math.round(s.earnedToNow/expected*100)) : 0;
 const barColor = expected===0 ? s.color : pct>=95?'var(--green)':pct>=60?'var(--amber)':'var(--red)';
@@ -5929,16 +6012,18 @@ const bar=document.getElementById('pbar-'+s.id);
 if(bar) { bar.style.width=pct+'%'; bar.style.background=barColor; }
 const bkbar=document.getElementById('pbkbar-'+s.id);
 if(bkbar) { bkbar.style.width=pct+'%'; bkbar.style.background=barColor; }
-setText('pbkamt-'+s.id, srcSym+' '+Number(s.earnedToNow).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}));
+setText('pbkamt-'+s.id, fmtAmt(s.earnedToNow));
 });
 const ck=Object.keys(byCur2);
 const heroBaseCur = _fxBaseCur || ck[0] || 'LKR';
 const heroBaseSym = SYMS[heroBaseCur] || heroBaseCur;
 if(ck.length===1 && ck[0]===heroBaseCur){
+// All sources share the same currency AND it matches the portfolio currency — no conversion needed
 const c=byCur2[ck[0]];
-setText('port-hero-total', heroBaseSym+' '+Number(c.total).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}));
-setText('port-sec-ticker', c.rate>0?'+'+heroBaseSym+' '+c.rate.toFixed(2):'⏸ All paused');
+setText('port-hero-total', fmtAmt(c.total));
+setText('port-sec-ticker', c.rate>0?'+'+fmtAmt(c.rate):'⏸ All paused');
 } else {
+// Multi-currency OR portfolio currency differs from source currency — always FX-convert hero total
 if(Object.keys(_fxRates).length > 0) {
 let fxTotal=0, fxRate=0;
 portSources.forEach(s => {
@@ -5948,11 +6033,11 @@ const f=(cur===heroBaseCur||!rate)?1:1/rate;
 fxTotal+=s.earnedToNow*f;
 fxRate +=s.ratePerSec *f;
 });
-setText('port-hero-total', heroBaseSym+' '+Number(fxTotal).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}));
-setText('port-sec-ticker', fxRate>0?'+'+heroBaseSym+' '+fxRate.toFixed(2):'⏸ All paused');
+setText('port-hero-total', fmtAmt(fxTotal));
+setText('port-sec-ticker', fxRate>0?'+'+fmtAmt(fxRate):'⏸ All paused');
 } else {
-// FX not loaded — show per-source totals in their own currencies
-setText('port-hero-total', ck.map(c=>byCur2[c].sym+' '+Number(byCur2[c].total).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})).join(' + '));
+// FX rates not loaded yet — show individual totals until fetch completes
+setText('port-hero-total', ck.map(c=>`${fmtAmt(byCur2[c].total)}`).join(' + '));
 }
 }
 },1000);
@@ -6408,6 +6493,11 @@ if(name==='job-charts') {
 // Load latest attendance then render all job charts
 loadAttFromSheet(currentBizId).then(()=>renderJobCharts()).catch(()=>renderJobCharts());
 }
+if(name==='rental-charts')  renderRentalCharts();
+if(name==='fd-charts')      renderFdCharts();
+if(name==='inv-charts')     renderInvCharts();
+if(name==='farming-charts') renderFarmingCharts();
+if(name==='other-trends')   renderOtherCharts();
 if(name==='farming-loans') { renderLoansInto('farming-loans-content'); }
 if(name==='fd-loans')      { renderLoansInto('fd-loans-content'); }
 if(name==='inv-loans')     { renderLoansInto('inv-loans-content'); }
@@ -6686,6 +6776,412 @@ function renderJobCharts() {
   setText('jc-stat-ontimedays', onTimeDays+' days');
   setText('jc-stat-attrate',   attRate+'%');
 }
+// ═══════════════════════════════════════════════════
+// RENTAL CHARTS
+// ═══════════════════════════════════════════════════
+let _rcInstances = {};
+function _destroyRc(id){ if(_rcInstances[id]){try{_rcInstances[id].destroy();}catch(e){} delete _rcInstances[id];} }
+
+function renderRentalCharts() {
+  const bizId = currentBizId;
+  const biz   = businesses.find(b=>b.id===bizId)||{};
+  const p     = JSON.parse(localStorage.getItem(lsKey(bizId,'portData'))||'null')||biz.portData||{};
+  const sym_  = SYMS[getBizCur(bizId)]||getBizCur(bizId);
+  const rent  = p.rent || 0;
+  const now   = new Date();
+  const gc = chartGridColor(), tc = chartTickColor();
+
+  // Stats
+  const annual = rent * 12;
+  const daily  = rent / 30.44;
+  setText('rc-stat-annual', sym_+' '+Math.round(annual).toLocaleString('en-US'));
+  setText('rc-stat-daily',  sym_+' '+daily.toFixed(2));
+  setText('rc-stat-yield',  rent > 0 ? (annual / (rent * 12) * 100).toFixed(1) + '%' : '—');
+
+  // Build 12 months of labels (rent is fixed, so project same amount each month)
+  const moLabels = [], moData = [], cumData = [];
+  let cum = 0;
+  for(let m = 11; m >= 0; m--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - m, 1);
+    moLabels.push(d.toLocaleDateString('en-GB',{month:'short',year:'2-digit'}));
+    // For past months: use full rent. For future months in the year: projected
+    const isPast = d <= now;
+    const val = isPast ? rent : 0;
+    moData.push(val);
+    cum += val;
+    cumData.push(+(cum).toFixed(2));
+  }
+
+  const baseOpts = { responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false}, tooltip:{backgroundColor:gc==='rgba(255,255,255,.06)'?'#2a2a2d':'#fff',
+      titleColor:document.body.classList.contains('dark')?'#f0ede6':'#1a1a18',
+      bodyColor:tc, borderColor:gc, borderWidth:1, padding:10, cornerRadius:6}},
+    scales:{ x:{grid:{color:gc},ticks:{color:tc,font:{size:10},maxRotation:45}},
+             y:{grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>sym_+' '+Math.round(v).toLocaleString('en-US')},beginAtZero:true}}};
+
+  // Chart 1: Monthly bar
+  _destroyRc('monthly');
+  const c1 = document.getElementById('rc-chart-monthly');
+  if(c1) _rcInstances.monthly = new Chart(c1,{type:'bar',
+    data:{labels:moLabels,datasets:[{label:'Rent',data:moData,
+      backgroundColor:'#1D9E7599',borderColor:'#1D9E75',borderWidth:1,borderRadius:3}]},
+    options:{...baseOpts,plugins:{...baseOpts.plugins,tooltip:{...baseOpts.plugins.tooltip,
+      callbacks:{label:ctx=>sym_+' '+Math.round(ctx.parsed.y).toLocaleString('en-US')}}}}});
+
+  // Chart 2: Cumulative line
+  _destroyRc('cumulative');
+  const c2 = document.getElementById('rc-chart-cumulative');
+  if(c2) _rcInstances.cumulative = new Chart(c2,{type:'line',
+    data:{labels:moLabels,datasets:[{label:'Cumulative',data:cumData,
+      borderColor:'#378ADD',backgroundColor:'#378ADD22',fill:true,tension:0.3,pointRadius:2,borderWidth:2}]},
+    options:{...baseOpts,plugins:{...baseOpts.plugins,tooltip:{...baseOpts.plugins.tooltip,
+      callbacks:{label:ctx=>sym_+' '+Math.round(ctx.parsed.y).toLocaleString('en-US')}}}}});
+
+  // Chart 3: Income vs cost doughnut
+  _destroyRc('breakdown');
+  const c3 = document.getElementById('rc-chart-breakdown');
+  const loans = JSON.parse(localStorage.getItem(lsKey(bizId,'loans'))||'[]');
+  const loanDaily = loans.filter(l=>!l.paidOff).reduce((a,l)=>a+(l.monthly||0)/30.44,0);
+  const netDaily  = Math.max(0, daily - loanDaily);
+  if(c3) _rcInstances.breakdown = new Chart(c3,{type:'bar',
+    data:{labels:['Daily'],datasets:[
+      {label:'Net income',data:[+netDaily.toFixed(2)],backgroundColor:'#1D9E7599',borderColor:'#1D9E75',borderWidth:1,borderRadius:3},
+      {label:'Loan costs',data:[+loanDaily.toFixed(2)],backgroundColor:'#D85A3099',borderColor:'#D85A30',borderWidth:1,borderRadius:3}
+    ]},
+    options:{...baseOpts,indexAxis:'y',plugins:{...baseOpts.plugins,legend:{display:true,position:'top',
+      labels:{color:tc,font:{size:10},boxWidth:10,padding:8}},
+      tooltip:{...baseOpts.plugins.tooltip,callbacks:{label:ctx=>ctx.dataset.label+': '+sym_+' '+ctx.parsed.x.toFixed(2)+'/day'}}},
+      scales:{x:{...baseOpts.scales.x,ticks:{...baseOpts.scales.x.ticks,callback:v=>sym_+' '+v.toFixed(2)}},
+              y:{...baseOpts.scales.y,ticks:{color:tc,font:{size:10}}}}}});
+}
+
+// ═══════════════════════════════════════════════════
+// FD CHARTS
+// ═══════════════════════════════════════════════════
+let _fdcInstances = {};
+function _destroyFdc(id){ if(_fdcInstances[id]){try{_fdcInstances[id].destroy();}catch(e){} delete _fdcInstances[id];} }
+
+function renderFdCharts() {
+  const bizId = currentBizId;
+  const biz   = businesses.find(b=>b.id===bizId)||{};
+  const p     = JSON.parse(localStorage.getItem(lsKey(bizId,'portData'))||'null')||biz.portData||{};
+  const sym_  = SYMS[getBizCur(bizId)]||getBizCur(bizId);
+  const principal = p.principal || 0;
+  const rate      = p.rate || 0;
+  const annualInt = principal * (rate / 100);
+  const monthlyInt= annualInt / 12;
+  const dailyInt  = annualInt / 365;
+  const now       = new Date();
+  const startDate = p.startDate ? new Date(p.startDate) : null;
+  const endDate   = p.endDate   ? new Date(p.endDate)   : null;
+  const daysLeft  = endDate ? Math.max(0, Math.ceil((endDate - now) / 86400000)) : null;
+  const gc = chartGridColor(), tc = chartTickColor();
+
+  setText('fdc-stat-annual', sym_+' '+Math.round(annualInt).toLocaleString('en-US'));
+  setText('fdc-stat-daily',  sym_+' '+dailyInt.toFixed(2));
+  setText('fdc-stat-days',   daysLeft !== null ? daysLeft+' days' : '—');
+
+  const baseOpts = { responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false}, tooltip:{backgroundColor:gc==='rgba(255,255,255,.06)'?'#2a2a2d':'#fff',
+      titleColor:document.body.classList.contains('dark')?'#f0ede6':'#1a1a18',
+      bodyColor:tc, borderColor:gc, borderWidth:1, padding:10, cornerRadius:6}},
+    scales:{ x:{grid:{color:gc},ticks:{color:tc,font:{size:10},maxRotation:45}},
+             y:{grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>sym_+' '+Math.round(v).toLocaleString('en-US')},beginAtZero:true}}};
+
+  // Chart 1: Monthly accrual projection (12 months from start or now)
+  _destroyFdc('accrual');
+  const c1 = document.getElementById('fdc-chart-accrual');
+  if(c1) {
+    const labels=[], data=[];
+    const base = startDate || new Date(now.getFullYear(), now.getMonth() - 11, 1);
+    for(let m=0;m<12;m++) {
+      const d = new Date(base.getFullYear(), base.getMonth()+m, 1);
+      labels.push(d.toLocaleDateString('en-GB',{month:'short',year:'2-digit'}));
+      data.push(+monthlyInt.toFixed(2));
+    }
+    _fdcInstances.accrual = new Chart(c1,{type:'bar',
+      data:{labels,datasets:[{label:'Interest',data,backgroundColor:'#BA751799',borderColor:'#BA7517',borderWidth:1,borderRadius:3}]},
+      options:{...baseOpts,plugins:{...baseOpts.plugins,tooltip:{...baseOpts.plugins.tooltip,
+        callbacks:{label:ctx=>sym_+' '+ctx.parsed.y.toFixed(2)}}}}});
+  }
+
+  // Chart 2: Principal → maturity value bar
+  _destroyFdc('growth');
+  const c2 = document.getElementById('fdc-chart-growth');
+  if(c2) {
+    const termMonths = startDate && endDate ? Math.round((endDate-startDate)/86400000/30.44) : 12;
+    const maturityVal = principal + (annualInt / 12 * termMonths);
+    _fdcInstances.growth = new Chart(c2,{type:'bar',
+      data:{labels:['Principal','Total interest','Maturity value'],
+        datasets:[{data:[principal, annualInt/12*termMonths, maturityVal],
+          backgroundColor:['#378ADD99','#1D9E7599','#BA751799'],
+          borderColor:['#378ADD','#1D9E75','#BA7517'],borderWidth:1,borderRadius:4}]},
+      options:{...baseOpts,plugins:{...baseOpts.plugins,tooltip:{...baseOpts.plugins.tooltip,
+        callbacks:{label:ctx=>sym_+' '+Math.round(ctx.parsed.y).toLocaleString('en-US')}}}}});
+  }
+
+  // Chart 3: Monthly interest last 12 months (accruing from start date)
+  _destroyFdc('monthly');
+  const c3 = document.getElementById('fdc-chart-monthly');
+  if(c3) {
+    const labels=[], data=[];
+    for(let m=11;m>=0;m--) {
+      const d = new Date(now.getFullYear(), now.getMonth()-m, 1);
+      labels.push(d.toLocaleDateString('en-GB',{month:'short',year:'2-digit'}));
+      // Only accrue if within FD term
+      const inTerm = (!startDate || d >= startDate) && (!endDate || d <= endDate);
+      data.push(inTerm ? +monthlyInt.toFixed(2) : 0);
+    }
+    _fdcInstances.monthly = new Chart(c3,{type:'line',
+      data:{labels,datasets:[{label:'Interest',data,borderColor:'#BA7517',backgroundColor:'#BA751722',
+        fill:true,tension:0.3,pointRadius:3,borderWidth:2}]},
+      options:{...baseOpts,plugins:{...baseOpts.plugins,tooltip:{...baseOpts.plugins.tooltip,
+        callbacks:{label:ctx=>sym_+' '+ctx.parsed.y.toFixed(2)}}}}});
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// INVESTMENT CHARTS
+// ═══════════════════════════════════════════════════
+let _icInstances = {};
+function _destroyIc(id){ if(_icInstances[id]){try{_icInstances[id].destroy();}catch(e){} delete _icInstances[id];} }
+
+function renderInvCharts() {
+  const bizId = currentBizId;
+  const biz   = businesses.find(b=>b.id===bizId)||{};
+  const p     = JSON.parse(localStorage.getItem(lsKey(bizId,'portData'))||'null')||biz.portData||{};
+  const sym_  = SYMS[getBizCur(bizId)]||getBizCur(bizId);
+  const invested = p.invested || 0;
+  const current  = p.currentValue || 0;
+  const gain     = current - invested;
+  const returnPct= invested > 0 ? (gain/invested*100) : 0;
+  const gc = chartGridColor(), tc = chartTickColor();
+  const isDark = document.body.classList.contains('dark');
+
+  setText('ic-stat-return', (gain>=0?'+':'')+sym_+' '+Math.abs(Math.round(gain)).toLocaleString('en-US'));
+  setText('ic-stat-pct',   (returnPct>=0?'+':'')+returnPct.toFixed(2)+'%');
+  // Annualised — show simple annual rate if we had the investment for 1 year
+  setText('ic-stat-ann',   invested>0 ? (returnPct>=0?'+':'')+returnPct.toFixed(2)+'% p.a.' : '—');
+
+  const baseOpts = { responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false}, tooltip:{backgroundColor:isDark?'#2a2a2d':'#fff',
+      titleColor:isDark?'#f0ede6':'#1a1a18',bodyColor:tc,borderColor:gc,borderWidth:1,padding:10,cornerRadius:6}},
+    scales:{ x:{grid:{color:gc},ticks:{color:tc,font:{size:10}}},
+             y:{grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>sym_+' '+Math.round(v).toLocaleString('en-US')},beginAtZero:true}}};
+
+  // Chart 1: Donut — invested vs gain
+  _destroyIc('donut');
+  const c1 = document.getElementById('ic-chart-donut');
+  if(c1 && invested > 0) {
+    const gainColor = gain >= 0 ? '#1D9E75' : '#D85A30';
+    _icInstances.donut = new Chart(c1,{type:'doughnut',
+      data:{labels:['Invested','Gain/Loss'],
+        datasets:[{data:[invested, Math.abs(gain)],
+          backgroundColor:[isDark?'#378ADD55':'#378ADD99', gain>=0?'#1D9E7599':'#D85A3099'],
+          borderColor:['#378ADD', gainColor], borderWidth:2}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:true,position:'bottom',labels:{color:tc,font:{size:10},boxWidth:10,padding:8}},
+          tooltip:{backgroundColor:isDark?'#2a2a2d':'#fff',bodyColor:tc,borderColor:gc,borderWidth:1,padding:10,
+            callbacks:{label:ctx=>ctx.label+': '+sym_+' '+Math.round(ctx.parsed).toLocaleString('en-US')}}}}});
+  }
+
+  // Chart 2: Bar compare — invested vs current
+  _destroyIc('compare');
+  const c2 = document.getElementById('ic-chart-compare');
+  if(c2) {
+    _icInstances.compare = new Chart(c2,{type:'bar',
+      data:{labels:['Invested','Current value'],
+        datasets:[{data:[invested, current],
+          backgroundColor:['#378ADD99', current>=invested?'#1D9E7599':'#D85A3099'],
+          borderColor:['#378ADD', current>=invested?'#1D9E75':'#D85A30'],
+          borderWidth:1, borderRadius:4}]},
+      options:{...baseOpts,plugins:{...baseOpts.plugins,tooltip:{...baseOpts.plugins.tooltip,
+        callbacks:{label:ctx=>sym_+' '+Math.round(ctx.parsed.y).toLocaleString('en-US')}}}}});
+  }
+
+  // Chart 3: Horizontal gain bar with breakeven line
+  _destroyIc('gain');
+  const c3 = document.getElementById('ic-chart-gain');
+  if(c3) {
+    const gainColor = gain >= 0 ? '#1D9E75' : '#D85A30';
+    _icInstances.gain = new Chart(c3,{type:'bar',
+      data:{labels:['Net gain/loss'],
+        datasets:[{data:[gain],backgroundColor:gainColor+'99',borderColor:gainColor,borderWidth:1,borderRadius:4},
+          {type:'line',data:[0],borderColor:tc,borderWidth:1,pointRadius:0,borderDash:[4,4],fill:false,label:'Breakeven'}]},
+      options:{...baseOpts,indexAxis:'y',
+        plugins:{...baseOpts.plugins,legend:{display:false},
+          tooltip:{...baseOpts.plugins.tooltip,callbacks:{label:ctx=>(ctx.parsed.x>=0?'+':'')+sym_+' '+Math.round(ctx.parsed.x).toLocaleString('en-US')}}},
+        scales:{x:{...baseOpts.scales.x,ticks:{...baseOpts.scales.x.ticks,callback:v=>(v>=0?'+':'')+sym_+' '+Math.round(v).toLocaleString('en-US')}},
+                y:{grid:{color:gc},ticks:{color:tc,font:{size:10}}}}}});
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// FARMING CHARTS
+// ═══════════════════════════════════════════════════
+let _fcInstances = {};
+function _destroyFc(id){ if(_fcInstances[id]){try{_fcInstances[id].destroy();}catch(e){} delete _fcInstances[id];} }
+
+function renderFarmingCharts() {
+  const bizId = currentBizId;
+  const biz   = businesses.find(b=>b.id===bizId)||{};
+  const p     = JSON.parse(localStorage.getItem(lsKey(bizId,'portData'))||'null')||biz.portData||{};
+  const sym_  = SYMS[getBizCur(bizId)]||getBizCur(bizId);
+  const harvestValue = p.harvestValue || 0;
+  const seasonDays   = p.seasonDays   || 120;
+  const seasonStart  = p.seasonStart  ? new Date(p.seasonStart) : null;
+  const dailyRate    = seasonDays > 0 ? harvestValue / seasonDays : 0;
+  const now          = new Date();
+  const gc = chartGridColor(), tc = chartTickColor();
+
+  setText('fc-stat-harvest', sym_+' '+Math.round(harvestValue).toLocaleString('en-US'));
+  setText('fc-stat-daily',   sym_+' '+dailyRate.toFixed(2));
+  setText('fc-stat-days',    seasonDays+' days');
+
+  const baseOpts = { responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false}, tooltip:{backgroundColor:document.body.classList.contains('dark')?'#2a2a2d':'#fff',
+      bodyColor:tc,borderColor:gc,borderWidth:1,padding:10,cornerRadius:6}},
+    scales:{ x:{grid:{color:gc},ticks:{color:tc,font:{size:10},maxRotation:45}},
+             y:{grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>sym_+' '+Math.round(v).toLocaleString('en-US')},beginAtZero:true}}};
+
+  // Chart 1: Season progress line (accrual curve)
+  _destroyFc('progress');
+  const c1 = document.getElementById('fc-chart-progress');
+  if(c1) {
+    const labels=[], accrued=[], projected=[];
+    const elapsed = seasonStart ? Math.max(0,Math.ceil((now-seasonStart)/86400000)) : 0;
+    for(let d=0;d<=seasonDays;d+=Math.max(1,Math.floor(seasonDays/20))) {
+      labels.push('Day '+d);
+      const v = dailyRate * d;
+      if(d <= elapsed) { accrued.push(+v.toFixed(2)); projected.push(null); }
+      else             { accrued.push(null); projected.push(+v.toFixed(2)); }
+    }
+    _fcInstances.progress = new Chart(c1,{type:'line',
+      data:{labels,datasets:[
+        {label:'Accrued',data:accrued,borderColor:'#639922',backgroundColor:'#63992222',fill:true,tension:0.3,pointRadius:1,borderWidth:2},
+        {label:'Projected',data:projected,borderColor:'#63992266',backgroundColor:'transparent',fill:false,tension:0.3,pointRadius:1,borderWidth:2,borderDash:[4,4]}
+      ]},
+      options:{...baseOpts,plugins:{...baseOpts.plugins,legend:{display:true,position:'top',
+        labels:{color:tc,font:{size:10},boxWidth:10,padding:8}},
+        tooltip:{...baseOpts.plugins.tooltip,callbacks:{label:ctx=>ctx.dataset.label+': '+sym_+' '+Math.round(ctx.parsed.y).toLocaleString('en-US')}}}}});
+  }
+
+  // Chart 2: Daily accrual bar for current season
+  _destroyFc('daily');
+  const c2 = document.getElementById('fc-chart-daily');
+  if(c2) {
+    const labels=[], data=[];
+    const start = seasonStart || new Date(now.getFullYear(), now.getMonth(), 1);
+    const elapsed = Math.min(seasonDays, Math.max(0, Math.ceil((now-start)/86400000)));
+    const step = Math.max(1, Math.floor(elapsed/15));
+    for(let d=0;d<elapsed;d+=step) {
+      labels.push('Day '+(d+1));
+      data.push(+dailyRate.toFixed(2));
+    }
+    _fcInstances.daily = new Chart(c2,{type:'bar',
+      data:{labels,datasets:[{label:'Daily accrual',data,backgroundColor:'#63992299',borderColor:'#639922',borderWidth:1,borderRadius:2}]},
+      options:{...baseOpts,plugins:{...baseOpts.plugins,tooltip:{...baseOpts.plugins.tooltip,
+        callbacks:{label:ctx=>sym_+' '+ctx.parsed.y.toFixed(2)+'/day'}}}}});
+  }
+
+  // Timeline text card
+  const tlEl = document.getElementById('fc-timeline');
+  if(tlEl) {
+    const start = seasonStart ? seasonStart.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : 'Not set';
+    const end   = seasonStart ? new Date(new Date(seasonStart).setDate(new Date(seasonStart).getDate()+seasonDays)).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
+    const elapsed2 = seasonStart ? Math.min(seasonDays, Math.max(0, Math.ceil((now-seasonStart)/86400000))) : 0;
+    const pct = seasonDays > 0 ? Math.round(elapsed2/seasonDays*100) : 0;
+    tlEl.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><div style="font-size:10px;color:var(--txt3)">Season start</div><div style="font-weight:500">${start}</div></div>
+        <div><div style="font-size:10px;color:var(--txt3)">Harvest date</div><div style="font-weight:500">${end}</div></div>
+        <div><div style="font-size:10px;color:var(--txt3)">Days elapsed</div><div style="font-weight:500">${elapsed2} / ${seasonDays}</div></div>
+        <div><div style="font-size:10px;color:var(--txt3)">Progress</div><div style="font-weight:500;color:var(--green)">${pct}%</div></div>
+      </div>
+      <div style="height:6px;background:var(--bg3);border-radius:3px;margin-top:10px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:var(--green);border-radius:3px;transition:width .6s"></div>
+      </div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// OTHER INCOME CHARTS
+// ═══════════════════════════════════════════════════
+let _ocInstances = {};
+function _destroyOc(id){ if(_ocInstances[id]){try{_ocInstances[id].destroy();}catch(e){} delete _ocInstances[id];} }
+
+function renderOtherCharts() {
+  const bizId = currentBizId;
+  const biz   = businesses.find(b=>b.id===bizId)||{};
+  const p     = JSON.parse(localStorage.getItem(lsKey(bizId,'portData'))||'null')||biz.portData||{};
+  const sym_  = SYMS[getBizCur(bizId)]||getBizCur(bizId);
+  const income = p.income || 0;
+  const daily  = income / 30.44;
+  const now    = new Date();
+  const gc = chartGridColor(), tc = chartTickColor();
+
+  setText('oc-stat-monthly', sym_+' '+Math.round(income).toLocaleString('en-US'));
+  setText('oc-stat-annual',  sym_+' '+Math.round(income*12).toLocaleString('en-US'));
+  setText('oc-stat-daily',   sym_+' '+daily.toFixed(2));
+
+  const baseOpts = { responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false}, tooltip:{backgroundColor:document.body.classList.contains('dark')?'#2a2a2d':'#fff',
+      bodyColor:tc,borderColor:gc,borderWidth:1,padding:10,cornerRadius:6}},
+    scales:{ x:{grid:{color:gc},ticks:{color:tc,font:{size:10},maxRotation:45}},
+             y:{grid:{color:gc},ticks:{color:tc,font:{size:10},callback:v=>sym_+' '+Math.round(v).toLocaleString('en-US')},beginAtZero:true}}};
+
+  // Chart 1: Monthly trend — 12 months (fixed income = same each month)
+  _destroyOc('monthly');
+  const c1 = document.getElementById('oc-chart-monthly');
+  if(c1) {
+    const labels=[], data=[];
+    for(let m=11;m>=0;m--) {
+      const d = new Date(now.getFullYear(), now.getMonth()-m, 1);
+      labels.push(d.toLocaleDateString('en-GB',{month:'short',year:'2-digit'}));
+      data.push(d <= now ? income : 0);
+    }
+    _ocInstances.monthly = new Chart(c1,{type:'bar',
+      data:{labels,datasets:[{label:'Income',data,backgroundColor:'#D85A3099',borderColor:'#D85A30',borderWidth:1,borderRadius:3}]},
+      options:{...baseOpts,plugins:{...baseOpts.plugins,tooltip:{...baseOpts.plugins.tooltip,
+        callbacks:{label:ctx=>sym_+' '+Math.round(ctx.parsed.y).toLocaleString('en-US')}}}}});
+  }
+
+  // Chart 2: Cumulative this year
+  _destroyOc('cumulative');
+  const c2 = document.getElementById('oc-chart-cumulative');
+  if(c2) {
+    const labels=[], data=[];
+    let cum = 0;
+    for(let m=0;m<12;m++) {
+      const d = new Date(now.getFullYear(), m, 1);
+      labels.push(d.toLocaleDateString('en-GB',{month:'short'}));
+      if(d <= now) cum += income;
+      data.push(+cum.toFixed(2));
+    }
+    _ocInstances.cumulative = new Chart(c2,{type:'line',
+      data:{labels,datasets:[{label:'Cumulative',data,borderColor:'#D85A30',backgroundColor:'#D85A3022',
+        fill:true,tension:0.3,pointRadius:2,borderWidth:2}]},
+      options:{...baseOpts,plugins:{...baseOpts.plugins,tooltip:{...baseOpts.plugins.tooltip,
+        callbacks:{label:ctx=>sym_+' '+Math.round(ctx.parsed.y).toLocaleString('en-US')}}}}});
+  }
+
+  // Chart 3: Daily — last 30 days (constant passive income)
+  _destroyOc('daily');
+  const c3 = document.getElementById('oc-chart-daily');
+  if(c3) {
+    const labels=[], data=[];
+    for(let i=29;i>=0;i--) {
+      const d = new Date(now); d.setDate(d.getDate()-i);
+      labels.push(d.toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
+      data.push(+daily.toFixed(2));
+    }
+    _ocInstances.daily = new Chart(c3,{type:'bar',
+      data:{labels,datasets:[{label:'Daily',data,backgroundColor:'#D85A3066',borderColor:'#D85A30',borderWidth:1,borderRadius:2}]},
+      options:{...baseOpts,plugins:{...baseOpts.plugins,tooltip:{...baseOpts.plugins.tooltip,
+        callbacks:{label:ctx=>sym_+' '+ctx.parsed.y.toFixed(2)+'/day'}}}}});
+  }
+}
+
 // ═══════════════════════════════
 // INIT
 // ═══════════════════════════════
@@ -6714,18 +7210,6 @@ applyStaticTranslations();
 const savedBiz=localStorage.getItem('smt_businesses');
 if(savedBiz) businesses=JSON.parse(savedBiz);
 if(businesses.length===0) businesses=[{id:'biz1',name:'My Shop',icon:'🏪',color:'#E6F1FB'}];
-// ── Seed lsKey(id,'cur') for every source so getBizCur always finds it immediately ──
-// This ensures source cards on the home screen show the right currency symbol
-// even before any sync runs. getBizCur() resolves from portData/businesses as fallback.
-businesses.forEach(b => {
-  if(!localStorage.getItem(lsKey(b.id,'cur'))) {
-    const cur = (()=>{
-      try { const pd=JSON.parse(localStorage.getItem(lsKey(b.id,'portData'))||'null'); if(pd?.currency) return pd.currency; } catch(e){}
-      return b?.portData?.currency || b?.currency || 'LKR';
-    })();
-    localStorage.setItem(lsKey(b.id,'cur'), cur);
-  }
-});
 // Load sheet URL
 const savedUrl=localStorage.getItem('smt_sheetUrl')||'';
 if(savedUrl){ sheetUrl=savedUrl; document.getElementById('sheet-url').value=savedUrl; if(document.getElementById('sheet-url-manage'))document.getElementById('sheet-url-manage').value=savedUrl; setSyncStatus('ok','Connected'); }
