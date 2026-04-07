@@ -51,7 +51,17 @@ body.si .mono{font-family:'DM Mono',monospace}
 .drive-blocking-step{font-size:11px;color:var(--txt3);min-height:16px}
 
 
-.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px}
+.top-left{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--txt)}
+.top-right{display:flex;align-items:center;gap:6px;flex-wrap:nowrap}
+.sync-info{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--txt3);white-space:nowrap}
+.cur-sel{height:26px;padding:0 4px;font-size:10px;font-family:inherit;background:var(--bg2);border:1px solid var(--brd);border-radius:var(--r6);color:var(--txt);max-width:58px}
+.home-nav{display:flex;align-items:center;background:var(--bg2);padding:3px;border-top:1px solid var(--brd);border-bottom:1px solid var(--brd);margin-bottom:8px;gap:3px}
+.home-nav-center{flex:1;text-align:center;padding:3px 6px;pointer-events:none}
+.home-greeting{font-size:10px;color:var(--txt3);line-height:1.2}
+.home-clock{font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--txt)}
+.src-mini-bar{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-top:3px}
+.src-mini-bar-fill{height:100%;border-radius:2px;transition:width .6s}
 .top-left{display:flex;align-items:center;gap:10px}
 .app-logo{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
 .app-title-txt{font-size:15px;font-weight:600;color:var(--txt)}
@@ -889,55 +899,44 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
 
 <div class="app" id="main-app" style="display:none">
 
+  <!-- TOP BAR: app name | sync info + button | currency | language | theme | account -->
   <div class="topbar">
     <div class="top-left">
-      <div class="app-logo" id="app-logo" style="background:#E6F1FB">🏪</div>
-      <div>
-        <div class="app-title-txt" id="app-title-txt">Wealth Tracker</div>
-        <div class="app-sub-txt" id="app-sub-txt">All income sources · Google Sheets sync</div>
-      </div>
+      <span style="font-size:16px;font-weight:700;letter-spacing:-.3px">Wealth Tracker</span>
     </div>
     <div class="top-right">
-      <div class="lang-toggle">
-        <button class="lang-btn active" id="btn-en" onclick="setLang('en')">English</button>
-        <button class="lang-btn" id="btn-si" onclick="setLang('si')">සිංහල</button>
+      <!-- Sync -->
+      <div class="sync-info">
+        <div class="sync-dot" id="sync-dot"></div>
+        <span id="sync-txt" style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>
       </div>
-
+      <button class="btn-xs" onclick="syncNow()" id="sync-btn" title="Sync now" style="height:24px;padding:0 6px">↻</button>
+      <!-- Currency (narrow — portfolio display only) -->
+      <select id="cur" class="cur-sel" onchange="onCurChange()" title="Portfolio display currency">
+        <option value="LKR">LKR</option><option value="USD">USD</option><option value="EUR">EUR</option>
+        <option value="GBP">GBP</option><option value="AUD">AUD</option><option value="CAD">CAD</option>
+        <option value="SGD">SGD</option><option value="JPY">JPY</option><option value="CNY">CNY</option>
+        <option value="INR">INR</option><option value="AED">AED</option><option value="SAR">SAR</option>
+        <option value="MYR">MYR</option><option value="THB">THB</option><option value="KRW">KRW</option>
+        <option value="QAR">QAR</option><option value="KWD">KWD</option>
+      </select>
+      <!-- Source currency badge (shown on source tabs instead of dropdown) -->
+      <div id="cur-badge" title="Source currency — edit in source details"
+        style="display:none;height:24px;padding:0 7px;font-size:10px;font-weight:600;
+               background:var(--bg2);border:1px solid var(--brd);border-radius:var(--r6);
+               color:var(--txt2);align-items:center;white-space:nowrap">
+        <span id="cur-badge-txt">LKR</span>
+      </div>
+      <!-- Language (compact) -->
+      <div class="lang-toggle">
+        <button class="lang-btn active" id="btn-en" onclick="setLang('en')">EN</button>
+        <button class="lang-btn" id="btn-si" onclick="setLang('si')">සි</button>
+      </div>
+      <!-- Theme -->
       <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle dark/light mode">
         <div class="theme-toggle-knob" id="theme-knob">☀️</div>
       </button>
-      <!-- Currency control:
-           • Portfolio/home tab  → editable dropdown (sets the base display currency for the combined view)
-           • Any income-source tab → read-only badge showing that source's own currency
-           Both are styled identically so the topbar doesn't jump. -->
-      <select id="cur" class="cur-sel" onchange="onCurChange()" title="Portfolio display currency">
-        <option value="LKR">LKR රු</option>
-        <option value="USD">USD $</option>
-        <option value="EUR">EUR €</option>
-        <option value="GBP">GBP £</option>
-        <option value="AUD">AUD A$</option>
-        <option value="CAD">CAD C$</option>
-        <option value="SGD">SGD S$</option>
-        <option value="JPY">JPY ¥</option>
-        <option value="CNY">CNY ¥</option>
-        <option value="INR">INR ₹</option>
-        <option value="AED">AED د.إ</option>
-        <option value="SAR">SAR ر.س</option>
-        <option value="MYR">MYR RM</option>
-        <option value="THB">THB ฿</option>
-        <option value="KRW">KRW ₩</option>
-        <option value="QAR">QAR ر.ق</option>
-        <option value="KWD">KWD د.ك</option>
-      </select>
-      <!-- Read-only badge shown instead of the dropdown when viewing an individual income source.
-           Clicking it opens that source's Edit modal so the user can change its currency there. -->
-      <div id="cur-badge" title="This source's currency — click Edit details to change it"
-        style="display:none;height:28px;padding:0 9px;font-size:11px;font-weight:500;
-               background:var(--bg2);border:1px solid var(--brd);border-radius:var(--r6);
-               color:var(--txt2);cursor:default;align-items:center;gap:4px;white-space:nowrap">
-        <span id="cur-badge-txt">LKR</span>
-      </div>
-
+      <!-- Account -->
       <div style="position:relative">
         <div class="acct-btn" id="acct-btn" onclick="toggleAcctMenu()" title="Account" style="display:none">
           <span id="acct-initials">?</span>
@@ -955,24 +954,14 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
     </div>
   </div>
 
-  <div class="biz-bar">
-    <div class="biz-current" onclick="toggleBizDrop()">
-      <div class="biz-icon" id="biz-icon-bar">🏪</div>
-      <div class="biz-info">
-        <div class="biz-name-txt" id="biz-name-bar">Loading...</div>
-        <div class="biz-meta" id="biz-meta-bar">—</div>
-      </div>
-      <div class="biz-chevron" id="biz-chev">▾</div>
-    </div>
-    <div class="biz-actions">
-      <div class="sync-status-mini">
-        <div class="sync-dot" id="sync-dot"></div>
-        <span id="sync-txt">—</span>
-      </div>
-      <button class="btn-xs" onclick="syncNow()" id="sync-btn">↻</button>
-    </div>
+  <!-- Hidden functional inputs -->
+  <div style="display:none">
+    <input type="text" id="sheet-url">
+    <input type="text" id="sheet-url-manage">
+    <span id="last-sync-lbl"></span>
   </div>
 
+  <!-- Biz dropdown (triggered from source tiles) -->
   <div class="biz-dropdown" id="biz-dropdown">
     <div id="biz-list-items"></div>
     <div class="biz-divider"></div>
@@ -981,32 +970,37 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
       <span id="add-biz-lbl">Add income source</span>
     </div>
     <div class="biz-edit-row" onclick="sw('manage',this);closeBizDrop()">
-      <span id="manage-biz-lbl">⚙ Manage businesses</span>
+      <span id="manage-biz-lbl">⚙ Manage sources</span>
     </div>
   </div>
 
-  <div style="display:none">
-    <input type="text" id="sheet-url">
-    <input type="text" id="sheet-url-manage">
-    <div id="sync-dot"></div>
-    <span id="sync-txt"></span>
-    <span id="last-sync-lbl"></span>
+  <!-- HOME NAV — visible only on portfolio tab; shows greeting + ticking clock -->
+  <div class="home-nav" id="home-nav">
+    <button class="ntab active" onclick="sw('portfolio',this)" id="nav-portfolio" title="Home" style="flex-shrink:0">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle"><path d="M8 1.5L1.5 7H3v6.5h4v-4h2v4h4V7h1.5L8 1.5z" fill="currentColor" opacity=".9"/></svg>
+    </button>
+    <div class="home-nav-center">
+      <div class="home-greeting" id="home-greeting">Good morning</div>
+      <div class="home-clock" id="home-clock-nav">00:00:00</div>
+    </div>
+    <button class="ntab" onclick="sw('manage',document.getElementById('nav-manage'))" id="nav-manage-home" title="Settings" style="flex-shrink:0">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle"><circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M2.93 2.93l1.06 1.06M12.01 12.01l1.06 1.06M2.93 13.07l1.06-1.06M12.01 3.99l1.06-1.06" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
   </div>
 
-  <div class="nav" id="main-nav">
-    <button class="ntab active" onclick="sw('portfolio',this)" id="nav-portfolio" title="Portfolio — Home"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle"><path d="M8 1.5L1.5 7H3v6.5h4v-4h2v4h4V7h1.5L8 1.5z" fill="currentColor" opacity=".9"/></svg></button>
-    <button class="ntab" onclick="sw('live',this)" id="nav-live">Live target</button>
-    <button class="ntab" onclick="sw('charts',this)" id="nav-charts">Charts</button>
-    <button class="ntab" onclick="sw('hours',this)" id="nav-hours">Hours</button>
-    <button class="ntab" onclick="sw('expenses',this)" id="nav-expenses">Expenses</button>
-    <button class="ntab" onclick="sw('income',this)" id="nav-income">Income</button>
-    <button class="ntab" onclick="sw('loans',this)" id="nav-loans">💳 Loans</button>
-    <button class="ntab" onclick="sw('ops',this)" id="nav-ops">Daily log</button>
-    <button class="ntab" onclick="sw('report',this)" id="nav-report">Report</button>
-    <button class="ntab" onclick="sw('manage',this)" style="margin-left:auto" id="nav-manage" title="Settings"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle"><circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M2.93 2.93l1.06 1.06M12.01 12.01l1.06 1.06M2.93 13.07l1.06-1.06M12.01 3.99l1.06-1.06" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+  <!-- SOURCE NAV — hidden on home; shown when inside a source (rebuilt by renderNavForType) -->
+  <div class="nav" id="main-nav" style="display:none">
+    <!-- populated dynamically -->
   </div>
 
   <div class="tc active" id="tab-portfolio">
+
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <button class="btn-sm port-view-btn" onclick="setPortView('today',this)" style="border-radius:20px;flex:1">Today</button>
+      <button class="btn-sm port-view-btn active-view" onclick="setPortView('month',this)" style="border-radius:20px;flex:1">This month</button>
+      <button class="btn-sm port-view-btn" onclick="setPortView('year',this)" style="border-radius:20px;flex:1">This year</button>
+    </div>
+
 
     <div style="display:flex;gap:6px;margin-bottom:10px">
       <button class="btn-sm port-view-btn" onclick="setPortView('today',this)" style="border-radius:20px;flex:1">Today</button>
@@ -1054,12 +1048,13 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
     <div style="font-size:10px;font-weight:500;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Income sources</div>
     <div id="port-sources" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
 
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:12px;font-weight:500">Breakdown</span>
-        <span style="font-size:11px;color:var(--txt3)" id="port-bk-total">—</span>
+    <!-- 12-month income vs expenses vs profit chart -->
+    <div class="card" style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:12px;font-weight:500">Income · Expenses · Profit — last 12 months</span>
+        <span id="port-trend-status" style="font-size:10px;color:var(--txt3)"></span>
       </div>
-      <div id="port-breakdown"></div>
+      <canvas id="port-trend-chart" style="height:200px;max-height:200px"></canvas>
     </div>
 
     <div style="background:var(--bg2);border:1px dashed var(--brd);border-radius:12px;padding:14px;text-align:center;margin-bottom:10px">
@@ -2392,13 +2387,13 @@ if(aT === 'portfolio') renderPortfolio();
 function toggleBizDrop(){
 bizDropOpen = !bizDropOpen;
 document.getElementById('biz-dropdown').classList.toggle('open', bizDropOpen);
-setText('biz-chev', bizDropOpen?'▴':'▾');
+// biz-chev removed
 if(bizDropOpen) renderBizDropdown();
 }
 function closeBizDrop(){
 bizDropOpen=false;
 document.getElementById('biz-dropdown').classList.remove('open');
-setText('biz-chev', '▾');
+// biz-chev removed
 }
 function renderBizDropdown(){
 document.getElementById('biz-list-items').innerHTML = businesses.map(b=>`
@@ -2432,10 +2427,10 @@ localStorage.setItem('smt_currentBiz', bizId);
 // Update UI bar
 const biz = businesses.find(b=>b.id===bizId) || {};
 setText('biz-icon-bar', biz.icon||'🏪');
-document.getElementById('biz-icon-bar').style.background = biz.color||'#E6F1FB';
+// biz-icon-bar removed
 setText('biz-name-bar', biz.name||bizId);
 setText('app-logo', biz.icon||'🏪');
-document.getElementById('app-logo').style.background = biz.color||'#E6F1FB';
+// app-logo removed
 const type = biz.type || 'business';
 // Update meta bar based on source type
 const cur_ = getBizCur(bizId);
@@ -2770,10 +2765,10 @@ if(portData) localStorage.setItem(lsKey(editingBizId,'portData'), JSON.stringify
 // Update UI bar if editing current source
 if(editingBizId === currentBizId) {
 setText('biz-icon-bar', icon);
-document.getElementById('biz-icon-bar').style.background = biz.color;
+// biz-icon-bar removed
 setText('biz-name-bar', name);
 setText('app-logo', icon);
-document.getElementById('app-logo').style.background = biz.color;
+// app-logo removed
 // Restart live ticker with updated data
 if(type !== 'business') startTypeLiveTicker(type, portData);
 }
@@ -5268,13 +5263,17 @@ function renderNavForType(type) {
 const tabs   = TYPE_TABS[type] || TYPE_TABS.business;
 const nav    = document.getElementById('main-nav');
 const meta   = PORT_TYPE_META[type] || PORT_TYPE_META.business;
-// Rebuild nav — keep portfolio tab + manage tab, replace middle tabs
+// Build source nav — back-to-home button + source tabs + settings button
 nav.innerHTML = `
-<button class="ntab" onclick="sw('portfolio',this)" id="nav-portfolio" title="Portfolio — Home"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle"><path d="M8 1.5L1.5 7H3v6.5h4v-4h2v4h4V7h1.5L8 1.5z" fill="currentColor" opacity=".9"/></svg></button>
+<button class="ntab" onclick="sw('portfolio',this)" id="nav-portfolio-src" title="Home" style="flex-shrink:0"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle"><path d="M8 1.5L1.5 7H3v6.5h4v-4h2v4h4V7h1.5L8 1.5z" fill="currentColor" opacity=".9"/></svg></button>
 ${tabs.map(t=>`<button class="ntab" onclick="sw('${t.id}',this)" id="nav-${t.id}">${t.label}</button>`).join('')}
 <button class="ntab" onclick="sw('manage',this)" style="margin-left:auto" id="nav-manage" title="Settings"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle"><circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M2.93 2.93l1.06 1.06M12.01 12.01l1.06 1.06M2.93 13.07l1.06-1.06M12.01 3.99l1.06-1.06" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
 `;
-// Update nav translation map
+// Show main-nav, hide home-nav (sw() will handle this but set here too for direct calls)
+const homeNav = document.getElementById('home-nav');
+const srcNav  = document.getElementById('main-nav');
+if(homeNav) homeNav.style.display = 'none';
+if(srcNav)  srcNav.style.display  = '';
 updateNavTranslations();
 }
 function updateNavTranslations() {
@@ -5939,6 +5938,23 @@ const pctLabel = expected>0 ? `${pct}%` : '—';
 const periodLabel = s.type==='job'
   ? (portView==='today' ? 'day salary' : portView==='year' ? 'annual salary' : 'month salary')
   : 'expected';
+// Expenses for this source (business type only — others show passive income)
+let expAmt = 0, profitAmt = 0, expPct = 0, profitPct = 0;
+if(s.type === 'business') {
+  const srcExp = JSON.parse(localStorage.getItem(lsKey(s.id,'expenses'))||'null')||{};
+  let dailyExp = 0;
+  Object.values(srcExp).forEach(cat=>(cat||[]).forEach(r=>{ dailyExp += toDailyAmt(r.amt||0, r.freq||'monthly'); }));
+  const secs = portView==='today' ? Math.floor((now-new Date(now.getFullYear(),now.getMonth(),now.getDate()))/1000)
+             : portView==='year'  ? Math.floor((now-new Date(now.getFullYear(),0,1))/1000)
+             : Math.floor((now-new Date(now.getFullYear(),now.getMonth(),1))/1000);
+  const secsTarget2 = portView==='today' ? 86400 : portView==='year' ? 365*86400 : 30.44*86400;
+  expAmt = dailyExp * (secs/86400);
+  const expTarget = dailyExp * (secsTarget2/86400);
+  expPct = expTarget>0 ? Math.min(100, Math.round(expAmt/expTarget*100)) : 0;
+  profitAmt = s.earnedToNow - expAmt;
+  profitPct = expected>0 ? Math.min(100, Math.max(0, Math.round(profitAmt/expected*100))) : 0;
+}
+const showExpBars = s.type==='business' && expAmt > 0;
 return `<div class="port-src" onclick="switchBiz('${s.id}');${sw_}">
 <div style="display:flex;align-items:center;gap:8px">
 <span style="font-size:20px">${s.icon}</span>
@@ -5958,7 +5974,18 @@ return `<div class="port-src" onclick="switchBiz('${s.id}');${sw_}">
 <div class="port-src-bar" style="flex:1"><div class="port-src-bar-fill" id="pbar-${s.id}" style="width:${pct}%;background:${barColor}"></div></div>
 <span style="font-size:9px;font-family:'DM Mono',monospace;color:${pct>=95?'var(--green-txt)':pct>=60?'var(--amber-txt)':'var(--txt3)'};width:26px;text-align:right;flex-shrink:0">${pctLabel}</span>
 </div>
-${expected>0?`<div style="font-size:9px;color:var(--txt3);margin-top:2px">of ${srcSym}${expected.toFixed(0)} ${periodLabel}</div>`:''}
+${expected>0?`<div style="font-size:9px;color:var(--txt3);margin-top:2px">of ${srcSym} ${Math.round(expected).toLocaleString('en-US')} ${periodLabel}</div>`:''}
+${showExpBars?`
+<div style="display:flex;align-items:center;gap:6px;margin-top:5px">
+  <span style="font-size:9px;color:var(--red-txt);width:54px;flex-shrink:0">Expenses</span>
+  <div class="port-src-bar" style="flex:1"><div class="port-src-bar-fill" style="width:${expPct}%;background:var(--red)"></div></div>
+  <span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--txt3);width:42px;text-align:right;flex-shrink:0">${srcSym} ${Math.round(expAmt).toLocaleString('en-US')}</span>
+</div>
+<div style="display:flex;align-items:center;gap:6px;margin-top:3px">
+  <span style="font-size:9px;color:${profitAmt>=0?'var(--green-txt)':'var(--red-txt)'};width:54px;flex-shrink:0">Profit</span>
+  <div class="port-src-bar" style="flex:1"><div class="port-src-bar-fill" style="width:${profitPct}%;background:${profitAmt>=0?'var(--green)':'var(--red)'}"></div></div>
+  <span style="font-size:9px;font-family:'DM Mono',monospace;color:${profitAmt>=0?'var(--green-txt)':'var(--red-txt)'};width:42px;text-align:right;flex-shrink:0">${(profitAmt>=0?'+':'')+srcSym} ${Math.abs(Math.round(profitAmt)).toLocaleString('en-US')}</span>
+</div>`:''}
 </div>`;
 }).join('');
 // Breakdown — bar = progress toward expected
@@ -5977,6 +6004,7 @@ return `<div class="port-bk-row">
 </div>`;
 }).join('')||`<div style="font-size:12px;color:var(--txt3);text-align:center;padding:10px 0">No data yet</div>`;
 startPortTicker(portSources);
+renderPortfolioTrendChart();
 // Show cached rates immediately, then fetch fresh in background
 updateFxBar(portSources, _fxRates);
 updateFxAgeLabel();
@@ -6173,7 +6201,14 @@ document.getElementById('summary').innerHTML=cards.map(c=>`<div class="sc" style
 function startClock(){ if(clockTimer)clearInterval(clockTimer); tick(); clockTimer=setInterval(tick,1000); }
 function tick(){
 const now=new Date();
-setText('hero-clock', String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0'));
+const timeStr = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+setText('hero-clock', timeStr);
+setText('home-clock-nav', timeStr);
+// Greeting with user first name
+const hr = now.getHours();
+const greetWord = hr<12 ? 'Good morning' : hr<17 ? 'Good afternoon' : 'Good evening';
+const firstName = (googleUser?.name||'').split(' ')[0] || localStorage.getItem('smt_googleUser') && JSON.parse(localStorage.getItem('smt_googleUser')||'{}').name?.split(' ')[0] || '';
+setText('home-greeting', firstName ? greetWord+', '+firstName : greetWord);
 setText('hero-date', now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}));
 const h=tradingHours[dayIdx()],nowMins=now.getHours()*60+now.getMinutes()+now.getSeconds()/60;
 const fromMins=h.open?timeToMins(h.from):0,toMins=h.open?timeToMins(h.to):0;
@@ -6449,18 +6484,29 @@ function sw(name,el){
 aT=name;
 document.querySelectorAll('.tc').forEach(t=>t.classList.remove('active'));
 document.querySelectorAll('.ntab').forEach(t=>t.classList.remove('active'));
-document.getElementById('tab-'+name).classList.add('active');
-if(el)el.classList.add('active');
-// ── Currency control visibility ──
-// Portfolio/home tab → show the dropdown (sets portfolio display currency)
-// All other tabs     → show the read-only badge for this source's own currency
+const tab = document.getElementById('tab-'+name);
+if(tab) tab.classList.add('active');
+if(el) el.classList.add('active');
+// ── Nav visibility: home-nav on portfolio, source-nav everywhere else ──
+const homeNav = document.getElementById('home-nav');
+const srcNav  = document.getElementById('main-nav');
+if(name === 'portfolio') {
+  if(homeNav) homeNav.style.display = 'flex';
+  if(srcNav)  srcNav.style.display  = 'none';
+  // Re-activate the home button
+  const hbtn = document.getElementById('nav-portfolio');
+  if(hbtn) hbtn.classList.add('active');
+} else {
+  if(homeNav) homeNav.style.display = 'none';
+  if(srcNav)  srcNav.style.display  = '';
+}
+// ── Currency control ──
 const curDrop  = document.getElementById('cur');
 const curBadge = document.getElementById('cur-badge');
 const curBadgeTxt = document.getElementById('cur-badge-txt');
 if(name === 'portfolio') {
   if(curDrop)  { curDrop.style.display  = ''; }
   if(curBadge) { curBadge.style.display = 'none'; }
-  // Restore portfolio display currency
   const portfolioCur = localStorage.getItem('smt_portfolioCur') || getBizCur(currentBizId) || 'LKR';
   if(curDrop && portfolioCur) curDrop.value = portfolioCur;
 } else {
@@ -6775,6 +6821,124 @@ function renderJobCharts() {
   setText('jc-stat-avghrs',    avgHrs.toFixed(2)+'h');
   setText('jc-stat-ontimedays', onTimeDays+' days');
   setText('jc-stat-attrate',   attRate+'%');
+}
+// ═══════════════════════════════════════════════════
+// PORTFOLIO TREND CHART (12-month income/expenses/profit)
+// ═══════════════════════════════════════════════════
+let _portTrendChart = null;
+async function renderPortfolioTrendChart() {
+  const canvas = document.getElementById('port-trend-chart');
+  const statusEl = document.getElementById('port-trend-status');
+  if(!canvas) return;
+  if(_portTrendChart) { try { _portTrendChart.destroy(); } catch(e){} _portTrendChart = null; }
+
+  const now = new Date();
+  const gc = chartGridColor(), tc = chartTickColor();
+  const labels = [], incomeData = [], expData = [], profitData = [];
+
+  // Build month labels for last 12 months
+  for(let m = 11; m >= 0; m--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - m, 1);
+    labels.push(d.toLocaleDateString('en-GB', {month:'short', year:'2-digit'}));
+  }
+
+  // Aggregate income across ALL business sources from localStorage
+  // Each business has its own income log + expenses stored per month
+  if(statusEl) statusEl.textContent = 'Loading from Sheets…';
+
+  // Try to load from Google Sheets for all business sources
+  const token = localStorage.getItem('smt_googleToken') || googleToken;
+  const masterSsId = localStorage.getItem('smt_spreadsheetId');
+  const bizSources = businesses.filter(b => (b.type||'business') === 'business');
+
+  // Monthly buckets
+  const incBuckets  = Array(12).fill(0);
+  const expBuckets  = Array(12).fill(0);
+
+  for(const biz of bizSources) {
+    const bSsId = localStorage.getItem('smt_sharedSheet_'+biz.id) || localStorage.getItem(lsKey(biz.id,'ssId'));
+
+    // Income — try Sheets first, fall back to localStorage
+    let incLog = JSON.parse(localStorage.getItem(lsKey(biz.id,'income'))||'[]');
+    if(token && bSsId) {
+      try {
+        const rows = await sheetsRead(token, bSsId, biz.id+'_income!A2:E');
+        if(rows.length > 0) {
+          incLog = rows.filter(r=>r[0]&&r[0]!=='ID').map(r=>({id:r[0],date:r[1],amt:Number(r[2])||0}));
+          localStorage.setItem(lsKey(biz.id,'income'), JSON.stringify(incLog));
+        }
+      } catch(e) {}
+    }
+    incLog.forEach(e => {
+      if(!e.date) return;
+      const d = new Date(e.date);
+      for(let m = 0; m < 12; m++) {
+        const mo = new Date(now.getFullYear(), now.getMonth() - (11 - m), 1);
+        if(d.getFullYear() === mo.getFullYear() && d.getMonth() === mo.getMonth()) {
+          incBuckets[m] += Number(e.amt)||0;
+        }
+      }
+    });
+
+    // Expenses — from localStorage (expenses are set up, not logged per-entry)
+    const srcExp = JSON.parse(localStorage.getItem(lsKey(biz.id,'expenses'))||'null')||{};
+    let dailyExp = 0;
+    Object.values(srcExp).forEach(cat=>(cat||[]).forEach(r=>{ dailyExp += toDailyAmt(r.amt||0, r.freq||'monthly'); }));
+    const monthlyExp = dailyExp * 30.44;
+    for(let m = 0; m < 12; m++) {
+      const mo = new Date(now.getFullYear(), now.getMonth() - (11 - m), 1);
+      // Only count up to current month
+      if(mo <= now) expBuckets[m] += monthlyExp;
+    }
+  }
+
+  // Also include non-business passive income (job salary, rental, FD, investment, farming, other)
+  businesses.filter(b => (b.type||'business') !== 'business').forEach(biz => {
+    const p = JSON.parse(localStorage.getItem(lsKey(biz.id,'portData'))||'null')||biz.portData||{};
+    const monthly = p.monthlyIncome || p.rent || (p.principal&&p.rate ? p.principal*(p.rate/100)/12 : 0) || p.income || 0;
+    for(let m = 0; m < 12; m++) {
+      const mo = new Date(now.getFullYear(), now.getMonth() - (11 - m), 1);
+      if(mo <= now) incBuckets[m] += monthly;
+    }
+  });
+
+  for(let m = 0; m < 12; m++) {
+    incomeData.push(+incBuckets[m].toFixed(0));
+    expData.push(+expBuckets[m].toFixed(0));
+    profitData.push(+(incBuckets[m] - expBuckets[m]).toFixed(0));
+  }
+
+  if(statusEl) statusEl.textContent = '';
+
+  // Use first source's currency as the display symbol for the chart
+  const chartSym = SYMS[getBizCur(bizSources[0]?.id || businesses[0]?.id)] || 'LKR';
+
+  _portTrendChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label:'Income',   data:incomeData,  borderColor:'#1D9E75', backgroundColor:'#1D9E7522', fill:false, tension:0.3, pointRadius:3, borderWidth:2 },
+        { label:'Expenses', data:expData,     borderColor:'#D85A30', backgroundColor:'#D85A3022', fill:false, tension:0.3, pointRadius:3, borderWidth:2 },
+        { label:'Profit',   data:profitData,  borderColor:'#378ADD', backgroundColor:'#378ADD22', fill:true,  tension:0.3, pointRadius:3, borderWidth:2,
+          segment:{ borderColor: ctx => ctx.p0.parsed.y < 0 ? '#D85A30' : '#378ADD' } }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display:true, position:'top', labels:{ color:tc, font:{size:10}, boxWidth:10, padding:8 } },
+        tooltip: { backgroundColor: document.body.classList.contains('dark')?'#2a2a2d':'#fff',
+          titleColor: document.body.classList.contains('dark')?'#f0ede6':'#1a1a18',
+          bodyColor:tc, borderColor:gc, borderWidth:1, padding:10, cornerRadius:6,
+          callbacks: { label: ctx => ctx.dataset.label+': '+chartSym+' '+Math.round(ctx.parsed.y).toLocaleString('en-US') } }
+      },
+      scales: {
+        x: { grid:{color:gc}, ticks:{color:tc, font:{size:10}, maxRotation:45} },
+        y: { grid:{color:gc}, ticks:{color:tc, font:{size:10}, callback: v => chartSym+' '+Math.round(v).toLocaleString('en-US')}, beginAtZero:true }
+      }
+    }
+  });
 }
 // ═══════════════════════════════════════════════════
 // RENTAL CHARTS
@@ -7220,19 +7384,23 @@ loadLocalForBiz(currentBizId);
 // Update biz bar
 const biz=businesses.find(b=>b.id===currentBizId)||businesses[0];
 setText('biz-icon-bar', biz.icon||'🏪');
-document.getElementById('biz-icon-bar').style.background=biz.color||'#E6F1FB';
+// biz-icon-bar removed
 setText('biz-name-bar', biz.name);
 setText('app-logo', biz.icon||'🏪');
-document.getElementById('app-logo').style.background=biz.color||'#E6F1FB';
+// app-logo removed
 setText('biz-meta-bar', getBizMetaStr(currentBizId));
 // ── Currency control init ──
-// App always starts on portfolio tab — show dropdown, hide badge
-// Restore the portfolio display currency (separate from any source's own currency)
+// App always starts on portfolio tab — show dropdown, hide badge, show home-nav
 const portfolioCurInit = localStorage.getItem('smt_portfolioCur') || getBizCur(currentBizId) || 'LKR';
 const curDropInit  = document.getElementById('cur');
 const curBadgeInit = document.getElementById('cur-badge');
 if(curDropInit)  { curDropInit.style.display = ''; curDropInit.value = portfolioCurInit; }
 if(curBadgeInit) curBadgeInit.style.display = 'none';
+// Show home-nav, hide source-nav on startup
+const homeNavInit = document.getElementById('home-nav');
+const srcNavInit  = document.getElementById('main-nav');
+if(homeNavInit) homeNavInit.style.display = 'flex';
+if(srcNavInit)  srcNavInit.style.display  = 'none';
 renderAll();renderExpenses();renderIncome();renderWeekSchedule();
 startClock();
 startFxAutoRefresh(); // background FX rate refresh every 15 min
