@@ -23,7 +23,7 @@ A powerful, single-file personal wealth and income tracking web app with real-ti
 
 ## 📱 Getting started
 
-1. Download `index.html`
+1. Download `index.html` Or Go to https://sun250sw-alt.github.io/biz/
 2. Open it in any modern browser (Chrome, Safari, Firefox, Edge)
 3. Follow the onboarding — name your first income source and pick its type
 4. Optionally connect Google Sheets for cloud backup and sync
