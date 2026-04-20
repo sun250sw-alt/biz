@@ -57,9 +57,9 @@ body.si .mono{font-family:'DM Mono',monospace}
 .sync-info{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--txt3);white-space:nowrap}
 .cur-sel{height:26px;padding:0 4px;font-size:10px;font-family:inherit;background:var(--bg2);border:1px solid var(--brd);border-radius:var(--r6);color:var(--txt);max-width:58px}
 .home-nav{display:flex;align-items:center;background:var(--bg2);padding:3px;border-top:1px solid var(--brd);border-bottom:1px solid var(--brd);margin-bottom:8px;gap:3px}
-.home-nav-center{flex:1;text-align:center;padding:3px 6px;pointer-events:none}
-.home-greeting{font-size:10px;color:var(--txt3);line-height:1.2}
-.home-clock{font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--txt)}
+.home-nav-center{flex:1;text-align:center;padding:2px 6px;pointer-events:none;display:flex;align-items:center;justify-content:center;gap:5px}
+.home-greeting{font-size:11px;font-weight:500;color:var(--txt2);white-space:nowrap}
+.home-clock{font-size:15px;font-weight:700;font-family:'DM Mono',monospace;color:var(--txt);letter-spacing:.02em}
 .src-mini-bar{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-top:3px}
 .src-mini-bar-fill{height:100%;border-radius:2px;transition:width .6s}
 .top-left{display:flex;align-items:center;gap:10px}
@@ -980,8 +980,9 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle"><path d="M8 1.5L1.5 7H3v6.5h4v-4h2v4h4V7h1.5L8 1.5z" fill="currentColor" opacity=".9"/></svg>
     </button>
     <div class="home-nav-center">
-      <div class="home-greeting" id="home-greeting">Good morning</div>
-      <div class="home-clock" id="home-clock-nav">00:00:00</div>
+      <span class="home-greeting" id="home-greeting">Good morning</span>
+      <span class="home-greeting" style="color:var(--txt3)">·</span>
+      <span class="home-clock" id="home-clock-nav">00:00:00</span>
     </div>
     <button class="ntab" onclick="sw('manage',document.getElementById('nav-manage'))" id="nav-manage-home" title="Settings" style="flex-shrink:0">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:inline-block;vertical-align:middle"><circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M2.93 2.93l1.06 1.06M12.01 12.01l1.06 1.06M2.93 13.07l1.06-1.06M12.01 3.99l1.06-1.06" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -994,13 +995,6 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
   </div>
 
   <div class="tc active" id="tab-portfolio">
-
-    <div style="display:flex;gap:6px;margin-bottom:10px">
-      <button class="btn-sm port-view-btn" onclick="setPortView('today',this)" style="border-radius:20px;flex:1">Today</button>
-      <button class="btn-sm port-view-btn active-view" onclick="setPortView('month',this)" style="border-radius:20px;flex:1">This month</button>
-      <button class="btn-sm port-view-btn" onclick="setPortView('year',this)" style="border-radius:20px;flex:1">This year</button>
-    </div>
-
 
     <div style="display:flex;gap:6px;margin-bottom:10px">
       <button class="btn-sm port-view-btn" onclick="setPortView('today',this)" style="border-radius:20px;flex:1">Today</button>
@@ -2141,11 +2135,9 @@ localStorage.setItem(lsKey(currentBizId,'income'),   JSON.stringify(incomeLog));
 localStorage.setItem(lsKey(currentBizId,'ops'),      JSON.stringify(opsLog));
 localStorage.setItem(lsKey(currentBizId,'hours'),    JSON.stringify(tradingHours));
 localStorage.setItem(lsKey(currentBizId,'margin'),   getMargin());
-// Do NOT use the topbar #cur value here — that dropdown is the portfolio display currency only.
-// Each source's currency is set in the Edit modal and stored separately via lsKey(id,'cur').
-// We only write it back if it's already been set (preserving whatever the source was given).
-const srcCur = localStorage.getItem(lsKey(currentBizId,'cur'));
-if(srcCur) localStorage.setItem(lsKey(currentBizId,'cur'), srcCur); // no-op rewrite keeps key fresh
+// Always persist the source currency so getBizCur reliably finds it after reload.
+// getBizCur() resolves from all 4 fallbacks, so this keeps lsKey('cur') fresh and correct.
+localStorage.setItem(lsKey(currentBizId,'cur'), getBizCur(currentBizId));
 localStorage.setItem(lsKey(currentBizId,'loans'),    JSON.stringify(loans));
 localStorage.setItem('smt_businesses', JSON.stringify(businesses));
 localStorage.setItem('smt_currentBiz', currentBizId);
@@ -4104,19 +4096,33 @@ SGD:'S$', JPY:'¥', CNY:'¥', INR:'₹', AED:'د.إ', SAR:'ر.س',
 MYR:'RM', THB:'฿', KRW:'₩', QAR:'ر.ق', KWD:'د.ك'
 };
 function getBizCur(bizId) {
-const stored = localStorage.getItem(lsKey(bizId||currentBizId,'cur'));
-if(stored) return stored;
-const biz = businesses.find(b=>b.id===(bizId||currentBizId));
-// Do NOT fall back to document.getElementById('cur').value —
-// that element is now the portfolio display currency, not a source currency.
-return biz?.portData?.currency || biz?.currency || 'LKR';
+  const id = bizId || currentBizId;
+  // 1. Dedicated per-source key — written on every saveLocal/edit/sync
+  const stored = localStorage.getItem(lsKey(id, 'cur'));
+  if(stored) return stored;
+  // 2. portData in localStorage (survives page reload even if memory is stale)
+  try {
+    const pd = JSON.parse(localStorage.getItem(lsKey(id, 'portData')) || 'null');
+    if(pd && pd.currency) return pd.currency;
+  } catch(e) {}
+  // 3. businesses array in memory
+  const biz = businesses.find(b => b.id === id);
+  if(biz && biz.portData && biz.portData.currency) return biz.portData.currency;
+  if(biz && biz.currency) return biz.currency;
+  // 4. smt_businesses in localStorage (for cross-biz reads when memory may be stale)
+  try {
+    const allBiz = JSON.parse(localStorage.getItem('smt_businesses') || '[]');
+    const b2 = allBiz.find(b => b.id === id);
+    if(b2 && b2.portData && b2.portData.currency) return b2.portData.currency;
+    if(b2 && b2.currency) return b2.currency;
+  } catch(e) {}
+  return 'LKR';
 }
 function sym(bizId) {
 const cur = getBizCur(bizId);
 return SYMS[cur] || cur || 'රු';
 }
 function fmt(n, bizId){
-  // Always comma-separated, no K/M abbreviation — every cash amount shows full value
   const v = Math.round(n);
   return sym(bizId) + v.toLocaleString('en-US');
 }
@@ -4133,6 +4139,14 @@ function fmtHr(n, bizId){
 // fmtAmt — cash amount with 2 decimal places and comma separator (for live tickers)
 function fmtAmt(n, bizId){
   return sym(bizId) + Number(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+// fmtSym — like fmtAmt but takes an explicit symbol string (for portfolio hero)
+function fmtSym(n, symStr){
+  return (symStr||'') + Number(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+// fmtSymInt — like fmtSym but rounded integer
+function fmtSymInt(n, symStr){
+  return (symStr||'') + Math.round(n).toLocaleString('en-US');
 }
 function fmtDate(s){ const d=new Date(s); return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
 function getWeek(s){ const d=new Date(s),jan=new Date(d.getFullYear(),0,1); return Math.ceil(((d-jan)/86400000+jan.getDay()+1)/7); }
@@ -5793,8 +5807,11 @@ _fxAgeTimer = setInterval(updateFxAgeLabel, 60000);
 }
 function convertToBase(amount, fromCur, rates) {
 if(!fromCur || !rates || fromCur === _fxBaseCur) return amount;
-const rate = rates[fromCur]; // how many fromCur per 1 base
-return rate ? amount / rate : amount;
+// rates are relative to USD. To convert fromCur → baseCur:
+// amount_in_baseCur = amount_in_fromCur * (rates[baseCur] / rates[fromCur])
+const baseRate = rates[_fxBaseCur] || 1;
+const srcRate  = rates[fromCur]    || 1;
+return amount * (baseRate / srcRate);
 }
 function updateFxBar(sources, rates) {
 const bar = document.getElementById('port-fx-bar');
@@ -5808,21 +5825,20 @@ byCur[cur] += s.earnedToNow;
 const curKeys = Object.keys(byCur);
 if(curKeys.length <= 1) { bar.style.display='none'; return; }
 bar.style.display = 'block';
-const baseCur = _fxBaseCur || curKeys[0];
-const baseSym = SYMS[baseCur] || baseCur;
-// Update hero total with FX-converted figure
+const baseCur  = _fxBaseCur || curKeys[0];
+const baseSym  = SYMS[baseCur] || baseCur;
+const baseRate = rates[baseCur] || 1;
 let total = 0;
 const rateStrs = [];
 curKeys.forEach(cur => {
-const amt  = byCur[cur];
-const rate = rates[cur];
-total += (cur===baseCur) ? amt : (rate ? amt/rate : amt);
-if(cur!==baseCur && rate) {
-// rate = how many `cur` per 1 `baseCur` (e.g. rates['LKR']=325 means 1 GBP = 325 LKR)
-// So: 1 cur = baseSym (1/rate)
-const oneInBase = 1/rate;
-const rateDisp  = oneInBase < 0.01 ? oneInBase.toFixed(6) : oneInBase < 1 ? oneInBase.toFixed(4) : oneInBase.toFixed(2);
-rateStrs.push(`1 ${cur} = ${baseSym} ${rateDisp}`);
+const amt     = byCur[cur];
+const srcRate = rates[cur] || 1;
+total += (cur===baseCur) ? amt : amt * (baseRate / srcRate);
+if(cur !== baseCur) {
+  // Display: 1 cur = X baseCur
+  const oneInBase = baseRate / srcRate;
+  const rateDisp  = oneInBase < 0.01 ? oneInBase.toFixed(6) : oneInBase < 1 ? oneInBase.toFixed(4) : oneInBase.toFixed(2);
+  rateStrs.push(`1 ${cur} = ${baseSym} ${rateDisp}`);
 }
 });
 // Build byCur from current portSources earnedToNow for the helper
@@ -5839,23 +5855,26 @@ if(ratesEl) ratesEl.textContent = rateStrs.length ? `(${rateStrs.join(' · ')})`
 }
 // Helper: compute FX-converted totals and set hero + rate cards
 function calcAndSetFxHero(byCur, curKeys, baseCur, baseSym2) {
+// FX conversion: all amounts → baseCur using open.er-api rates
+// rates object keys are target currencies relative to USD base
+// Convert: amount_in_cur → amount_in_baseCur = amount * (rate[baseCur] / rate[cur])
+const baseRate = _fxRates[baseCur] || 1;
 let fxTotal2 = 0;
 curKeys.forEach(c => {
-const rate = _fxRates[c];
-fxTotal2 += c===baseCur ? byCur[c].earned : (rate ? byCur[c].earned/rate : 0);
+  const srcRate = _fxRates[c] || 1;
+  fxTotal2 += c===baseCur ? byCur[c].earned : byCur[c].earned * (baseRate / srcRate);
 });
-setText('port-hero-total', fmtAmt(fxTotal2));
-// Per-sec
+setText('port-hero-total', fmtSym(fxTotal2, baseSym2));
 let fxRatePerSec = 0;
 portSources.forEach(s => {
-const cur  = getBizCur(s.id);
-const rate = _fxRates[cur];
-fxRatePerSec += cur===baseCur ? s.ratePerSec : (rate ? s.ratePerSec/rate : 0);
+  const cur     = getBizCur(s.id);
+  const srcRate = _fxRates[cur] || 1;
+  fxRatePerSec += cur===baseCur ? s.ratePerSec : s.ratePerSec * (baseRate / srcRate);
 });
-setText('port-per-sec', fxRatePerSec>0?'+'+fmtAmt(fxRatePerSec):'⏸ Paused');
-setText('port-per-min', fmtAmt(fxRatePerSec*60));
-setText('port-per-hr',  fmtAmt(fxRatePerSec*3600));
-setText('port-per-day', fmtAmt(fxRatePerSec*86400));
+setText('port-per-sec', fxRatePerSec>0?'+'+fmtSym(fxRatePerSec,baseSym2):'⏸ Paused');
+setText('port-per-min', fmtSym(fxRatePerSec*60,   baseSym2));
+setText('port-per-hr',  baseSym2+' '+Math.round(fxRatePerSec*3600).toLocaleString('en-US'));
+setText('port-per-day', baseSym2+' '+Math.round(fxRatePerSec*86400).toLocaleString('en-US'));
 }
 function renderPortfolio() {
 portSources = calcPortSources();
@@ -5896,26 +5915,30 @@ const heroSym   = SYMS[portfolioCur] || portfolioCur;
 const hasRates  = Object.keys(_fxRates).length > 0;
 const allSameCur = curKeys.length === 1 && curKeys[0] === portfolioCur;
 if(allSameCur){
-// All sources share the portfolio currency — simple direct total
+// All sources share the portfolio currency — direct total using heroSym explicitly
 const c=byCur[curKeys[0]];
-setText('port-hero-total', fmtAmt(c.earned));
-setText('port-per-sec', totalRate>0?'+'+fmtAmt(totalRate):'⏸ Paused');
-setText('port-per-min', fmtAmt(totalRate*60));
-setText('port-per-hr',  fmtAmt(totalRate*3600));
-setText('port-per-day', fmtAmt(totalRate*86400));
+setText('port-hero-total', fmtSym(c.earned,   heroSym));
+setText('port-per-sec',    totalRate>0?'+'+fmtSym(totalRate,    heroSym):'⏸ Paused');
+setText('port-per-min',    fmtSym(totalRate*60,   heroSym));
+setText('port-per-hr',     heroSym+' '+Math.round(totalRate*3600).toLocaleString('en-US'));
+setText('port-per-day',    heroSym+' '+Math.round(totalRate*86400).toLocaleString('en-US'));
 } else {
-// Currencies differ OR portfolio currency differs — always FX-convert to portfolioCur
+// Currencies differ OR portfolio currency differs — FX-convert to portfolioCur
 if(hasRates) {
 calcAndSetFxHero(byCur, curKeys, portfolioCur, heroSym);
 } else {
-setText('port-hero-total', '…');
-setText('port-per-sec', '…');
-setText('port-per-min', '…');
-setText('port-per-hr',  '…');
-setText('port-per-day', '…');
+// FX not loaded yet — show source totals in their own currencies (never blank)
+const fallbackTotal = curKeys.map(c=>fmtSym(byCur[c].earned, byCur[c].sym)).join(' + ');
+setText('port-hero-total', fallbackTotal || heroSym+' 0.00');
+const fSym = (byCur[curKeys[0]]&&byCur[curKeys[0]].sym) || heroSym;
+setText('port-per-sec', totalRate>0?'+'+fmtSym(totalRate, fSym):'⏸ Paused');
+setText('port-per-min', fmtSym(totalRate*60,   fSym));
+setText('port-per-hr',  fSym+' '+Math.round(totalRate*3600).toLocaleString('en-US'));
+setText('port-per-day', fSym+' '+Math.round(totalRate*86400).toLocaleString('en-US'));
 }
 }
-setText('port-bk-total', curKeys.map(c=>`${fmtAmt(byCur[c].earned)}`).join(' + '));
+// Breakdown totals per currency — use each currency's own symbol
+setText('port-bk-total', curKeys.map(c=>fmtSym(byCur[c].earned, byCur[c].sym)).join(' + '));
 // Source cards — bar = progress toward expected amount for the period
 const list=document.getElementById('port-sources');
 if(!list) return;
@@ -6022,17 +6045,16 @@ if(portTimer) clearInterval(portTimer);
 portElapsed=0;
 portTimer=setInterval(()=>{
 portElapsed++;
-// Accumulate by currency
 const byCur2={};
 portSources.forEach(s=>{
 const cur=getBizCur(s.id);
 const srcSym=SYMS[cur]||cur;
-if(s.ratePerSec>0) s.earnedToNow+=s.ratePerSec; // tick only active sources
-setText('ptot-'+s.id, fmtAmt(s.earnedToNow));
+if(s.ratePerSec>0) s.earnedToNow+=s.ratePerSec;
+// Per-source amounts always use that source's own currency symbol
+setText('ptot-'+s.id, fmtSym(s.earnedToNow, srcSym));
 if(!byCur2[cur]) byCur2[cur]={sym:srcSym,total:0,rate:0};
 byCur2[cur].total+=s.earnedToNow;
 byCur2[cur].rate +=s.ratePerSec;
-// Progress bar = earned / expected for period (not relative share)
 const expected = s.expectedForPeriod || 0;
 const pct = expected>0 ? Math.min(100,Math.round(s.earnedToNow/expected*100)) : 0;
 const barColor = expected===0 ? s.color : pct>=95?'var(--green)':pct>=60?'var(--amber)':'var(--red)';
@@ -6040,32 +6062,30 @@ const bar=document.getElementById('pbar-'+s.id);
 if(bar) { bar.style.width=pct+'%'; bar.style.background=barColor; }
 const bkbar=document.getElementById('pbkbar-'+s.id);
 if(bkbar) { bkbar.style.width=pct+'%'; bkbar.style.background=barColor; }
-setText('pbkamt-'+s.id, fmtAmt(s.earnedToNow));
+setText('pbkamt-'+s.id, fmtSym(s.earnedToNow, srcSym));
 });
 const ck=Object.keys(byCur2);
 const heroBaseCur = _fxBaseCur || ck[0] || 'LKR';
 const heroBaseSym = SYMS[heroBaseCur] || heroBaseCur;
 if(ck.length===1 && ck[0]===heroBaseCur){
-// All sources share the same currency AND it matches the portfolio currency — no conversion needed
 const c=byCur2[ck[0]];
-setText('port-hero-total', fmtAmt(c.total));
-setText('port-sec-ticker', c.rate>0?'+'+fmtAmt(c.rate):'⏸ All paused');
+setText('port-hero-total', fmtSym(c.total, heroBaseSym));
+setText('port-sec-ticker', c.rate>0?'+'+fmtSym(c.rate, heroBaseSym):'⏸ All paused');
 } else {
-// Multi-currency OR portfolio currency differs from source currency — always FX-convert hero total
 if(Object.keys(_fxRates).length > 0) {
 let fxTotal=0, fxRate=0;
 portSources.forEach(s => {
 const cur=getBizCur(s.id);
 const rate=_fxRates[cur];
-const f=(cur===heroBaseCur||!rate)?1:1/rate;
+const f=(cur===heroBaseCur||!rate) ? (_fxRates[heroBaseCur]&&_fxRates[cur] ? _fxRates[heroBaseCur]/_fxRates[cur] : 1) : (_fxRates[heroBaseCur]||1)/(_fxRates[cur]||1);
 fxTotal+=s.earnedToNow*f;
 fxRate +=s.ratePerSec *f;
 });
-setText('port-hero-total', fmtAmt(fxTotal));
-setText('port-sec-ticker', fxRate>0?'+'+fmtAmt(fxRate):'⏸ All paused');
+setText('port-hero-total', fmtSym(fxTotal, heroBaseSym));
+setText('port-sec-ticker', fxRate>0?'+'+fmtSym(fxRate, heroBaseSym):'⏸ All paused');
 } else {
-// FX rates not loaded yet — show individual totals until fetch completes
-setText('port-hero-total', ck.map(c=>`${fmtAmt(byCur2[c].total)}`).join(' + '));
+// FX rates not loaded — show per-source totals in their own currencies
+setText('port-hero-total', ck.map(c=>fmtSym(byCur2[c].total, byCur2[c].sym)).join(' + '));
 }
 }
 },1000);
@@ -7374,6 +7394,17 @@ applyStaticTranslations();
 const savedBiz=localStorage.getItem('smt_businesses');
 if(savedBiz) businesses=JSON.parse(savedBiz);
 if(businesses.length===0) businesses=[{id:'biz1',name:'My Shop',icon:'🏪',color:'#E6F1FB'}];
+// Seed lsKey(id,'cur') for every source on startup so getBizCur always finds a value instantly.
+// getBizCur resolves from portData/businesses as fallback if the key was never explicitly written.
+businesses.forEach(function(b) {
+  if(!localStorage.getItem(lsKey(b.id,'cur'))) {
+    var cur = 'LKR';
+    try { var pd=JSON.parse(localStorage.getItem(lsKey(b.id,'portData'))||'null'); if(pd&&pd.currency) cur=pd.currency; } catch(e){}
+    if(cur==='LKR' && b.portData && b.portData.currency) cur=b.portData.currency;
+    if(cur==='LKR' && b.currency) cur=b.currency;
+    localStorage.setItem(lsKey(b.id,'cur'), cur);
+  }
+});
 // Load sheet URL
 const savedUrl=localStorage.getItem('smt_sheetUrl')||'';
 if(savedUrl){ sheetUrl=savedUrl; document.getElementById('sheet-url').value=savedUrl; if(document.getElementById('sheet-url-manage'))document.getElementById('sheet-url-manage').value=savedUrl; setSyncStatus('ok','Connected'); }
