@@ -911,6 +911,7 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
         <span id="sync-txt" style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>
       </div>
       <button class="btn-xs" onclick="syncNow()" id="sync-btn" title="Sync now" style="height:24px;padding:0 6px">↻</button>
+      <button class="btn-xs" onclick="restoreFromDrive()" title="Restore all income sources from Drive" id="restore-btn" style="height:24px;padding:0 5px;font-size:9px;background:var(--amber);color:#fff;border:none;border-radius:4px;cursor:pointer">⬇ Restore</button>
       <!-- Currency (narrow — portfolio display only) -->
       <select id="cur" class="cur-sel" onchange="onCurChange()" title="Portfolio display currency">
         <option value="LKR">LKR</option><option value="USD">USD</option><option value="EUR">EUR</option>
@@ -947,6 +948,7 @@ body.dark .ob-copy-btn{background:var(--bg3);border-color:var(--brd2);color:var(
             <div class="acct-menu-email" id="acct-menu-email">—</div>
           </div>
           <div class="acct-menu-item" onclick="syncNow();closeAcctMenu()">↻ &nbsp;Sync now from Google</div>
+          <div class="acct-menu-item" onclick="restoreFromDrive();closeAcctMenu()" style="color:var(--amber-txt)">⬇ &nbsp;Restore income sources from Drive</div>
           <div class="acct-menu-item" onclick="switchGoogleAccount()">⇄ &nbsp;Switch account</div>
           <div class="acct-menu-item danger" onclick="signOutAndReset()">↩ &nbsp;Sign out</div>
         </div>
@@ -2322,6 +2324,79 @@ setSyncStatus('ok','Synced · '+new Date().toLocaleTimeString());
 updateLastSync();
 }catch(e){ setSyncStatus('err','Sync failed'); }
 }
+async function restoreFromDrive() {
+  const token = localStorage.getItem('smt_googleToken') || googleToken;
+  const masterSsId = localStorage.getItem('smt_spreadsheetId');
+  if(!token || !masterSsId) {
+    alert('Not connected to Google Drive. Please sign in first.');
+    return;
+  }
+  showDriveBlock('Restoring from Google Drive…', 'Reading your income sources from Drive');
+  try {
+    updateDriveBlock(10, 'Reading income sources list…');
+    const bizRows = await sheetsRead(token, masterSsId, '_businesses!A2:G');
+    const validRows = bizRows.filter(r => r[0] && String(r[0]).startsWith('biz'));
+    if(validRows.length === 0) {
+      hideDriveBlock();
+      alert('No income sources found in Google Drive.\n\nIf you just signed in, wait a moment and try \u21ba Sync.');
+      return;
+    }
+    updateDriveBlock(25, `Found ${validRows.length} income source(s)…`);
+    businesses = validRows.map(r => ({
+      id:r[0], name:r[1]||'Income source', icon:r[2]||'\ud83d\udcb0',
+      color:r[3]||'#E6F1FB', type:r[4]||'business'
+    }));
+    let done = 0;
+    for(const biz of businesses) {
+      const rowSsId = validRows.find(r => r[0]===biz.id)?.[5];
+      if(rowSsId) {
+        localStorage.setItem('smt_sharedSheet_'+biz.id, rowSsId);
+        localStorage.setItem(lsKey(biz.id,'ssId'), rowSsId);
+        try {
+          const ovRows = await sheetsRead(token, rowSsId, 'Overview!A1:B30');
+          if(ovRows.length > 0) {
+            const pd = {}; ovRows.forEach(r => { if(r[0]&&r[1]) pd[r[0]] = isNaN(r[1])?r[1]:Number(r[1]); });
+            const portData = { currency: pd['Currency']||pd['currency']||'LKR', type: biz.type };
+            const map = {
+              'Monthly income':'monthlyIncome','Gross monthly':'grossMonthly','Tax rate':'taxRate',
+              'Salary type':'salaryType','Salary amount':'salaryAmt','Work days':'workDays',
+              'Work hours':'workHours','Pay day':'payDay','Rent':'rent','Due day':'dueDay',
+              'Tenant':'tenant','Principal':'principal','Rate':'rate','Start date':'startDate',
+              'End date':'endDate','Invested':'invested','Current value':'currentValue',
+              'Harvest value':'harvestValue','Season days':'seasonDays','Income':'income',
+              'Job expenses':'jobExpenses'
+            };
+            Object.entries(map).forEach(([k,v]) => { if(pd[k]!==undefined) portData[v]=pd[k]; });
+            biz.portData = portData;
+            localStorage.setItem(lsKey(biz.id,'portData'), JSON.stringify(portData));
+            localStorage.setItem(lsKey(biz.id,'cur'), portData.currency||'LKR');
+          }
+        } catch(e) { console.warn('portData restore:', biz.id, e.message); }
+      }
+      done++;
+      updateDriveBlock(25+Math.round(done/businesses.length*65), `Loaded ${biz.icon} ${biz.name}…`);
+    }
+    currentBizId = businesses[0].id;
+    localStorage.setItem('smt_businesses', JSON.stringify(businesses));
+    localStorage.setItem('smt_currentBiz', currentBizId);
+    // Seed currencies
+    businesses.forEach(b => {
+      if(!localStorage.getItem(lsKey(b.id,'cur')))
+        localStorage.setItem(lsKey(b.id,'cur'), b?.portData?.currency||'LKR');
+    });
+    updateDriveBlock(96, 'Refreshing app…');
+    await new Promise(r => setTimeout(r,400));
+    hideDriveBlock();
+    renderBizDropdown();
+    switchBiz(currentBizId);
+    renderPortfolio();
+    setSyncStatus('ok', `✓ Restored ${businesses.length} source(s) from Drive`);
+  } catch(e) {
+    hideDriveBlock();
+    console.error('restoreFromDrive:', e);
+    alert('Restore failed: '+e.message+'\n\nTry signing out and back in.');
+  }
+}
 async function syncNow(){
 const btn = document.getElementById('sync-btn');
 if(btn) btn.textContent='↻...';
@@ -3049,10 +3124,21 @@ try {
 const rows = await sheetsRead(token, masterSsId, '_businesses!A:G');
 const idx = rows.findIndex(r=>r[0]===bizId);
 if(idx>=0) {
+// Look up actual sheetId of _businesses tab — never assume it's tab index 0
+let _bizTabSheetId = 0;
+try {
+const _metaR = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${masterSsId}?fields=sheets.properties`,
+  {headers:{Authorization:'Bearer '+token}});
+if(_metaR.ok) {
+const _meta = await _metaR.json();
+const _bizTab = (_meta.sheets||[]).find(s=>s.properties.title==='_businesses');
+if(_bizTab) _bizTabSheetId = _bizTab.properties.sheetId;
+}
+} catch(e) { console.warn('sheetId lookup:', e.message); }
 await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${masterSsId}:batchUpdate`,{
 method:'POST',
 headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
-body:JSON.stringify({requests:[{deleteDimension:{range:{sheetId:0,dimension:'ROWS',startIndex:idx,endIndex:idx+1}}}]})
+body:JSON.stringify({requests:[{deleteDimension:{range:{sheetId:_bizTabSheetId,dimension:'ROWS',startIndex:idx,endIndex:idx+1}}}]})
 });
 }
 } catch(e) { console.error('_businesses remove row:', e.message); }
@@ -4956,16 +5042,17 @@ setSyncStatus('pending','Syncing all sources...');
 updateDriveBlock(10, 'Reading your income sources…');
 // 1. Read _businesses master list
 const bizRows = await sheetsRead(token, masterSsId, '_businesses!A2:G');
-if(bizRows.length > 0) {
-// Rebuild businesses array from sheet (source of truth)
-const sheetBizIds = new Set(bizRows.filter(r=>r[0]).map(r=>r[0]));
-// Remove any that were deleted
-businesses = businesses.filter(b=>sheetBizIds.has(b.id));
+// SAFETY: only update if sheet returned valid biz rows — never wipe on empty/failed read
+const validBizRows = bizRows.filter(r => r[0] && String(r[0]).startsWith('biz'));
+if(validBizRows.length > 0) {
+const sheetBizIds = new Set(validBizRows.map(r => r[0]));
+// Only remove locally-known sources that are explicitly absent from a healthy sheet response
+businesses = businesses.filter(b => sheetBizIds.has(b.id));
 // Add/update from sheet rows
-bizRows.filter(r=>r[0]).forEach(r=>{
+validBizRows.forEach(r => {
 const type = r[4] || 'business';
 const ssId = r[5] || '';
-let biz = businesses.find(b=>b.id===r[0]);
+let biz = businesses.find(b => b.id === r[0]);
 if(!biz) {
 biz = {id:r[0], name:r[1], icon:r[2]||'🏪', color:r[3]||'#E6F1FB', type};
 businesses.push(biz);
@@ -4977,18 +5064,23 @@ localStorage.setItem('smt_sharedSheet_'+r[0], ssId);
 localStorage.setItem(lsKey(r[0],'ssId'), ssId);
 }
 });
-if(!businesses.find(b=>b.id===currentBizId) && businesses.length>0) {
+if(!businesses.find(b => b.id === currentBizId) && businesses.length > 0) {
 currentBizId = businesses[0].id;
+}
+} else {
+// Sheet empty or read failed — keep local state, do NOT wipe
+console.warn('syncAllSources: no valid rows from _businesses — preserving local state');
 }
 localStorage.setItem('smt_businesses', JSON.stringify(businesses));
 localStorage.setItem('smt_currentBiz', currentBizId);
-}
 // 2. Load portData for ALL sources in parallel
 await Promise.all(businesses.map(biz => loadPortDataFromSheet(token, biz)));
 localStorage.setItem('smt_businesses', JSON.stringify(businesses));
 updateDriveBlock(30, 'Loading source settings…');
 // 3. Load attendance for all job sources in parallel
 await Promise.all(businesses.filter(b=>b.type==='job').map(b=>loadAttFromSheet(b.id).catch(()=>{})));
+// 3b. Load farming data for all farming sources in parallel
+await Promise.all(businesses.filter(b=>b.type==='farming').map(b=>loadFarmFromSheet(b.id).catch(()=>{})));
 updateDriveBlock(50, 'Loading income & transactions…');
 // 4. Load full data for current biz
 const bizId = currentBizId;
@@ -5745,9 +5837,9 @@ ratePerSec        = monthlyIncome / (30.44*24*3600);
 earnedToNow       = ratePerSec * secs;
 expectedForPeriod = ratePerSec * secsTarget;
 }
-if(monthlyIncome > 0 || type === 'business') {
+// Always show all sources on the home screen — even if not yet configured.
+// Previously: monthlyIncome > 0 hid unconfigured sources silently.
 sources.push({ id:biz.id, name:biz.name, icon:biz.icon||meta.emoji, type, meta, monthlyIncome, earnedToNow, ratePerSec, color:meta.color, expectedForPeriod });
-}
 });
 return sources;
 }
@@ -5940,6 +6032,7 @@ setText('port-per-day', fSym+' '+Math.round(totalRate*86400).toLocaleString('en-
 // Breakdown totals per currency — use each currency's own symbol
 setText('port-bk-total', curKeys.map(c=>fmtSym(byCur[c].earned, byCur[c].sym)).join(' + '));
 // Source cards — bar = progress toward expected amount for the period
+const now = new Date(); // needed for business expense calc inside the map below
 const list=document.getElementById('port-sources');
 if(!list) return;
 list.innerHTML = portSources.length===0
@@ -6563,6 +6656,11 @@ if(name==='rental-charts')  renderRentalCharts();
 if(name==='fd-charts')      renderFdCharts();
 if(name==='inv-charts')     renderInvCharts();
 if(name==='farming-charts') renderFarmingCharts();
+if(name==='farming-seasons') { loadFarmFromSheet(currentBizId).then(()=>renderFarmingSeasons()).catch(()=>renderFarmingSeasons()); }
+if(name==='farming-costs')   { loadFarmFromSheet(currentBizId).then(()=>renderFarmingCosts()).catch(()=>renderFarmingCosts()); }
+if(name==='farming-harvest') { loadFarmFromSheet(currentBizId).then(()=>renderFarmingHarvest()).catch(()=>renderFarmingHarvest()); }
+if(name==='farming-sales')   { loadFarmFromSheet(currentBizId).then(()=>renderFarmingSales()).catch(()=>renderFarmingSales()); }
+if(name==='farming-report')  { loadFarmFromSheet(currentBizId).then(()=>renderFarmingReport()).catch(()=>renderFarmingReport()); }
 if(name==='other-trends')   renderOtherCharts();
 if(name==='farming-loans') { renderLoansInto('farming-loans-content'); }
 if(name==='fd-loans')      { renderLoansInto('fd-loans-content'); }
@@ -7394,6 +7492,35 @@ applyStaticTranslations();
 const savedBiz=localStorage.getItem('smt_businesses');
 if(savedBiz) businesses=JSON.parse(savedBiz);
 if(businesses.length===0) businesses=[{id:'biz1',name:'My Shop',icon:'🏪',color:'#E6F1FB'}];
+// Seed lsKey(id,'cur') for every source so getBizCur() always finds a value immediately
+businesses.forEach(b => {
+  if(!localStorage.getItem(lsKey(b.id,'cur'))) {
+    try {
+      const pd = JSON.parse(localStorage.getItem(lsKey(b.id,'portData'))||'null');
+      localStorage.setItem(lsKey(b.id,'cur'), pd?.currency || b?.portData?.currency || b?.currency || 'LKR');
+    } catch(e) { localStorage.setItem(lsKey(b.id,'cur'), 'LKR'); }
+  }
+});
+// Auto-restore from Google Drive if local state looks empty but user was previously signed in
+(async () => {
+  const _tok = localStorage.getItem('smt_googleToken');
+  const _sid = localStorage.getItem('smt_spreadsheetId');
+  const _looksEmpty = businesses.length <= 1 && businesses[0]?.id === 'biz1';
+  if(_looksEmpty && _tok && _sid && localStorage.getItem('smt_onboarded') === '1') {
+    setTimeout(async () => {
+      try {
+        setSyncStatus('pending', 'Restoring from Google Drive…');
+        await syncAllSources();
+        renderPortfolio();
+        renderBizDropdown();
+        setSyncStatus('ok', 'Restored ✓');
+      } catch(e) {
+        setSyncStatus('err', 'Restore failed — tap ⬇ Restore');
+        console.warn('Auto-restore:', e.message);
+      }
+    }, 1200);
+  }
+})();
 // Seed lsKey(id,'cur') for every source on startup so getBizCur always finds a value instantly.
 // getBizCur resolves from portData/businesses as fallback if the key was never explicitly written.
 businesses.forEach(function(b) {
@@ -8055,7 +8182,7 @@ const d = await check.json();
 // so we never accidentally adopt a sheet from a different app/account
 if(d.spreadsheetId) {
 const bizCheck = await sheetsRead(token, d.spreadsheetId, '_businesses!A1:A2').catch(()=>[]);
-if(bizCheck.length >= 0) return d.spreadsheetId; // tab exists (even if empty = our sheet)
+if(bizCheck.length > 0) return d.spreadsheetId; // tab has data = confirmed our sheet
 }
 }
 // Stored ID is inaccessible with this token — clear it so new user gets a clean slate
@@ -8877,16 +9004,12 @@ document.getElementById('emoji-picker').style.display = 'none';
 // Update live preview for onboarding
 if(_epTargetId === 'ob-biz-icon') updateBizPreview();
 }
-// ── Stubs for unbuilt tab actions (coming soon) ──
-function exportFarmCSV(){ setSyncStatus('ok','✦ Coming soon'); setTimeout(()=>setSyncStatus('ok',''),2000); }
+// ── Stubs for other unbuilt tabs ──
 function exportInvCSV(){ setSyncStatus('ok','✦ Coming soon'); setTimeout(()=>setSyncStatus('ok',''),2000); }
 function exportRentalCSV(){ setSyncStatus('ok','✦ Coming soon'); setTimeout(()=>setSyncStatus('ok',''),2000); }
 function openAddDividend(){ setSyncStatus('ok','✦ Coming soon'); setTimeout(()=>setSyncStatus('ok',''),2000); }
-function openAddFarmCost(){ setSyncStatus('ok','✦ Coming soon'); setTimeout(()=>setSyncStatus('ok',''),2000); }
-function openAddFarmSale(){ setSyncStatus('ok','✦ Coming soon'); setTimeout(()=>setSyncStatus('ok',''),2000); }
 function openAddFdInterest(){ setSyncStatus('ok','✦ Coming soon'); setTimeout(()=>setSyncStatus('ok',''),2000); }
 function openAddFdRenewal(){ setSyncStatus('ok','✦ Coming soon'); setTimeout(()=>setSyncStatus('ok',''),2000); }
-function openAddHarvest(){ setSyncStatus('ok','✦ Coming soon'); setTimeout(()=>setSyncStatus('ok',''),2000); }
 function openAddHolding(){ setSyncStatus('ok','✦ Coming soon'); setTimeout(()=>setSyncStatus('ok',''),2000); }
 function openAddJobExpense(){ setSyncStatus('ok','✦ Coming soon'); setTimeout(()=>setSyncStatus('ok',''),2000); }
 function openAddLeave(){ setSyncStatus('ok','✦ Coming soon'); setTimeout(()=>setSyncStatus('ok',''),2000); }
@@ -8896,9 +9019,423 @@ function openAddOtherIncome(){ setSyncStatus('ok','✦ Coming soon'); setTimeout
 function openAddPayslip(){ setSyncStatus('ok','✦ Coming soon'); setTimeout(()=>setSyncStatus('ok',''),2000); }
 function openAddRentPayment(){ setSyncStatus('ok','✦ Coming soon'); setTimeout(()=>setSyncStatus('ok',''),2000); }
 function openAddSalary(){ setSyncStatus('ok','✦ Coming soon'); setTimeout(()=>setSyncStatus('ok',''),2000); }
-function openAddSeason(){ setSyncStatus('ok','✦ Coming soon'); setTimeout(()=>setSyncStatus('ok',''),2000); }
 function openAddTenant(){ setSyncStatus('ok','✦ Coming soon'); setTimeout(()=>setSyncStatus('ok',''),2000); }
-function openAddTransaction(){ setSyncStatus('ok','✦ Coming soon'); setTimeout(()=>setSyncStatus('ok',''),2000); }</script>
+function openAddTransaction(){ setSyncStatus('ok','✦ Coming soon'); setTimeout(()=>setSyncStatus('ok',''),2000); }
+
+// ═══════════════════════════════════════════════════════════════
+// FARMING — FULL IMPLEMENTATION
+// Seasons · Costs · Harvest Log · Sales · Report + Google Sheets sync
+// ═══════════════════════════════════════════════════════════════
+
+// ── localStorage helpers ──
+function getFarmSeasons(bizId){ try{ return JSON.parse(localStorage.getItem(lsKey(bizId||currentBizId,'farmSeasons'))||'[]'); }catch(e){ return []; } }
+function getFarmCosts(bizId){   try{ return JSON.parse(localStorage.getItem(lsKey(bizId||currentBizId,'farmCosts'))||'[]');   }catch(e){ return []; } }
+function getFarmHarvests(bizId){try{ return JSON.parse(localStorage.getItem(lsKey(bizId||currentBizId,'farmHarvest'))||'[]');  }catch(e){ return []; } }
+function getFarmSales(bizId){   try{ return JSON.parse(localStorage.getItem(lsKey(bizId||currentBizId,'farmSales'))||'[]');   }catch(e){ return []; } }
+
+function saveFarmSeasons(data, bizId){ localStorage.setItem(lsKey(bizId||currentBizId,'farmSeasons'), JSON.stringify(data)); syncFarmToSheet(bizId||currentBizId); }
+function saveFarmCosts(data, bizId){   localStorage.setItem(lsKey(bizId||currentBizId,'farmCosts'),   JSON.stringify(data)); syncFarmToSheet(bizId||currentBizId); }
+function saveFarmHarvests(data, bizId){localStorage.setItem(lsKey(bizId||currentBizId,'farmHarvest'), JSON.stringify(data)); syncFarmToSheet(bizId||currentBizId); }
+function saveFarmSales(data, bizId){   localStorage.setItem(lsKey(bizId||currentBizId,'farmSales'),   JSON.stringify(data)); syncFarmToSheet(bizId||currentBizId); }
+
+// ── Sync all farming data to Google Sheets ──
+async function syncFarmToSheet(bizId) {
+  const token = localStorage.getItem('smt_googleToken') || googleToken;
+  const ssId  = localStorage.getItem('smt_sharedSheet_'+(bizId||currentBizId)) || localStorage.getItem(lsKey(bizId||currentBizId,'ssId'));
+  if(!token || !ssId) return;
+  try {
+    const seasons  = getFarmSeasons(bizId);
+    const costs    = getFarmCosts(bizId);
+    const harvests = getFarmHarvests(bizId);
+    const sales    = getFarmSales(bizId);
+    const w = (range, values) => sheetsWrite(token, ssId, range, values);
+    // Seasons sheet
+    const seasonRows = [['Season','Start','End','Crop','Area','Expected yield','Actual yield','Status','Notes']];
+    seasons.forEach(s => seasonRows.push([s.name||'',s.start||'',s.end||'',s.crop||'',s.area||'',s.expectedYield||0,s.actualYield||0,s.status||'active',s.notes||'']));
+    await w('Seasons!A1', seasonRows);
+    // Costs sheet
+    const costRows = [['Date','Category','Description','Amount']];
+    costs.forEach(c => costRows.push([c.date||'',c.category||'',c.desc||'',c.amount||0]));
+    await w('Costs!A1', costRows);
+    // Harvest log sheet
+    const harvestRows = [['Date','Season','Quantity (kg)','Price/kg','Total value','Notes']];
+    harvests.forEach(h => harvestRows.push([h.date||'',h.season||'',h.qty||0,h.pricePerKg||0,h.total||0,h.notes||'']));
+    await w('Harvest log!A1', harvestRows);
+    // Sales sheet
+    const saleRows = [['Date','Buyer','Season','Quantity','Price','Total','Notes']];
+    sales.forEach(s => saleRows.push([s.date||'',s.buyer||'',s.season||'',s.qty||0,s.price||0,s.total||0,s.notes||'']));
+    await w('Sales!A1', saleRows);
+    setSyncStatus('ok', 'Farming data synced ✓');
+  } catch(e) { console.error('syncFarmToSheet:', e.message); }
+}
+
+// ── Load farming data from Google Sheets ──
+async function loadFarmFromSheet(bizId) {
+  const token = localStorage.getItem('smt_googleToken') || googleToken;
+  const ssId  = localStorage.getItem('smt_sharedSheet_'+(bizId||currentBizId)) || localStorage.getItem(lsKey(bizId||currentBizId,'ssId'));
+  if(!token || !ssId) return;
+  try {
+    const read = range => sheetsRead(token, ssId, range);
+    // Seasons
+    const sRows = await read('Seasons!A2:I');
+    if(sRows.length > 0) {
+      const seasons = sRows.filter(r=>r[0]).map(r=>({name:r[0],start:r[1]||'',end:r[2]||'',crop:r[3]||'',area:r[4]||'',expectedYield:Number(r[5])||0,actualYield:Number(r[6])||0,status:r[7]||'active',notes:r[8]||'',id:'s_'+r[0]+r[1]}));
+      localStorage.setItem(lsKey(bizId||currentBizId,'farmSeasons'), JSON.stringify(seasons));
+    }
+    // Costs
+    const cRows = await read('Costs!A2:D');
+    if(cRows.length > 0) {
+      const costs = cRows.filter(r=>r[0]).map(r=>({date:r[0],category:r[1]||'',desc:r[2]||'',amount:Number(r[3])||0,id:'c_'+r[0]+r[2]}));
+      localStorage.setItem(lsKey(bizId||currentBizId,'farmCosts'), JSON.stringify(costs));
+    }
+    // Harvest log
+    const hRows = await read('Harvest log!A2:F');
+    if(hRows.length > 0) {
+      const harvests = hRows.filter(r=>r[0]).map(r=>({date:r[0],season:r[1]||'',qty:Number(r[2])||0,pricePerKg:Number(r[3])||0,total:Number(r[4])||0,notes:r[5]||'',id:'h_'+r[0]+r[2]}));
+      localStorage.setItem(lsKey(bizId||currentBizId,'farmHarvest'), JSON.stringify(harvests));
+    }
+    // Sales
+    const slRows = await read('Sales!A2:G');
+    if(slRows.length > 0) {
+      const sales = slRows.filter(r=>r[0]).map(r=>({date:r[0],buyer:r[1]||'',season:r[2]||'',qty:Number(r[3])||0,price:Number(r[4])||0,total:Number(r[5])||0,notes:r[6]||'',id:'sl_'+r[0]+r[1]}));
+      localStorage.setItem(lsKey(bizId||currentBizId,'farmSales'), JSON.stringify(sales));
+    }
+  } catch(e) { console.error('loadFarmFromSheet:', e.message); }
+}
+
+// ── SEASONS tab ──
+function renderFarmingSeasons() {
+  const seasons = getFarmSeasons();
+  const el = document.getElementById('farming-season-list');
+  if(!el) return;
+  if(seasons.length === 0) {
+    el.innerHTML = `<div style="text-align:center;padding:20px;color:var(--txt3);font-size:12px">No seasons recorded yet — tap + Add season</div>`;
+    return;
+  }
+  const now = new Date();
+  el.innerHTML = seasons.map((s,i) => {
+    const start = s.start ? new Date(s.start) : null;
+    const end   = s.end   ? new Date(s.end)   : null;
+    const isActive = start && end && now >= start && now <= end;
+    const isPast   = end && now > end;
+    const statusColor = isActive ? 'var(--green)' : isPast ? 'var(--txt3)' : 'var(--amber)';
+    const statusLabel = isActive ? 'Active' : isPast ? 'Completed' : 'Upcoming';
+    const progress = (start && end && isActive) ? Math.round((now-start)/(end-start)*100) : isPast ? 100 : 0;
+    const sym_ = SYMS[getBizCur()]||getBizCur();
+    return `<div style="border:1px solid var(--brd);border-radius:10px;padding:12px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div>
+          <div style="font-size:13px;font-weight:500">${s.name||'Season '+(i+1)}</div>
+          <div style="font-size:10px;color:var(--txt3)">${s.crop||'—'} · ${s.area||'—'}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:10px;font-weight:500;color:${statusColor};background:${statusColor}22;padding:2px 7px;border-radius:10px">${statusLabel}</span>
+          <button style="background:none;border:none;color:var(--txt3);cursor:pointer;font-size:14px;padding:2px 4px" onclick="deleteFarmSeason(${i})">🗑</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;font-size:11px;color:var(--txt2)">
+        <div>📅 Start: <b>${s.start||'—'}</b></div>
+        <div>🏁 End: <b>${s.end||'—'}</b></div>
+        <div>📦 Expected: <b>${(s.expectedYield||0).toLocaleString('en-US')} kg</b></div>
+        <div>✅ Actual: <b>${(s.actualYield||0).toLocaleString('en-US')} kg</b></div>
+      </div>
+      <div style="height:4px;background:var(--bg3);border-radius:2px;overflow:hidden">
+        <div style="height:100%;width:${progress}%;background:${statusColor};border-radius:2px;transition:width .5s"></div>
+      </div>
+      <div style="font-size:9px;color:var(--txt3);margin-top:3px">${progress}% of season elapsed</div>
+      ${s.notes ? `<div style="font-size:10px;color:var(--txt3);margin-top:6px;font-style:italic">${s.notes}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function deleteFarmSeason(idx) {
+  if(!confirm('Delete this season?')) return;
+  const d = getFarmSeasons(); d.splice(idx,1); saveFarmSeasons(d);
+  renderFarmingSeasons();
+}
+
+function openAddSeason() {
+  const seasons = getFarmSeasons();
+  const html = `<div style="padding:4px 0">
+    <div class="form-row"><label class="form-label">Season name</label><input id="fs-name" class="form-input" placeholder="e.g. Yala 2024"/></div>
+    <div class="form-row"><label class="form-label">Crop</label><input id="fs-crop" class="form-input" placeholder="e.g. Rice, Tea, Vegetables"/></div>
+    <div class="form-row"><label class="form-label">Area (acres/ha)</label><input id="fs-area" class="form-input" placeholder="e.g. 2.5 acres"/></div>
+    <div class="form-row"><label class="form-label">Start date</label><input id="fs-start" class="form-input" type="date"/></div>
+    <div class="form-row"><label class="form-label">End / harvest date</label><input id="fs-end" class="form-input" type="date"/></div>
+    <div class="form-row"><label class="form-label">Expected yield (kg)</label><input id="fs-eyield" class="form-input" type="number" placeholder="0"/></div>
+    <div class="form-row"><label class="form-label">Notes</label><input id="fs-notes" class="form-input" placeholder="Optional notes"/></div>
+    <button class="btn-primary" style="width:100%;margin-top:10px" onclick="saveFarmSeasonForm()">Add season</button>
+  </div>`;
+  openModal('Add season', html);
+  document.getElementById('fs-start').valueAsDate = new Date();
+}
+
+function saveFarmSeasonForm() {
+  const g = id => document.getElementById(id)?.value||'';
+  const name = g('fs-name'); if(!name){ alert('Season name required'); return; }
+  const season = { id:'s_'+Date.now(), name, crop:g('fs-crop'), area:g('fs-area'), start:g('fs-start'), end:g('fs-end'), expectedYield:Number(g('fs-eyield'))||0, actualYield:0, status:'upcoming', notes:g('fs-notes') };
+  const d = getFarmSeasons(); d.unshift(season); saveFarmSeasons(d);
+  closeModal(); renderFarmingSeasons();
+}
+
+// ── COSTS tab ──
+function renderFarmingCosts() {
+  const costs = getFarmCosts();
+  const el = document.getElementById('farming-cost-list');
+  if(!el) return;
+  const sym_ = SYMS[getBizCur()]||getBizCur();
+  const total = costs.reduce((a,c) => a + (c.amount||0), 0);
+  // Summary stats
+  const byCat = {};
+  costs.forEach(c => { byCat[c.category||'Other'] = (byCat[c.category||'Other']||0) + (c.amount||0); });
+  const statsHtml = Object.keys(byCat).length > 0
+    ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${Object.entries(byCat).map(([k,v])=>`<div style="background:var(--bg2);border-radius:8px;padding:5px 10px;font-size:10px"><div style="color:var(--txt3)">${k}</div><div style="font-weight:500">${sym_} ${Math.round(v).toLocaleString('en-US')}</div></div>`).join('')}</div>` : '';
+  if(costs.length === 0) {
+    el.innerHTML = `<div style="text-align:center;padding:20px;color:var(--txt3);font-size:12px">No costs recorded yet</div>`;
+    return;
+  }
+  el.innerHTML = `${statsHtml}<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--txt3);padding:0 2px;margin-bottom:6px"><span>Total costs</span><span style="font-weight:500;color:var(--red-txt)">${sym_} ${Math.round(total).toLocaleString('en-US')}</span></div>`
+    + costs.map((c,i) => `<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--bg2)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:500">${c.desc||c.category||'Cost'}</div>
+        <div style="font-size:10px;color:var(--txt3)">${c.category||'—'} · ${c.date||'—'}</div>
+      </div>
+      <div style="font-size:13px;font-weight:500;color:var(--red-txt);white-space:nowrap">${sym_} ${Number(c.amount||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+      <button style="background:none;border:none;color:var(--txt3);cursor:pointer;font-size:13px" onclick="deleteFarmCost(${i})">🗑</button>
+    </div>`).join('');
+}
+
+function deleteFarmCost(idx) {
+  if(!confirm('Delete this cost?')) return;
+  const d = getFarmCosts(); d.splice(idx,1); saveFarmCosts(d);
+  renderFarmingCosts();
+}
+
+function openAddFarmCost() {
+  const seasons = getFarmSeasons();
+  const seasonOpts = seasons.map(s=>`<option>${s.name}</option>`).join('');
+  const html = `<div style="padding:4px 0">
+    <div class="form-row"><label class="form-label">Date</label><input id="fc-date" class="form-input" type="date"/></div>
+    <div class="form-row"><label class="form-label">Category</label>
+      <select id="fc-cat" class="form-input">
+        <option>Seeds</option><option>Fertiliser</option><option>Pesticide</option><option>Labour</option>
+        <option>Equipment</option><option>Irrigation</option><option>Transport</option><option>Other</option>
+      </select>
+    </div>
+    <div class="form-row"><label class="form-label">Description</label><input id="fc-desc" class="form-input" placeholder="Brief description"/></div>
+    <div class="form-row"><label class="form-label">Amount</label><input id="fc-amt" class="form-input" type="number" placeholder="0.00"/></div>
+    ${seasonOpts ? `<div class="form-row"><label class="form-label">Season (optional)</label><select id="fc-season" class="form-input"><option value="">— None —</option>${seasonOpts}</select></div>` : ''}
+    <button class="btn-primary" style="width:100%;margin-top:10px" onclick="saveFarmCostForm()">Add cost</button>
+  </div>`;
+  openModal('Add farming cost', html);
+  document.getElementById('fc-date').valueAsDate = new Date();
+}
+
+function saveFarmCostForm() {
+  const g = id => document.getElementById(id)?.value||'';
+  const amt = Number(g('fc-amt')); if(!amt){ alert('Amount required'); return; }
+  const cost = { id:'c_'+Date.now(), date:g('fc-date'), category:g('fc-cat'), desc:g('fc-desc'), amount:amt, season:g('fc-season')||'' };
+  const d = getFarmCosts(); d.unshift(cost); saveFarmCosts(d);
+  closeModal(); renderFarmingCosts();
+}
+
+// ── HARVEST LOG tab ──
+function renderFarmingHarvest() {
+  const harvests = getFarmHarvests();
+  const el = document.getElementById('farming-harvest-list');
+  if(!el) return;
+  const sym_ = SYMS[getBizCur()]||getBizCur();
+  const totalQty = harvests.reduce((a,h) => a + (h.qty||0), 0);
+  const totalVal = harvests.reduce((a,h) => a + (h.total||0), 0);
+  if(harvests.length === 0) {
+    el.innerHTML = `<div style="text-align:center;padding:20px;color:var(--txt3);font-size:12px">No harvests recorded yet</div>`;
+    return;
+  }
+  el.innerHTML = `<div style="display:flex;gap:8px;margin-bottom:10px">
+    <div class="sc" style="flex:1;border-left-color:var(--green)"><div class="sc-lbl">Total yield</div><div class="sc-val" style="font-size:14px">${totalQty.toLocaleString('en-US')} kg</div></div>
+    <div class="sc" style="flex:1;border-left-color:var(--blue)"><div class="sc-lbl">Total value</div><div class="sc-val" style="font-size:14px">${sym_} ${Math.round(totalVal).toLocaleString('en-US')}</div></div>
+  </div>`
+    + harvests.map((h,i) => `<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--bg2)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:500">${h.qty||0} kg${h.season?' · '+h.season:''}</div>
+        <div style="font-size:10px;color:var(--txt3)">${h.date||'—'} · ${sym_} ${Number(h.pricePerKg||0).toFixed(2)}/kg</div>
+        ${h.notes?`<div style="font-size:10px;color:var(--txt3);font-style:italic">${h.notes}</div>`:''}
+      </div>
+      <div style="font-size:13px;font-weight:500;color:var(--green-txt);white-space:nowrap">${sym_} ${Math.round(h.total||0).toLocaleString('en-US')}</div>
+      <button style="background:none;border:none;color:var(--txt3);cursor:pointer;font-size:13px" onclick="deleteFarmHarvest(${i})">🗑</button>
+    </div>`).join('');
+}
+
+function deleteFarmHarvest(idx) {
+  if(!confirm('Delete this harvest record?')) return;
+  const d = getFarmHarvests(); d.splice(idx,1); saveFarmHarvests(d);
+  renderFarmingHarvest();
+}
+
+function openAddHarvest() {
+  const seasons = getFarmSeasons();
+  const seasonOpts = seasons.map(s=>`<option>${s.name}</option>`).join('');
+  const html = `<div style="padding:4px 0">
+    <div class="form-row"><label class="form-label">Date</label><input id="fh-date" class="form-input" type="date"/></div>
+    ${seasonOpts ? `<div class="form-row"><label class="form-label">Season</label><select id="fh-season" class="form-input"><option value="">— Select season —</option>${seasonOpts}</select></div>` : ''}
+    <div class="form-row"><label class="form-label">Quantity (kg)</label><input id="fh-qty" class="form-input" type="number" placeholder="0" oninput="calcHarvestTotal()"/></div>
+    <div class="form-row"><label class="form-label">Price per kg</label><input id="fh-price" class="form-input" type="number" placeholder="0.00" oninput="calcHarvestTotal()"/></div>
+    <div class="form-row"><label class="form-label">Total value</label><input id="fh-total" class="form-input" type="number" placeholder="Auto-calculated" readonly style="background:var(--bg2)"/></div>
+    <div class="form-row"><label class="form-label">Notes</label><input id="fh-notes" class="form-input" placeholder="Optional"/></div>
+    <button class="btn-primary" style="width:100%;margin-top:10px" onclick="saveFarmHarvestForm()">Record harvest</button>
+  </div>`;
+  openModal('Record harvest', html);
+  document.getElementById('fh-date').valueAsDate = new Date();
+  // Update actual yield on current season when recording
+}
+
+function calcHarvestTotal() {
+  const qty = Number(document.getElementById('fh-qty')?.value)||0;
+  const price = Number(document.getElementById('fh-price')?.value)||0;
+  const tot = document.getElementById('fh-total');
+  if(tot) tot.value = (qty*price).toFixed(2);
+}
+
+function saveFarmHarvestForm() {
+  const g = id => document.getElementById(id)?.value||'';
+  const qty = Number(g('fh-qty')); if(!qty){ alert('Quantity required'); return; }
+  const pricePerKg = Number(g('fh-price'))||0;
+  const total = Number(g('fh-total'))||qty*pricePerKg;
+  const harvest = { id:'h_'+Date.now(), date:g('fh-date'), season:g('fh-season')||'', qty, pricePerKg, total, notes:g('fh-notes') };
+  const d = getFarmHarvests(); d.unshift(harvest);
+  saveFarmHarvests(d);
+  // Update actual yield on matching season
+  const seasons = getFarmSeasons();
+  const matchedSeason = seasons.find(s => s.name === harvest.season);
+  if(matchedSeason) { matchedSeason.actualYield = (matchedSeason.actualYield||0) + qty; saveFarmSeasons(seasons); }
+  closeModal(); renderFarmingHarvest();
+}
+
+// ── SALES tab ──
+function renderFarmingSales() {
+  const sales = getFarmSales();
+  const el = document.getElementById('farming-sale-list');
+  if(!el) return;
+  const sym_ = SYMS[getBizCur()]||getBizCur();
+  const totalQty = sales.reduce((a,s) => a+(s.qty||0), 0);
+  const totalVal = sales.reduce((a,s) => a+(s.total||0), 0);
+  if(sales.length === 0) {
+    el.innerHTML = `<div style="text-align:center;padding:20px;color:var(--txt3);font-size:12px">No sales recorded yet</div>`;
+    return;
+  }
+  el.innerHTML = `<div style="display:flex;gap:8px;margin-bottom:10px">
+    <div class="sc" style="flex:1;border-left-color:var(--blue)"><div class="sc-lbl">Total sold</div><div class="sc-val" style="font-size:14px">${totalQty.toLocaleString('en-US')} kg</div></div>
+    <div class="sc" style="flex:1;border-left-color:var(--green)"><div class="sc-lbl">Total revenue</div><div class="sc-val" style="font-size:14px">${sym_} ${Math.round(totalVal).toLocaleString('en-US')}</div></div>
+  </div>`
+    + sales.map((s,i) => `<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--bg2)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:500">${s.buyer||'Buyer'} · ${s.qty||0} kg</div>
+        <div style="font-size:10px;color:var(--txt3)">${s.date||'—'} · ${sym_} ${Number(s.price||0).toFixed(2)}/kg${s.season?' · '+s.season:''}</div>
+        ${s.notes?`<div style="font-size:10px;color:var(--txt3);font-style:italic">${s.notes}</div>`:''}
+      </div>
+      <div style="font-size:13px;font-weight:500;color:var(--green-txt);white-space:nowrap">${sym_} ${Math.round(s.total||0).toLocaleString('en-US')}</div>
+      <button style="background:none;border:none;color:var(--txt3);cursor:pointer;font-size:13px" onclick="deleteFarmSale(${i})">🗑</button>
+    </div>`).join('');
+}
+
+function deleteFarmSale(idx) {
+  if(!confirm('Delete this sale?')) return;
+  const d = getFarmSales(); d.splice(idx,1); saveFarmSales(d);
+  renderFarmingSales();
+}
+
+function openAddFarmSale() {
+  const seasons = getFarmSeasons();
+  const seasonOpts = seasons.map(s=>`<option>${s.name}</option>`).join('');
+  const html = `<div style="padding:4px 0">
+    <div class="form-row"><label class="form-label">Date</label><input id="fsl-date" class="form-input" type="date"/></div>
+    <div class="form-row"><label class="form-label">Buyer name</label><input id="fsl-buyer" class="form-input" placeholder="Buyer / market name"/></div>
+    ${seasonOpts ? `<div class="form-row"><label class="form-label">Season</label><select id="fsl-season" class="form-input"><option value="">— Select season —</option>${seasonOpts}</select></div>` : ''}
+    <div class="form-row"><label class="form-label">Quantity (kg)</label><input id="fsl-qty" class="form-input" type="number" placeholder="0" oninput="calcSaleTotal()"/></div>
+    <div class="form-row"><label class="form-label">Price per kg</label><input id="fsl-price" class="form-input" type="number" placeholder="0.00" oninput="calcSaleTotal()"/></div>
+    <div class="form-row"><label class="form-label">Total</label><input id="fsl-total" class="form-input" type="number" placeholder="Auto-calculated" readonly style="background:var(--bg2)"/></div>
+    <div class="form-row"><label class="form-label">Notes</label><input id="fsl-notes" class="form-input" placeholder="Optional"/></div>
+    <button class="btn-primary" style="width:100%;margin-top:10px" onclick="saveFarmSaleForm()">Record sale</button>
+  </div>`;
+  openModal('Record sale', html);
+  document.getElementById('fsl-date').valueAsDate = new Date();
+}
+
+function calcSaleTotal() {
+  const qty = Number(document.getElementById('fsl-qty')?.value)||0;
+  const price = Number(document.getElementById('fsl-price')?.value)||0;
+  const tot = document.getElementById('fsl-total');
+  if(tot) tot.value = (qty*price).toFixed(2);
+}
+
+function saveFarmSaleForm() {
+  const g = id => document.getElementById(id)?.value||'';
+  const qty = Number(g('fsl-qty')); if(!qty){ alert('Quantity required'); return; }
+  const price = Number(g('fsl-price'))||0;
+  const total = Number(g('fsl-total'))||qty*price;
+  const sale = { id:'sl_'+Date.now(), date:g('fsl-date'), buyer:g('fsl-buyer'), season:g('fsl-season')||'', qty, price, total, notes:g('fsl-notes') };
+  const d = getFarmSales(); d.unshift(sale); saveFarmSales(d);
+  closeModal(); renderFarmingSales();
+}
+
+// ── REPORT tab ──
+function renderFarmingReport() {
+  const el = document.getElementById('farming-report-table');
+  if(!el) return;
+  const seasons  = getFarmSeasons();
+  const costs    = getFarmCosts();
+  const harvests = getFarmHarvests();
+  const sales    = getFarmSales();
+  const sym_     = SYMS[getBizCur()]||getBizCur();
+  const totalRevenue = sales.reduce((a,s)=>a+(s.total||0),0);
+  const totalCosts   = costs.reduce((a,c)=>a+(c.amount||0),0);
+  const totalHarvest = harvests.reduce((a,h)=>a+(h.qty||0),0);
+  const totalHarvestVal = harvests.reduce((a,h)=>a+(h.total||0),0);
+  const profit = totalRevenue - totalCosts;
+  el.innerHTML = `<thead><tr>
+    <th style="text-align:left;padding:6px;font-size:11px;color:var(--txt3)">Metric</th>
+    <th style="text-align:right;padding:6px;font-size:11px;color:var(--txt3)">Value</th>
+  </tr></thead><tbody>
+    <tr><td style="padding:6px;font-size:12px">Total seasons</td><td style="padding:6px;font-size:12px;text-align:right;font-weight:500">${seasons.length}</td></tr>
+    <tr><td style="padding:6px;font-size:12px">Total harvest</td><td style="padding:6px;font-size:12px;text-align:right;font-weight:500">${totalHarvest.toLocaleString('en-US')} kg</td></tr>
+    <tr><td style="padding:6px;font-size:12px">Harvest value</td><td style="padding:6px;font-size:12px;text-align:right;font-weight:500">${sym_} ${Math.round(totalHarvestVal).toLocaleString('en-US')}</td></tr>
+    <tr><td style="padding:6px;font-size:12px">Total sales</td><td style="padding:6px;font-size:12px;text-align:right;font-weight:500;color:var(--green-txt)">${sym_} ${Math.round(totalRevenue).toLocaleString('en-US')}</td></tr>
+    <tr><td style="padding:6px;font-size:12px">Total costs</td><td style="padding:6px;font-size:12px;text-align:right;font-weight:500;color:var(--red-txt)">${sym_} ${Math.round(totalCosts).toLocaleString('en-US')}</td></tr>
+    <tr style="border-top:2px solid var(--brd)"><td style="padding:6px;font-size:13px;font-weight:600">Net profit</td><td style="padding:6px;font-size:13px;text-align:right;font-weight:600;color:${profit>=0?'var(--green-txt)':'var(--red-txt)'}">${profit>=0?'+':''}${sym_} ${Math.round(Math.abs(profit)).toLocaleString('en-US')}</td></tr>
+  </tbody>`;
+  // Season-by-season breakdown
+  if(seasons.length > 0) {
+    const breakdownEl = document.getElementById('farming-report-table');
+    let extra = `<tr><td colspan="2" style="padding:10px 6px 4px;font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase">By season</td></tr>`;
+    seasons.forEach(s => {
+      const sHarvests = harvests.filter(h=>h.season===s.name).reduce((a,h)=>a+(h.total||0),0);
+      const sSales    = sales.filter(sl=>sl.season===s.name).reduce((a,sl)=>a+(sl.total||0),0);
+      const sCosts    = costs.filter(c=>c.season===s.name).reduce((a,c)=>a+(c.amount||0),0);
+      extra += `<tr><td style="padding:5px 6px;font-size:11px;color:var(--txt2)">${s.name} (${s.crop||'—'})</td><td style="padding:5px 6px;font-size:11px;text-align:right">Revenue: ${sym_} ${Math.round(sSales).toLocaleString('en-US')} · Cost: ${sym_} ${Math.round(sCosts).toLocaleString('en-US')}</td></tr>`;
+    });
+    el.querySelector('tbody').innerHTML += extra;
+  }
+}
+
+function exportFarmCSV() {
+  const seasons  = getFarmSeasons();
+  const costs    = getFarmCosts();
+  const harvests = getFarmHarvests();
+  const sales    = getFarmSales();
+  const biz = businesses.find(b=>b.id===currentBizId)||{};
+  let csv = 'FARMING REPORT,' + (biz.name||'Farm') + '\n\n';
+  csv += 'SEASONS\nName,Start,End,Crop,Area,Expected yield,Actual yield\n';
+  seasons.forEach(s => csv += `${s.name},${s.start},${s.end},${s.crop},${s.area},${s.expectedYield},${s.actualYield}\n`);
+  csv += '\nCOSTS\nDate,Category,Description,Amount\n';
+  costs.forEach(c => csv += `${c.date},${c.category},${c.desc},${c.amount}\n`);
+  csv += '\nHARVEST LOG\nDate,Season,Quantity (kg),Price/kg,Total value\n';
+  harvests.forEach(h => csv += `${h.date},${h.season},${h.qty},${h.pricePerKg},${h.total}\n`);
+  csv += '\nSALES\nDate,Buyer,Season,Quantity,Price,Total\n';
+  sales.forEach(s => csv += `${s.date},${s.buyer},${s.season},${s.qty},${s.price},${s.total}\n`);
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=(biz.name||'farm')+'_report.csv'; a.click();
+}</script>
 
 <div id="legal-overlay" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:1000;overflow-y:auto">
   <div style="max-width:600px;margin:0 auto;padding:20px 20px 60px">
